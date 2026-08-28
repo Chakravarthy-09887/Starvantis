@@ -5,10 +5,15 @@ from app.core.config import settings
 
 logger = logging.getLogger("starvantis.db")
 
+# Normalize DATABASE_URL for SQLAlchemy 2.0 (Render/Railway/Heroku provide postgres://)
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
+
 # Connection configuration
-if settings.DATABASE_URL.startswith("postgresql"):
+if db_url.startswith("postgresql"):
     engine = create_engine(
-        settings.DATABASE_URL,
+        db_url,
         pool_size=10,
         max_overflow=20,
         pool_pre_ping=True,
@@ -16,7 +21,7 @@ if settings.DATABASE_URL.startswith("postgresql"):
     )
 else:
     engine = create_engine(
-        settings.DATABASE_URL,
+        db_url,
         connect_args={"check_same_thread": False},
         echo=False,
     )

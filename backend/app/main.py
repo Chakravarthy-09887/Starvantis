@@ -21,17 +21,28 @@ logger = logging.getLogger("starvantis")
 async def lifespan(app: FastAPI):
     # Startup: Initialize Database and Start Live Telemetry Simulator
     logger.info("Initializing STARVANTIS Aerospace Intelligence Backend...")
-    db = SessionLocal()
     try:
-        init_db(db)
-    finally:
-        db.close()
+        db = SessionLocal()
+        try:
+            init_db(db)
+        finally:
+            db.close()
+    except Exception as db_err:
+        logger.warning(f"Database initialization notice: {db_err}")
 
-    simulator_service.start()
+    try:
+        simulator_service.start()
+    except Exception as sim_err:
+        logger.warning(f"Simulator startup notice: {sim_err}")
+
     yield
+
     # Shutdown
     logger.info("Shutting down STARVANTIS backend services...")
-    simulator_service.stop()
+    try:
+        simulator_service.stop()
+    except Exception as stop_err:
+        logger.warning(f"Simulator shutdown notice: {stop_err}")
 
 
 app = FastAPI(

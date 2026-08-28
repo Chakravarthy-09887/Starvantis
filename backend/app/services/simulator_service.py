@@ -3,6 +3,7 @@ import logging
 import math
 import random
 from datetime import datetime, timezone
+from typing import Optional
 from app.core.websocket_manager import ws_manager
 
 logger = logging.getLogger("starvantis.simulator")
@@ -28,7 +29,7 @@ class TelemetrySimulator:
     """Background simulator generating live 1Hz telemetry updates for active satellites."""
     def __init__(self):
         self._running = False
-        self._task: asyncio.Task | None = None
+        self._task: Optional[asyncio.Task] = None
         self._step = 0
 
     def start(self):

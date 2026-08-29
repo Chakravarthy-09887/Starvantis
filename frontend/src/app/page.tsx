@@ -19,6 +19,7 @@ import SpaceWeatherCenter from '../components/SpaceWeatherCenter';
 import ConjunctionSection from '../components/ConjunctionSection';
 import MissionRiskCenter from '../components/MissionRiskCenter';
 import AlertsCenter from '../components/AlertsCenter';
+import DeepSpaceExplorer from '../components/DeepSpaceExplorer';
 import LandingDescentSimulation from '../components/LandingDescentSimulation';
 import SurfaceLandingAnalysis from '../components/SurfaceLandingAnalysis';
 import Administration from '../components/Administration';
@@ -92,9 +93,13 @@ export default function Home() {
 
       {/* 13. Active Mission Alert Center */}
       <AlertsCenter />
+      <OrbitLines label="DEEP SPACE &amp; LAGRANGE POINT EXPLORER // ISRO &amp; NASA" />
+
+      {/* 14. Deep-Space & Lagrange Point Specialized Displays (Aditya-L1, Chandrayaan-3, JWST) */}
+      <DeepSpaceExplorer />
       <OrbitLines label="CHANDRAYAAN EDL SIMULATION &amp; HARDENING" />
 
-      {/* 14. Chandrayaan Lunar EDL Trajectory & Failure-Proof Engineering */}
+      {/* 15. Chandrayaan Lunar EDL Trajectory & Failure-Proof Engineering */}
       <LandingDescentSimulation />
       <OrbitLines label="PLANETARY RECONNAISSANCE &amp; SHIV SHAKTI POINT" />
 

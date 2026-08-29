@@ -197,7 +197,26 @@ def test_all():
         assert "cumulative_dose_krad" in rad_data
         assert "is_in_saa" in rad_data
 
-        print("--> ALL 11 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
+        print("12. Testing Deep-Space & Lagrange Point Specialized Telemetry...")
+        aditya_resp = client.get("/api/v1/deep-space/aditya-l1")
+        assert aditya_resp.status_code == 200
+        aditya_data = aditya_resp.json()
+        assert aditya_data["spacecraft_id"] == "ADITYA-L1"
+        assert aditya_data["light_time_delay_sec"] > 0
+
+        ch3_resp = client.get("/api/v1/deep-space/chandrayaan-3")
+        assert ch3_resp.status_code == 200
+        ch3_data = ch3_resp.json()
+        assert ch3_data["spacecraft_id"] == "CHANDRAYAAN-3"
+        assert "chaste_surface_temp_c" in ch3_data
+
+        jwst_resp = client.get("/api/v1/deep-space/jwst")
+        assert jwst_resp.status_code == 200
+        jwst_data = jwst_resp.json()
+        assert jwst_data["spacecraft_id"] == "JWST"
+        assert "sunshield_cold_side_temp_k" in jwst_data
+
+        print("--> ALL 12 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
 
 
 if __name__ == "__main__":

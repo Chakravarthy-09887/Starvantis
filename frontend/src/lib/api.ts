@@ -261,6 +261,52 @@ export interface SpacecraftRadiationDose {
   recommended_mitigation: string;
 }
 
+export interface AdityaL1DeepSpaceData {
+  spacecraft_id: string;
+  orbit_regime: string;
+  distance_from_earth_km: number;
+  distance_to_sun_km: number;
+  light_time_delay_sec: number;
+  coronagraph_velc_status: string;
+  cme_event_detected: boolean;
+  solar_uv_suit_flux_wm2: number;
+  aspex_proton_alpha_ratio_pct: number;
+  plasma_speed_kms: number;
+  triaxial_mag_field_nt: Record<string, number>;
+  halo_orbit_phase_deg: number;
+  station_keeping_delta_v_ms_yr: number;
+}
+
+export interface Chandrayaan3DeepSpaceData {
+  spacecraft_id: string;
+  landing_site: string;
+  latitude_deg: number;
+  longitude_deg: number;
+  distance_from_earth_km: number;
+  light_time_delay_sec: number;
+  chaste_surface_temp_c: number;
+  chaste_subsurface_10cm_temp_c: number;
+  ilsa_seismic_events_24h: number;
+  apxs_elemental_abundances: Record<string, number>;
+  rambha_plasma_density_cm3: number;
+  rover_pragyan_distance_traversed_m: number;
+  battery_charge_pct: number;
+}
+
+export interface JWSTDeepSpaceData {
+  spacecraft_id: string;
+  orbit_regime: string;
+  distance_from_earth_km: number;
+  light_time_delay_sec: number;
+  sunshield_hot_side_temp_c: number;
+  sunshield_cold_side_temp_k: number;
+  miri_cryocooler_temp_k: number;
+  fgs_pointing_jitter_mas: number;
+  active_instrument: string;
+  exposure_target: string;
+  station_keeping_fuel_margin_years: number;
+}
+
 export const api = {
   // Satellites & Fleet
   getSatellites: () => fetchApi<SatelliteAsset[]>('/satellites'),
@@ -322,4 +368,9 @@ export const api = {
   getSpaceWeather: () => fetchApi<SpaceWeatherIndices>('/space-weather/live'),
   getSpacecraftRadiation: (satelliteId: string) =>
     fetchApi<SpacecraftRadiationDose>(`/space-weather/radiation/${satelliteId}`),
+
+  // Deep-Space & Lagrange Point Specialized Displays
+  getAdityaL1DeepSpace: () => fetchApi<AdityaL1DeepSpaceData>('/deep-space/aditya-l1'),
+  getChandrayaan3DeepSpace: () => fetchApi<Chandrayaan3DeepSpaceData>('/deep-space/chandrayaan-3'),
+  getJWSTDeepSpace: () => fetchApi<JWSTDeepSpaceData>('/deep-space/jwst'),
 };

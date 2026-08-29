@@ -23,7 +23,7 @@ def init_db(db: Session):
     Base.metadata.create_all(bind=engine)
 
     # Enable TimescaleDB extension and create hypertable if using PostgreSQL
-    if settings.DATABASE_URL.startswith("postgresql"):
+    if "postgres" in settings.DATABASE_URL.lower():
         try:
             with engine.connect() as conn:
                 conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;"))

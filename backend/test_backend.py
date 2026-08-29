@@ -216,7 +216,20 @@ def test_all():
         assert jwst_data["spacecraft_id"] == "JWST"
         assert "sunshield_cold_side_temp_k" in jwst_data
 
-        print("--> ALL 12 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
+        print("13. Testing Ground Station & Deep Space Tracking Network...")
+        gs_resp = client.get("/api/v1/ground-stations/stations")
+        assert gs_resp.status_code == 200
+        gs_list = gs_resp.json()
+        assert len(gs_list) >= 8
+
+        link_resp = client.get("/api/v1/ground-stations/link/SENTINEL-6A")
+        assert link_resp.status_code == 200
+        link_list = link_resp.json()
+        assert len(link_list) > 0
+        assert "doppler_shift_khz" in link_list[0]
+        assert "elevation_deg" in link_list[0]
+
+        print("--> ALL 13 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
 
 
 if __name__ == "__main__":

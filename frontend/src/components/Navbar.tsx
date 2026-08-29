@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { label: 'Space Weather', href: '#space-weather' },
   { label: 'Orbital Risk', href: '#orbital' },
   { label: 'Deep Space', href: '#deep-space' },
+  { label: 'Ground Stations', href: '#ground-stations' },
   { label: 'Alerts', href: '#alerts' },
   { label: 'Admin', href: '#admin' },
   { label: 'Technology', href: '#technology' },

@@ -23,6 +23,7 @@ import DeepSpaceExplorer from '../components/DeepSpaceExplorer';
 import LandingDescentSimulation from '../components/LandingDescentSimulation';
 import SurfaceLandingAnalysis from '../components/SurfaceLandingAnalysis';
 import Administration from '../components/Administration';
+import GroundStationNetwork from '../components/GroundStationNetwork';
 import MissionControlPreview from '../components/MissionControlPreview';
 import DataFlow from '../components/DataFlow';
 import PlatformCapabilities from '../components/PlatformCapabilities';
@@ -109,9 +110,13 @@ export default function Home() {
 
       {/* 16. Mission Administration, Access Roles & Audit Trail */}
       <Administration />
+      <OrbitLines label="GLOBAL GROUND STATIONS &amp; DSN TRACKING" />
+
+      {/* 17. Worldwide Ground Station Network, DSN Parabolic Dishes & RF Doppler Shift */}
+      <GroundStationNetwork />
       <OrbitLines label="INTEGRATED OPERATIONS DECK" />
 
-      {/* 17. Live Integrated Mission Control Interface Preview */}
+      {/* 18. Live Integrated Mission Control Interface Preview */}
       <MissionControlPreview />
       <OrbitLines label="TIMESCALEDB ARCHITECTURE &amp; DATA FLOW" />
 

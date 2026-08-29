@@ -307,6 +307,39 @@ export interface JWSTDeepSpaceData {
   station_keeping_fuel_margin_years: number;
 }
 
+export interface GroundStationDefinition {
+  id: string;
+  name: string;
+  agency: string;
+  latitude: number;
+  longitude: number;
+  antenna_type: string;
+  dish_diameter_m: number;
+  frequency_bands: string[];
+  max_data_rate_mbps: number;
+  status: string;
+}
+
+export interface ActiveSpacecraftLink {
+  station_id: string;
+  station_name: string;
+  satellite_id: string;
+  satellite_name: string;
+  link_status: 'TRACKING_LOCKED' | 'VISIBILITY_ACQUIRED' | 'AOS_PENDING' | 'BELOW_HORIZON';
+  azimuth_deg: number;
+  elevation_deg: number;
+  slant_range_km: number;
+  doppler_shift_khz: number;
+  carrier_freq_mhz: number;
+  signal_strength_dbm: number;
+  snr_db: number;
+  bit_error_rate: string;
+  aos_time_iso: string;
+  los_time_iso: string;
+  time_to_aos_sec: number;
+  pass_duration_sec: number;
+}
+
 export const api = {
   // Satellites & Fleet
   getSatellites: () => fetchApi<SatelliteAsset[]>('/satellites'),
@@ -373,4 +406,9 @@ export const api = {
   getAdityaL1DeepSpace: () => fetchApi<AdityaL1DeepSpaceData>('/deep-space/aditya-l1'),
   getChandrayaan3DeepSpace: () => fetchApi<Chandrayaan3DeepSpaceData>('/deep-space/chandrayaan-3'),
   getJWSTDeepSpace: () => fetchApi<JWSTDeepSpaceData>('/deep-space/jwst'),
+
+  // Ground Station & Deep Space Tracking Network
+  getGroundStations: () => fetchApi<GroundStationDefinition[]>('/ground-stations/stations'),
+  getSatelliteGroundLinks: (satelliteId: string) =>
+    fetchApi<ActiveSpacecraftLink[]>(`/ground-stations/link/${satelliteId}`),
 };

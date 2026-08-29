@@ -204,6 +204,33 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   }
 }
 
+export interface CopilotTelecommand {
+  command_id: string;
+  satellite_id: string;
+  subsystem: string;
+  action_type: string;
+  delta_v_ms?: number;
+  burn_vector?: string;
+  target_parameter?: string;
+  target_value?: string;
+  verification_hash: string;
+  estimated_fuel_kg?: number;
+  risk_reduction_pct?: number;
+}
+
+export interface CopilotResponse {
+  query_id: string;
+  timestamp: string;
+  satellite_id: string;
+  operator: string;
+  intent: string;
+  summary: string;
+  detailed_analysis: string;
+  technical_metrics: Record<string, string>;
+  suggested_telecommand?: CopilotTelecommand | null;
+  suggested_followups: string[];
+}
+
 export const api = {
   // Satellites & Fleet
   getSatellites: () => fetchApi<SatelliteAsset[]>('/satellites'),
@@ -248,4 +275,16 @@ export const api = {
   // Operators & Audit Logs
   getOperators: () => fetchApi<OperatorItem[]>('/auth/operators'),
   getAuditLogs: () => fetchApi<AuditLogItem[]>('/auth/audit-logs'),
+
+  // AERO-AI Flight Director Copilot
+  queryCopilot: (payload: { prompt: string; satellite_id?: string; operator?: string; context?: any }) =>
+    fetchApi<CopilotResponse>('/copilot/query', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  executeTelecommand: (payload: { command_id: string; satellite_id: string; operator: string; telecommand: CopilotTelecommand }) =>
+    fetchApi<{ status: string; command_id: string; satellite_id: string; message: string }>('/copilot/execute-telecommand', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };

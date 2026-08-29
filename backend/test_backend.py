@@ -108,17 +108,17 @@ def test_all():
         assert list_resp.status_code == 200
         conjs = list_resp.json()
         assert len(conjs) > 0
-        assert conjs[0]["primary_satellite_id"] == "STAR-07"
+        primary_id = conjs[0]["primary_satellite_id"]
 
         analysis_payload = {
-            "primary_satellite_id": "STAR-07",
+            "primary_satellite_id": primary_id,
             "target_object_id": "DEB-3842",
             "initial_miss_distance_km": 1.2
         }
         analyze_resp = client.post("/api/v1/conjunctions/analyze", json=analysis_payload)
         assert analyze_resp.status_code == 200
         analysis = analyze_resp.json()
-        assert analysis["primary_satellite_id"] == "STAR-07"
+        assert analysis["primary_satellite_id"] == primary_id
         assert "collision_probability_pc" in analysis
         assert analysis["recommended_maneuver"]["delta_v_ms"] == 0.42
         assert analysis["recommended_maneuver"]["post_burn_miss_km"] == 18.6
@@ -159,7 +159,31 @@ def test_all():
             pong = websocket.receive_json()
             assert pong["type"] == "PONG"
 
-        print("--> ALL 9 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
+        print("10. Testing AERO-AI Flight Director Copilot & Telecommands...")
+        copilot_query = client.post("/api/v1/copilot/query", json={
+            "prompt": "Simulate evasive collision avoidance burn for Sentinel-6A",
+            "satellite_id": "SENTINEL-6A",
+            "operator": "Commander Vance"
+        })
+        assert copilot_query.status_code == 200
+        cp_data = copilot_query.json()
+        assert cp_data["intent"] == "CONJUNCTION_COLLISION_AVOIDANCE"
+        assert cp_data["suggested_telecommand"] is not None
+        assert "delta_v_ms" in cp_data["suggested_telecommand"]
+
+        # Execute telecommand
+        tc = cp_data["suggested_telecommand"]
+        tc_exec = client.post("/api/v1/copilot/execute-telecommand", json={
+            "command_id": tc["command_id"],
+            "satellite_id": "SENTINEL-6A",
+            "operator": "Commander Vance",
+            "telecommand": tc
+        })
+        assert tc_exec.status_code == 200
+        tc_res = tc_exec.json()
+        assert tc_res["status"] == "SUCCESS"
+
+        print("--> ALL 10 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
 
 
 if __name__ == "__main__":

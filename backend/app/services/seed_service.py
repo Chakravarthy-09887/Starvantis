@@ -564,7 +564,52 @@ def init_db(db: Session):
         db.add_all(alerts)
         db.commit()
 
-    # 9. Seed Risk Incidents
+    # 9. Seed Conjunction Encounters
+    if db.query(ConjunctionEvent).count() == 0:
+        logger.info("Seeding orbital conjunction encounters...")
+        tca_dt = datetime.now(timezone.utc) + timedelta(hours=4, minutes=21, seconds=16)
+        conjs = [
+            ConjunctionEvent(
+                id="CONJ-8821",
+                primary_satellite_id="SENTINEL-6A",
+                target_object_id="DEB-3842",
+                target_name="COSMOS-2251 DEBRIS FRAGMENT #3842",
+                tca_time=tca_dt,
+                tca_formatted=tca_dt.strftime("%Y-%m-%d %H:%M:%S UTC"),
+                miss_distance_km=1.20,
+                relative_velocity_kms=14.82,
+                collision_probability=1.84e-4,
+                risk_level="CRITICAL",
+                recommended_delta_v_ms=0.42,
+                burn_direction="RETROGRADE",
+                burn_execution_epoch="T-45m (Apogee Pass)",
+                projected_post_burn_miss_km=18.6,
+                status="EVASION_RECOMMENDED",
+                maneuver_approved=False,
+                analysis_details="High-risk conjunction candidate with hypervelocity encounter geometry.",
+            ),
+            ConjunctionEvent(
+                id="CONJ-8819",
+                primary_satellite_id="CARTOSAT-3",
+                target_object_id="DEB-1194",
+                target_name="SL-16 DEBRIS #1194",
+                tca_time=datetime.now(timezone.utc) + timedelta(hours=14, minutes=12),
+                tca_formatted=(datetime.now(timezone.utc) + timedelta(hours=14, minutes=12)).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                miss_distance_km=3.85,
+                relative_velocity_kms=11.40,
+                collision_probability=4.12e-5,
+                risk_level="HIGH",
+                recommended_delta_v_ms=0.18,
+                burn_direction="RADIAL_OUT",
+                projected_post_burn_miss_km=12.4,
+                status="MONITORING",
+                maneuver_approved=False,
+            ),
+        ]
+        db.add_all(conjs)
+        db.commit()
+
+    # 10. Seed Risk Incidents
     if db.query(RiskIncident).count() == 0:
         logger.info("Seeding fused risk incidents...")
         rsk = RiskIncident(

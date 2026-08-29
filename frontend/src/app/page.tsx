@@ -27,6 +27,7 @@ import PlatformCapabilities from '../components/PlatformCapabilities';
 import TechnologyStack from '../components/TechnologyStack';
 import CTASection from '../components/CTASection';
 import Footer from '../components/Footer';
+import AeroCopilotHUD from '../components/AeroCopilotHUD';
 
 export default function Home() {
   return (
@@ -118,6 +119,9 @@ export default function Home() {
 
       {/* 22. Deep Footer with NASA & Open Source Astrodynamics Attributions */}
       <Footer />
+
+      {/* Autonomous AERO-AI Natural Language Flight Director Copilot HUD */}
+      <AeroCopilotHUD />
     </main>
   );
 }

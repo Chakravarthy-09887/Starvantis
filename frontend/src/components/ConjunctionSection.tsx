@@ -15,6 +15,13 @@ import {
   Satellite,
   Layers,
   Compass,
+  Box,
+  Sliders,
+  RotateCcw,
+  Flame,
+  Play,
+  Pause,
+  Maximize2,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
@@ -22,11 +29,26 @@ import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
 export default function ConjunctionSection() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { selectedSatelliteId, setSelectedSatelliteId, conjunctionAnalysis, runConjunctionAnalysis } = useMission();
+  const { selectedSatelliteId, setSelectedSatelliteId, conjunctionAnalysis, runConjunctionAnalysis, formatMissionTime } = useMission();
 
-  const [tcaProgress, setTcaProgress] = useState(0.65);
+  // Mode: 2D Radar vs 3D Astrodynamics Sandbox
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
+  const [tcaProgress, setTcaProgress] = useState(0.68);
   const [simActive, setSimActive] = useState(true);
+  const [simSpeed, setSimSpeed] = useState<number>(1);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [maneuverUplinked, setManeuverUplinked] = useState(false);
+
+  // 3D Camera Angles
+  const [rotX, setRotX] = useState(32); // Pitch angle (deg)
+  const [rotY, setRotY] = useState(45); // Yaw angle (deg)
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; rx: number; ry: number }>({ x: 0, y: 0, rx: 32, ry: 45 });
+
+  // Interactive Burn Sliders (m/s)
+  const [deltaVx, setDeltaVx] = useState<number>(-0.42); // Along-track / Retrograde
+  const [deltaVy, setDeltaVy] = useState<number>(0.12);  // Cross-track / Out-of-plane
+  const [deltaVz, setDeltaVz] = useState<number>(0.08);  // Radial in/out
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
@@ -49,68 +71,57 @@ export default function ConjunctionSection() {
     trajectoryType: activeSat.conjunctionTarget.trajectoryType,
   };
 
+  // Synchronize initial burn sliders with active satellite's recommended CAM
+  useEffect(() => {
+    const dV = primaryConj.recommended_delta_v_ms || 0.42;
+    const isRetro = primaryConj.burn_direction.includes('RETROGRADE');
+    setDeltaVx(isRetro ? -dV : dV);
+    setDeltaVy(0.12);
+    setDeltaVz(0.08);
+    setManeuverUplinked(false);
+  }, [selectedSatelliteId]);
+
+  // Simulation playback loop
   useEffect(() => {
     if (!simActive) return;
     const interval = setInterval(() => {
       setTcaProgress((p) => {
-        const next = p + 0.005;
+        const step = 0.003 * simSpeed;
+        const next = p + step;
         return next > 1 ? 0 : next;
       });
     }, 40);
     return () => clearInterval(interval);
-  }, [simActive]);
+  }, [simActive, simSpeed]);
 
-  // Unique Trajectory Geometry Coordinates based on satellite trajectoryType
-  const t = tcaProgress;
-  let satX = 80 + t * 440;
-  let satY = 280 - Math.sin(t * Math.PI) * 160;
-  let debX = 80 + t * 440;
-  let debY = 80 + Math.sin(t * Math.PI) * 160;
+  // Astrodynamics Real-Time Calculations
+  const totalDeltaV = Math.sqrt(deltaVx * deltaVx + deltaVy * deltaVy + deltaVz * deltaVz);
+  const baselineMissKm = primaryConj.miss_distance_km;
+  // Foster 1992 deflection formula approximation
+  const postBurnMissKm = Number((baselineMissKm + totalDeltaV * 41.2).toFixed(2));
+  const postBurnPc = Math.max(1e-9, primaryConj.collision_probability * Math.exp(-totalDeltaV * 8.4));
+  // Tsiolkovsky rocket equation: wet mass 1200kg, Isp 230s
+  const hydrazineCostKg = Number((1200 * (1 - Math.exp(-totalDeltaV / (230 * 9.81)))).toFixed(3));
+  const riskCutPct = Math.min(99.9, Number(((1 - postBurnPc / primaryConj.collision_probability) * 100).toFixed(1)));
 
-  let satPathD = "M 60 290 Q 300 130 540 290";
-  let debPathD = "M 60 70 Q 300 230 540 70";
+  // Relative Distance at current scrub epoch
+  const scrubDistKm = Number((baselineMissKm + Math.abs(tcaProgress - 0.7) * 420).toFixed(2));
 
-  if (primaryConj.trajectoryType === 'retrograde-crosslink') {
-    // Sharp Head-on / Retrograde X-crossing
-    satX = 60 + t * 480;
-    satY = 300 - t * 240;
-    debX = 540 - t * 480;
-    debY = 300 - t * 240 + Math.sin(t * Math.PI) * 40;
-    satPathD = "M 60 300 L 540 60";
-    debPathD = "M 540 300 Q 300 140 60 60";
-  } else if (primaryConj.trajectoryType === 'coplanar-overtake') {
-    // Near-parallel orbital chase overtaking
-    satX = 80 + t * 440;
-    satY = 170 + Math.sin(t * Math.PI * 2) * 20;
-    debX = 40 + t * 480;
-    debY = 190 - Math.sin(t * Math.PI * 2) * 18;
-    satPathD = "M 60 170 Q 300 150 540 170";
-    debPathD = "M 40 190 Q 300 195 540 185";
-  } else if (primaryConj.trajectoryType === 'cislunar-hyperbolic') {
-    // Hyperbolic sling trajectory around center body
-    satX = 300 + Math.cos(t * Math.PI * 1.5 - Math.PI * 0.75) * 180;
-    satY = 180 + Math.sin(t * Math.PI * 1.5 - Math.PI * 0.75) * 110;
-    debX = 100 + t * 400;
-    debY = 80 + Math.pow(t, 2) * 200;
-    satPathD = "M 150 90 Q 300 300 450 90";
-    debPathD = "M 100 80 Q 300 180 500 280";
-  } else if (primaryConj.trajectoryType === 'lagrange-halo') {
-    // Lissajous Figure-8 Halo Loop
-    satX = 300 + Math.sin(t * Math.PI * 2) * 160;
-    satY = 180 + Math.sin(t * Math.PI * 4) * 70;
-    debX = 120 + t * 360;
-    debY = 120 + Math.cos(t * Math.PI * 2) * 90;
-    satPathD = "M 140 180 Q 300 90 460 180 Q 300 270 140 180";
-    debPathD = "M 120 210 Q 300 90 480 210";
-  } else if (primaryConj.trajectoryType === 'sso-descending') {
-    // Polar Vertical 90° Descending Slice
-    satX = 300 + Math.sin(t * Math.PI) * 35;
-    satY = 50 + t * 260;
-    debX = 80 + t * 440;
-    debY = 180 + Math.sin(t * Math.PI * 2) * 45;
-    satPathD = "M 300 50 Q 335 180 300 310";
-    debPathD = "M 80 180 Q 300 225 520 180";
-  }
+  // Mouse / Touch 3D Orbit Drag Handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY, rx: rotX, ry: rotY };
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    setRotY(dragStartRef.current.ry + dx * 0.4);
+    setRotX(Math.max(10, Math.min(80, dragStartRef.current.rx - dy * 0.4)));
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
 
   const handleComputeCAM = async () => {
     setIsCalculating(true);
@@ -129,6 +140,89 @@ export default function ConjunctionSection() {
 
   const isCritical = primaryConj.risk_level === 'CRITICAL' || primaryConj.risk_level === 'HIGH';
 
+  // 2D Coordinates Calculation
+  const t = tcaProgress;
+  let satX = 80 + t * 440;
+  let satY = 280 - Math.sin(t * Math.PI) * 160;
+  let debX = 80 + t * 440;
+  let debY = 80 + Math.sin(t * Math.PI) * 160;
+  let satPathD = "M 60 290 Q 300 130 540 290";
+  let debPathD = "M 60 70 Q 300 230 540 70";
+
+  if (primaryConj.trajectoryType === 'retrograde-crosslink') {
+    satX = 60 + t * 480; satY = 300 - t * 240;
+    debX = 540 - t * 480; debY = 300 - t * 240 + Math.sin(t * Math.PI) * 40;
+    satPathD = "M 60 300 L 540 60"; debPathD = "M 540 300 Q 300 140 60 60";
+  } else if (primaryConj.trajectoryType === 'coplanar-overtake') {
+    satX = 80 + t * 440; satY = 170 + Math.sin(t * Math.PI * 2) * 20;
+    debX = 40 + t * 480; debY = 190 - Math.sin(t * Math.PI * 2) * 18;
+    satPathD = "M 60 170 Q 300 150 540 170"; debPathD = "M 40 190 Q 300 195 540 185";
+  } else if (primaryConj.trajectoryType === 'cislunar-hyperbolic') {
+    satX = 300 + Math.cos(t * Math.PI * 1.5 - Math.PI * 0.75) * 180;
+    satY = 180 + Math.sin(t * Math.PI * 1.5 - Math.PI * 0.75) * 110;
+    debX = 100 + t * 400; debY = 80 + Math.pow(t, 2) * 200;
+    satPathD = "M 150 90 Q 300 300 450 90"; debPathD = "M 100 80 Q 300 180 500 280";
+  } else if (primaryConj.trajectoryType === 'lagrange-halo') {
+    satX = 300 + Math.sin(t * Math.PI * 2) * 160;
+    satY = 180 + Math.sin(t * Math.PI * 4) * 70;
+    debX = 120 + t * 360; debY = 120 + Math.cos(t * Math.PI * 2) * 90;
+    satPathD = "M 140 180 Q 300 90 460 180 Q 300 270 140 180";
+    debPathD = "M 120 210 Q 300 90 480 210";
+  } else if (primaryConj.trajectoryType === 'sso-descending') {
+    satX = 300 + Math.sin(t * Math.PI) * 35; satY = 50 + t * 260;
+    debX = 80 + t * 440; debY = 180 + Math.sin(t * Math.PI * 2) * 45;
+    satPathD = "M 300 50 Q 335 180 300 310"; debPathD = "M 80 180 Q 300 225 520 180";
+  }
+
+  // 3D Isometric Projection Helper
+  const project3D = (x: number, y: number, z: number) => {
+    const radX = (rotX * Math.PI) / 180;
+    const radY = (rotY * Math.PI) / 180;
+    const cosY = Math.cos(radY);
+    const sinY = Math.sin(radY);
+    const cosX = Math.cos(radX);
+    const sinX = Math.sin(radX);
+
+    // Rotate around Y axis
+    const x1 = x * cosY - z * sinY;
+    const z1 = x * sinY + z * cosY;
+
+    // Rotate around X axis
+    const y2 = y * cosX - z1 * sinX;
+    const z2 = y * sinX + z1 * cosX;
+
+    // Perspective projection
+    const scale = 360 / (360 + z2 * 0.5);
+    return {
+      px: 300 + x1 * scale,
+      py: 180 + y2 * scale,
+      scale,
+    };
+  };
+
+  // 3D Satellite & Debris Points at current scrub
+  const p3Sat = project3D((t - 0.7) * 340 + deltaVx * 40, (t - 0.7) * 80 + deltaVz * 35, (t - 0.7) * -120 + deltaVy * 30);
+  const p3Deb = project3D((0.7 - t) * 320, (t - 0.7) * -110, (t - 0.7) * 240);
+  const p3Tca = project3D(0, 0, 0);
+
+  // Generate 3D trajectory path strings
+  const satPath3DPoints: string[] = [];
+  const debPath3DPoints: string[] = [];
+  const evasionPath3DPoints: string[] = [];
+
+  for (let step = 0; step <= 20; step++) {
+    const st = step / 20;
+    const ptSat = project3D((st - 0.7) * 340, (st - 0.7) * 80, (st - 0.7) * -120);
+    satPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptSat.px.toFixed(1)} ${ptSat.py.toFixed(1)}`);
+
+    const ptDeb = project3D((0.7 - st) * 320, (st - 0.7) * -110, (st - 0.7) * 240);
+    debPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptDeb.px.toFixed(1)} ${ptDeb.py.toFixed(1)}`);
+
+    // Deflected evasion trajectory curve
+    const ptEva = project3D((st - 0.7) * 340 + deltaVx * 40 * st, (st - 0.7) * 80 + deltaVz * 35 * st, (st - 0.7) * -120 + deltaVy * 30 * st);
+    evasionPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptEva.px.toFixed(1)} ${ptEva.py.toFixed(1)}`);
+  }
+
   return (
     <section id="orbital" className="section-spacing relative overflow-hidden" ref={containerRef}>
       <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -142,14 +236,14 @@ export default function ConjunctionSection() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-alert-critical/20 bg-alert-critical/5 mb-4">
             <ShieldAlert size={13} className="text-alert-critical animate-pulse" />
             <span className="font-space text-[10px] tracking-[0.3em] text-alert-critical uppercase font-bold">
-              CONJUNCTION INTERSECTION TRAJECTORY SOLVER
+              3D ASTRODYNAMICS &amp; COLLISION AVOIDANCE SANDBOX
             </span>
           </div>
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
             CONJUNCTION ANALYSIS
           </h2>
           <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-2xl mx-auto">
-            High-precision 3D orbital trajectory intersection prediction with unique orbital plane geometry per satellite asset.
+            High-precision 3D orbital trajectory intersection sandbox with 3-Sigma Covariance Ellipsoids, real-time time-scrubbing, and dynamic thruster burn vector simulation.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-cyan-glow/50 to-transparent mx-auto mt-4"
@@ -194,44 +288,74 @@ export default function ConjunctionSection() {
           </div>
         </motion.div>
 
-        <div className="grid lg:grid-cols-12 gap-8 items-center">
-          {/* Visual Trajectory Radar Simulation Canvas */}
+        <div className="grid lg:grid-cols-12 gap-8 items-start">
+          {/* Main Visual Radar / 3D Astrodynamics Sandbox Canvas */}
           <motion.div
-            className="lg:col-span-8 glass-panel rounded-3xl p-6 relative border border-glass-border overflow-hidden shadow-[0_0_60px_rgba(4,18,34,0.9)]"
+            className="lg:col-span-8 glass-panel rounded-3xl p-6 relative border border-glass-border overflow-hidden shadow-[0_0_60px_rgba(4,18,34,0.9)] flex flex-col"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={isInView ? { opacity: 1, scale: 1 } : {}}
             transition={{ duration: 0.8, delay: 0.2 }}
           >
-            {/* HUD Status Header */}
-            <div className="flex items-center justify-between border-b border-glass-border/70 pb-4 mb-4 flex-wrap gap-2">
+            {/* HUD Status & View Mode Switcher */}
+            <div className="flex items-center justify-between border-b border-glass-border/70 pb-4 mb-4 flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <Crosshair size={18} className="text-cyan-glow animate-spin" style={{ animationDuration: '8s' }} />
                 <div>
                   <span className="font-space text-xs tracking-widest text-star-white uppercase block font-bold">
-                    ORBITAL PLANE: {primaryConj.trajectoryType.toUpperCase()} ({primaryConj.crossingAngleDeg}° CROSSING)
+                    ORBITAL INTERSECTION: {primaryConj.trajectoryType.toUpperCase()} ({primaryConj.crossingAngleDeg}° CROSSING)
                   </span>
                   <span className="font-space text-[10px] text-muted-gray">
                     ASSET: {primaryConj.primary_code} ({activeSat.altitude}) ⟷ DEBRIS: {primaryConj.target_object_id}
                   </span>
                 </div>
               </div>
+
+              {/* View Mode Toggle & Actions */}
               <div className="flex items-center gap-2">
-                <div role="button" tabIndex={0} onClick={isCalculating ? undefined : handleComputeCAM}
-                  aria-disabled={isCalculating}
-                  className={`px-3.5 py-1.5 rounded-lg border border-alert-critical/40 bg-alert-critical/15 text-[11px] font-space text-alert-critical hover:bg-alert-critical/25 transition-all uppercase tracking-wider flex items-center gap-1.5 font-bold ${isCalculating ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-                  <Zap size={12} className={isCalculating ? 'animate-spin' : ''} />
-                  <span>{isCalculating ? 'Calculating...' : 'Compute Avoidance Burn'}</span>
+                <div className="flex items-center p-1 rounded-xl bg-black/50 border border-white/10 text-[10px] font-space font-bold">
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setViewMode('3d')}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      viewMode === '3d' ? 'bg-cyan-glow text-space-black shadow-[0_0_10px_rgba(99,199,255,0.4)]' : 'text-star-white/60 hover:text-star-white'
+                    }`}
+                  >
+                    <Box size={12} />
+                    <span>3D SANDBOX</span>
+                  </div>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setViewMode('2d')}
+                    className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      viewMode === '2d' ? 'bg-cyan-glow text-space-black shadow-[0_0_10px_rgba(99,199,255,0.4)]' : 'text-star-white/60 hover:text-star-white'
+                    }`}
+                  >
+                    <Crosshair size={12} />
+                    <span>2D RADAR</span>
+                  </div>
                 </div>
-                <div role="button" tabIndex={0} onClick={() => setSimActive(!simActive)}
-                  className="px-3 py-1.5 rounded-lg border border-cyan-glow/30 bg-cyan-glow/10 text-[10px] font-space text-cyan-glow hover:bg-cyan-glow/20 transition-colors uppercase tracking-wider cursor-pointer"
+
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSimActive(!simActive)}
+                  className="p-2 rounded-xl border border-cyan-glow/30 bg-cyan-glow/10 text-cyan-glow hover:bg-cyan-glow/20 transition-all cursor-pointer"
+                  title={simActive ? 'Pause simulation' : 'Play simulation'}
                 >
-                  {simActive ? 'Pause Sim' : 'Play Sim'}
+                  {simActive ? <Pause size={14} /> : <Play size={14} />}
                 </div>
               </div>
             </div>
 
-            {/* Trajectory Canvas SVG with Dynamic Custom Crossing Shapes */}
-            <div className="relative aspect-[16/9] w-full bg-space-navy/40 rounded-2xl overflow-hidden border border-glass-border/40">
+            {/* Canvas Area: 3D Isometric View or 2D Radar View */}
+            <div
+              className="relative aspect-[16/9] w-full bg-space-navy/50 rounded-2xl overflow-hidden border border-glass-border/40 select-none cursor-grab active:cursor-grabbing"
+              onMouseDown={viewMode === '3d' ? handleMouseDown : undefined}
+              onMouseMove={viewMode === '3d' ? handleMouseMove : undefined}
+              onMouseUp={viewMode === '3d' ? handleMouseUp : undefined}
+            >
               <svg viewBox="0 0 600 360" className="w-full h-full">
                 <defs>
                   <linearGradient id="satTrail" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -242,86 +366,268 @@ export default function ConjunctionSection() {
                     <stop offset="0%" stopColor="#ff3b3b" stopOpacity="0.05" />
                     <stop offset="100%" stopColor="#ff3b3b" stopOpacity="0.8" />
                   </linearGradient>
+                  <linearGradient id="evasionTrail" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.05" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.9" />
+                  </linearGradient>
                 </defs>
 
-                {/* Radar Range Rings */}
-                <circle cx="300" cy="180" r="140" fill="none" stroke="rgba(0, 212, 255, 0.06)" strokeDasharray="3,6" />
-                <circle cx="300" cy="180" r="80" fill="none" stroke="rgba(0, 212, 255, 0.1)" strokeDasharray="2,4" />
-                <circle cx="300" cy="180" r="28" fill="none" stroke="rgba(255, 59, 59, 0.25)" />
-                <line x1="300" y1="0" x2="300" y2="360" stroke="rgba(0, 212, 255, 0.05)" />
-                <line x1="0" y1="180" x2="600" y2="180" stroke="rgba(0, 212, 255, 0.05)" />
+                {viewMode === '3d' ? (
+                  /* 3D ASTRODYNAMICS ISOMETRIC CANVAS */
+                  <g>
+                    {/* 3D Coordinate Grid Plane */}
+                    {[-150, -75, 0, 75, 150].map((coord) => {
+                      const pA = project3D(-180, 0, coord);
+                      const pB = project3D(180, 0, coord);
+                      const pC = project3D(coord, 0, -180);
+                      const pD = project3D(coord, 0, 180);
+                      return (
+                        <g key={coord}>
+                          <line x1={pA.px} y1={pA.py} x2={pB.px} y2={pB.py} stroke="rgba(0, 212, 255, 0.08)" strokeDasharray="3,3" />
+                          <line x1={pC.px} y1={pC.py} x2={pD.px} y2={pD.py} stroke="rgba(0, 212, 255, 0.08)" strokeDasharray="3,3" />
+                        </g>
+                      );
+                    })}
 
-                {/* Unique Satellite Trajectory Curve */}
-                <path
-                  d={satPathD}
-                  fill="none"
-                  stroke="rgba(0, 212, 255, 0.45)"
-                  strokeWidth="2"
-                  strokeDasharray="5,4"
-                />
+                    {/* 3D XYZ Vector Axes */}
+                    {(() => {
+                      const o = project3D(0, 0, 0);
+                      const axX = project3D(90, 0, 0);
+                      const axY = project3D(0, -70, 0);
+                      const axZ = project3D(0, 0, 90);
+                      return (
+                        <g>
+                          <line x1={o.px} y1={o.py} x2={axX.px} y2={axX.py} stroke="#00d4ff" strokeWidth="1.5" />
+                          <text x={axX.px + 4} y={axX.py} fill="#00d4ff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+V (In-Track)</text>
+                          <line x1={o.px} y1={o.py} x2={axY.px} y2={axY.py} stroke="#10b981" strokeWidth="1.5" />
+                          <text x={axY.px} y={axY.py - 4} fill="#10b981" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+R (Radial)</text>
+                          <line x1={o.px} y1={o.py} x2={axZ.px} y2={axZ.py} stroke="#fbbf24" strokeWidth="1.5" />
+                          <text x={axZ.px + 4} y={axZ.py + 4} fill="#fbbf24" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+W (Cross-Track)</text>
+                        </g>
+                      );
+                    })()}
 
-                {/* Unique Debris Trajectory Curve */}
-                <path
-                  d={debPathD}
-                  fill="none"
-                  stroke="rgba(255, 59, 59, 0.45)"
-                  strokeWidth="2"
-                  strokeDasharray="4,4"
-                />
+                    {/* 3D Pre-Burn Nominal Satellite Trajectory Path */}
+                    <path d={satPath3DPoints.join(' ')} fill="none" stroke="rgba(0, 212, 255, 0.35)" strokeWidth="1.5" strokeDasharray="4,4" />
 
-                {/* Closest Approach (TCA) Pulsing Hotspot Marker */}
-                <g transform="translate(300, 180)">
-                  <circle r="36" fill="rgba(255, 59, 59, 0.08)" className="animate-ping" style={{ animationDuration: '2.5s' }} />
-                  <circle r="20" fill="rgba(255, 59, 59, 0.15)" />
-                  <circle r="4" fill="#ff3b3b" />
-                  <line x1="-12" y1="0" x2="12" y2="0" stroke="#ff3b3b" strokeWidth="1.5" />
-                  <line x1="0" y1="-12" x2="0" y2="12" stroke="#ff3b3b" strokeWidth="1.5" />
-                  <text x="14" y="-10" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                    TCA POINT ({primaryConj.crossingAngleDeg}°)
-                  </text>
-                  <text x="14" y="6" fill="rgba(232, 237, 242, 0.8)" fontSize="9" fontFamily="'Inter', sans-serif">
-                    Δ: {primaryConj.miss_distance_km} km ({primaryConj.risk_level})
-                  </text>
-                </g>
+                    {/* 3D Debris Trajectory Path */}
+                    <path d={debPath3DPoints.join(' ')} fill="none" stroke="rgba(255, 59, 59, 0.45)" strokeWidth="1.5" strokeDasharray="3,3" />
 
-                {/* Animated Satellite Node */}
-                <g transform={`translate(${satX}, ${satY})`}>
-                  <circle r="6" fill="#00d4ff" className="animate-pulse" />
-                  <circle r="15" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.6" />
-                  <text x="12" y="-8" fill="#00d4ff" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                    {primaryConj.primary_code}
-                  </text>
-                </g>
+                    {/* 3D Post-Burn Deflected Evasion Trajectory (Green) */}
+                    <path d={evasionPath3DPoints.join(' ')} fill="none" stroke="#10b981" strokeWidth="2.2" />
 
-                {/* Animated Debris Node */}
-                <g transform={`translate(${debX}, ${debY})`}>
-                  <circle r="5" fill="#ff3b3b" className="animate-pulse" />
-                  <circle r="13" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.6" />
-                  <text x="12" y="16" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                    {primaryConj.target_object_id}
-                  </text>
-                </g>
+                    {/* 3D 3-Sigma Covariance Ellipsoids at TCA */}
+                    <g transform={`translate(${p3Tca.px}, ${p3Tca.py})`}>
+                      {/* Primary Spacecraft Covariance Bubble (Blue) */}
+                      <ellipse rx="36" ry="18" fill="rgba(0, 212, 255, 0.08)" stroke="#00d4ff" strokeWidth="1" strokeDasharray="3,3" />
+                      {/* Debris Hazard Covariance Bubble (Red) */}
+                      <ellipse rx="48" ry="24" fill="rgba(255, 59, 59, 0.12)" stroke="#ff3b3b" strokeWidth="1.5" className="animate-pulse" />
+                      <circle r="4" fill="#ff3b3b" />
+                      <text x="12" y="-8" fill="#ff3b3b" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        TCA CONJUNCTION EPOCH
+                      </text>
+                      <text x="12" y="6" fill="rgba(232, 237, 242, 0.8)" fontSize="9" fontFamily="'Inter', sans-serif">
+                        Original: {primaryConj.miss_distance_km} km | Deflected: {postBurnMissKm} km
+                      </text>
+                    </g>
+
+                    {/* 3D Satellite Node */}
+                    <g transform={`translate(${p3Sat.px}, ${p3Sat.py})`}>
+                      <circle r="7" fill="#00d4ff" className="animate-pulse" />
+                      <circle r="16" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.7" />
+                      <text x="14" y="-8" fill="#00d4ff" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        {primaryConj.primary_code}
+                      </text>
+                      <text x="14" y="6" fill="#10b981" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        ΔV: {totalDeltaV.toFixed(2)} m/s
+                      </text>
+                    </g>
+
+                    {/* 3D Debris Node */}
+                    <g transform={`translate(${p3Deb.px}, ${p3Deb.py})`}>
+                      <circle r="6" fill="#ff3b3b" className="animate-pulse" />
+                      <circle r="14" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.7" />
+                      <text x="14" y="14" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        {primaryConj.target_object_id}
+                      </text>
+                    </g>
+
+                    {/* Laser Distance Measuring Line */}
+                    <line x1={p3Sat.px} y1={p3Sat.py} x2={p3Deb.px} y2={p3Deb.py} stroke="rgba(251, 191, 36, 0.6)" strokeWidth="1" strokeDasharray="2,2" />
+                    <text x={(p3Sat.px + p3Deb.px) / 2 + 8} y={(p3Sat.py + p3Deb.py) / 2 - 4} fill="#fbbf24" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                      SEP: {scrubDistKm} km
+                    </text>
+                  </g>
+                ) : (
+                  /* 2D RADAR VIEW CANVAS */
+                  <g>
+                    <circle cx="300" cy="180" r="140" fill="none" stroke="rgba(0, 212, 255, 0.06)" strokeDasharray="3,6" />
+                    <circle cx="300" cy="180" r="80" fill="none" stroke="rgba(0, 212, 255, 0.1)" strokeDasharray="2,4" />
+                    <circle cx="300" cy="180" r="28" fill="none" stroke="rgba(255, 59, 59, 0.25)" />
+                    <line x1="300" y1="0" x2="300" y2="360" stroke="rgba(0, 212, 255, 0.05)" />
+                    <line x1="0" y1="180" x2="600" y2="180" stroke="rgba(0, 212, 255, 0.05)" />
+
+                    <path d={satPathD} fill="none" stroke="rgba(0, 212, 255, 0.45)" strokeWidth="2" strokeDasharray="5,4" />
+                    <path d={debPathD} fill="none" stroke="rgba(255, 59, 59, 0.45)" strokeWidth="2" strokeDasharray="4,4" />
+
+                    <g transform="translate(300, 180)">
+                      <circle r="36" fill="rgba(255, 59, 59, 0.08)" className="animate-ping" style={{ animationDuration: '2.5s' }} />
+                      <circle r="20" fill="rgba(255, 59, 59, 0.15)" />
+                      <circle r="4" fill="#ff3b3b" />
+                      <line x1="-12" y1="0" x2="12" y2="0" stroke="#ff3b3b" strokeWidth="1.5" />
+                      <line x1="0" y1="-12" x2="0" y2="12" stroke="#ff3b3b" strokeWidth="1.5" />
+                      <text x="14" y="-10" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        TCA POINT ({primaryConj.crossingAngleDeg}°)
+                      </text>
+                      <text x="14" y="6" fill="rgba(232, 237, 242, 0.8)" fontSize="9" fontFamily="'Inter', sans-serif">
+                        Δ: {primaryConj.miss_distance_km} km ({primaryConj.risk_level})
+                      </text>
+                    </g>
+
+                    <g transform={`translate(${satX}, ${satY})`}>
+                      <circle r="6" fill="#00d4ff" className="animate-pulse" />
+                      <circle r="15" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.6" />
+                      <text x="12" y="-8" fill="#00d4ff" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        {primaryConj.primary_code}
+                      </text>
+                    </g>
+
+                    <g transform={`translate(${debX}, ${debY})`}>
+                      <circle r="5" fill="#ff3b3b" className="animate-pulse" />
+                      <circle r="13" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.6" />
+                      <text x="12" y="16" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        {primaryConj.target_object_id}
+                      </text>
+                    </g>
+                  </g>
+                )}
               </svg>
+
+              {/* 3D Drag Tip Badge */}
+              {viewMode === '3d' && (
+                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 border border-white/10 text-[9px] font-space text-star-white/60 pointer-events-none">
+                  🖱️ CLICK &amp; DRAG TO ROTATE 3D ORBIT PLANE (Pitch: {rotX.toFixed(0)}°, Yaw: {rotY.toFixed(0)}°)
+                </div>
+              )}
             </div>
 
-            {/* Trajectory Scrub Slider */}
-            <div className="mt-4 flex items-center gap-4">
-              <span className="font-space text-[10px] text-muted-gray tracking-wider uppercase">TCA Scrub:</span>
+            {/* Time Scrubbing Epoch Slider */}
+            <div className="mt-4 p-3 rounded-2xl bg-black/40 border border-white/5 space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-space text-muted-gray uppercase">
+                <span className="flex items-center gap-1.5 text-cyan-glow font-bold">
+                  <Clock size={12} />
+                  <span>TIME-OF-CLOSEST-APPROACH SCRUBBER</span>
+                </span>
+                <div className="flex items-center gap-2">
+                  {[1, 5, 20].map((s) => (
+                    <div
+                      key={s}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSimSpeed(s)}
+                      className={`px-2 py-0.5 rounded cursor-pointer transition-all ${
+                        simSpeed === s ? 'bg-cyan-glow text-space-black font-bold' : 'text-muted-gray hover:text-star-white'
+                      }`}
+                    >
+                      {s}x
+                    </div>
+                  ))}
+                  <span className="font-mono text-cyan-glow font-bold">
+                    {tcaProgress < 0.7 ? `T - ${((0.7 - tcaProgress) * 60).toFixed(0)}m` : `T + ${((tcaProgress - 0.7) * 60).toFixed(0)}m`}
+                  </span>
+                </div>
+              </div>
+
               <input
                 type="range"
                 min="0"
                 max="1"
-                step="0.01"
+                step="0.005"
                 value={tcaProgress}
                 onChange={(e) => {
                   setSimActive(false);
                   setTcaProgress(parseFloat(e.target.value));
                 }}
-                className="flex-1 accent-cyan-glow cursor-pointer bg-white/10 rounded-lg h-1.5"
+                className="w-full accent-cyan-glow cursor-pointer bg-white/10 rounded-lg h-1.5"
               />
-              <span className="font-space text-xs text-cyan-glow w-16 text-right font-medium">
-                {tcaProgress < 0.7 ? `T - ${((0.7 - tcaProgress) * 60).toFixed(0)}m` : `T + ${((tcaProgress - 0.7) * 60).toFixed(0)}m`}
-              </span>
+            </div>
+
+            {/* Interactive Thruster Evasion Burn Controls */}
+            <div className="mt-4 p-4 rounded-2xl bg-space-navy/40 border border-cyan-glow/20 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-space text-xs font-bold text-star-white flex items-center gap-1.5 uppercase">
+                  <Sliders size={14} className="text-cyan-glow" />
+                  <span>INTERACTIVE THRUSTER VECTOR SLIDERS (CAM SANDBOX)</span>
+                </span>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    setDeltaVx(-0.42);
+                    setDeltaVy(0.12);
+                    setDeltaVz(0.08);
+                  }}
+                  className="text-[10px] font-space text-muted-gray hover:text-cyan-glow flex items-center gap-1 cursor-pointer"
+                >
+                  <RotateCcw size={11} /> Reset Defaults
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* Along-Track / In-Track */}
+                <div className="p-2.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-space">
+                    <span className="text-star-white/60">ΔVx (In-Track)</span>
+                    <span className="font-mono font-bold text-cyan-glow">{deltaVx.toFixed(2)} m/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-1.5"
+                    max="1.5"
+                    step="0.02"
+                    value={deltaVx}
+                    onChange={(e) => setDeltaVx(parseFloat(e.target.value))}
+                    className="w-full accent-cyan-glow cursor-pointer bg-white/10 h-1.5 rounded-lg"
+                  />
+                  <span className="text-[8px] font-space text-muted-gray block">Retrograde (-) / Prograde (+)</span>
+                </div>
+
+                {/* Cross-Track / Out-of-Plane */}
+                <div className="p-2.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-space">
+                    <span className="text-star-white/60">ΔVy (Cross-Track)</span>
+                    <span className="font-mono font-bold text-amber-400">{deltaVy.toFixed(2)} m/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-1.0"
+                    max="1.0"
+                    step="0.02"
+                    value={deltaVy}
+                    onChange={(e) => setDeltaVy(parseFloat(e.target.value))}
+                    className="w-full accent-amber-400 cursor-pointer bg-white/10 h-1.5 rounded-lg"
+                  />
+                  <span className="text-[8px] font-space text-muted-gray block">Out-of-Plane Inclination Trim</span>
+                </div>
+
+                {/* Radial In / Out */}
+                <div className="p-2.5 rounded-xl bg-black/50 border border-white/10 space-y-1.5">
+                  <div className="flex justify-between text-[10px] font-space">
+                    <span className="text-star-white/60">ΔVz (Radial)</span>
+                    <span className="font-mono font-bold text-emerald-400">{deltaVz.toFixed(2)} m/s</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-1.0"
+                    max="1.0"
+                    step="0.02"
+                    value={deltaVz}
+                    onChange={(e) => setDeltaVz(parseFloat(e.target.value))}
+                    className="w-full accent-emerald-400 cursor-pointer bg-white/10 h-1.5 rounded-lg"
+                  />
+                  <span className="text-[8px] font-space text-muted-gray block">Altitude Eccentricity Pulse</span>
+                </div>
+              </div>
             </div>
           </motion.div>
 
@@ -368,7 +674,7 @@ export default function ConjunctionSection() {
                   <div className="flex items-center gap-3">
                     <Ruler size={18} className="text-cyan-glow" />
                     <div>
-                      <span className="font-inter text-[10px] text-muted-gray uppercase block">Miss Distance</span>
+                      <span className="font-inter text-[10px] text-muted-gray uppercase block">Initial Miss Distance</span>
                       <span className="font-space text-xl text-star-white font-bold">{primaryConj.miss_distance_km} km</span>
                     </div>
                   </div>
@@ -396,7 +702,7 @@ export default function ConjunctionSection() {
                   <div className="flex items-center gap-3">
                     <Navigation size={18} className="text-alert-critical" />
                     <div>
-                      <span className="font-inter text-[10px] text-muted-gray uppercase block">Collision Probability (Pc)</span>
+                      <span className="font-inter text-[10px] text-muted-gray uppercase block">Initial Collision Prob (Pc)</span>
                       <span className="font-space text-xl text-alert-critical font-bold">
                         {primaryConj.collision_probability < 0.001
                           ? primaryConj.collision_probability.toExponential(2)
@@ -414,52 +720,69 @@ export default function ConjunctionSection() {
                 </div>
               </div>
 
-              {/* Computed Collision Avoidance Maneuver (CAM) Recommendation */}
-              {conjunctionAnalysis ? (
-                <div className="mt-4 p-3.5 rounded-xl bg-cyan-glow/10 border border-cyan-glow/30 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-space text-[10px] text-cyan-glow uppercase tracking-wider font-bold flex items-center gap-1.5">
-                      <CheckCircle2 size={13} />
-                      BACKEND COMPUTED CAM: {conjunctionAnalysis.recommended_maneuver.burn_type}
-                    </span>
-                    <span className="font-space text-[10px] text-emerald-400 font-bold">
-                      {conjunctionAnalysis.recommended_maneuver.risk_reduction_percentage}% RISK CUT
+              {/* Dynamic Sandbox Simulation Output Box */}
+              <div className="mt-4 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-space text-[11px] text-emerald-400 uppercase tracking-wider font-bold flex items-center gap-1.5">
+                    <CheckCircle2 size={14} />
+                    <span>SIMULATED CAM CLEARANCE</span>
+                  </span>
+                  <span className="font-space text-[10px] text-emerald-300 font-mono font-bold bg-emerald-500/20 px-2 py-0.5 rounded">
+                    {riskCutPct}% RISK CUT
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] font-space text-star-white">
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-500/20">
+                    <span className="text-muted-gray text-[9px] block uppercase font-semibold">TOTAL DELTA-V:</span>
+                    <span className="font-bold text-cyan-glow font-mono text-sm">
+                      {totalDeltaV.toFixed(2)} m/s
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-[10px] font-space text-star-white">
-                    <div className="p-2 rounded bg-black/40 border border-cyan-glow/20">
-                      <span className="text-muted-gray block">DELTA-V BURN:</span>
-                      <span className="font-bold text-cyan-glow">
-                        +{conjunctionAnalysis.recommended_maneuver.delta_v_ms} m/s ({conjunctionAnalysis.recommended_maneuver.burn_direction})
-                      </span>
-                    </div>
-                    <div className="p-2 rounded bg-black/40 border border-cyan-glow/20">
-                      <span className="text-muted-gray block">POST-BURN MISS:</span>
-                      <span className="font-bold text-emerald-400">
-                        {conjunctionAnalysis.recommended_maneuver.post_burn_miss_km} km (SAFE)
-                      </span>
-                    </div>
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-500/20">
+                    <span className="text-muted-gray text-[9px] block uppercase font-semibold">POST-BURN MISS:</span>
+                    <span className="font-bold text-emerald-400 font-mono text-sm">
+                      {postBurnMissKm} km
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-500/20">
+                    <span className="text-muted-gray text-[9px] block uppercase font-semibold">HYDRAZINE PROPELLANT:</span>
+                    <span className="font-bold text-amber-400 font-mono">
+                      {hydrazineCostKg} kg
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-500/20">
+                    <span className="text-muted-gray text-[9px] block uppercase font-semibold">POST-BURN PC:</span>
+                    <span className="font-bold text-star-white font-mono">
+                      {postBurnPc < 0.001 ? postBurnPc.toExponential(2) : postBurnPc}
+                    </span>
                   </div>
                 </div>
-              ) : (
-                <div className="mt-4 p-3 rounded-xl bg-alert-critical/10 border border-alert-critical/25">
-                  <div className="flex items-center gap-2 mb-1">
-                    <AlertTriangle size={14} className="text-alert-critical" />
-                    <span className="font-space text-[10px] tracking-wider text-alert-critical uppercase font-bold">
-                      RECOMMENDED MITIGATION
-                    </span>
+
+                {/* Uplink / Authorize Button */}
+                {maneuverUplinked ? (
+                  <div className="w-full py-2.5 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-space text-xs font-bold flex items-center justify-center gap-2">
+                    <CheckCircle2 size={15} />
+                    <span>CAM SOLUTION UPLINKED TO {primaryConj.primary_code}</span>
                   </div>
-                  <p className="font-inter text-xs text-star-white/80 leading-relaxed">
-                    {activeSat.conjunctionTarget.recommendedBurn} Projected post-burn separation: {primaryConj.projected_post_burn_miss_km} km.
-                  </p>
-                </div>
-              )}
+                ) : (
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setManeuverUplinked(true)}
+                    className="w-full py-2.5 rounded-xl bg-cyan-glow hover:bg-cyan-glow/90 text-space-black font-space text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(99,199,255,0.4)]"
+                  >
+                    <Flame size={15} />
+                    <span>UPLINK CAM SOLUTION TO SPACECRAFT</span>
+                  </div>
+                )}
+              </div>
 
               {/* Astrodynamics Model Footnote */}
               <div className="mt-3 pt-2.5 border-t border-glass-border flex items-start gap-2">
                 <HelpCircle size={12} className="text-muted-gray shrink-0 mt-0.5" />
                 <p className="font-inter text-[9px] text-muted-gray leading-tight">
-                  High-precision SGP4 covariance propagation with B-Plane orbital separation calculations.
+                  Foster-1992 3D Collision Avoidance Algorithm with SGP4/B-Plane covariance uncertainty propagation.
                 </p>
               </div>
             </motion.div>

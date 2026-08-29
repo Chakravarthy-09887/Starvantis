@@ -43,9 +43,8 @@ import { useMission } from '../context/MissionContext';
 export default function SatelliteDigitalTwin() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry, alerts, ackAlert } = useMission();
+  const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry, alerts, ackAlert, formatMissionTime, currentClock, timezone } = useMission();
 
-  const [utcTime, setUtcTime] = useState('2026-08-28 12:45:30 UTC');
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Telemetry' | 'Orbits' | 'Events' | 'Alerts' | 'Reports' | 'Settings'>('Dashboard');
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [tick, setTick] = useState(0);
@@ -53,22 +52,21 @@ export default function SatelliteDigitalTwin() {
   const selectedSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
-  // Merge live telemetry pulse if primary satellite selected
-  const activeSat: SatelliteFleetDefinition =
-    selectedSat.id === 'SENTINEL-6A'
-      ? {
-          ...selectedSat,
-          batteryVoltage: liveTelemetry.battery_voltage || selectedSat.batteryVoltage,
-          solarPower: liveTelemetry.solar_power || selectedSat.solarPower,
-          temp: liveTelemetry.temp || selectedSat.temp,
-          lat: liveTelemetry.lat || selectedSat.lat,
-          lng: liveTelemetry.lng || selectedSat.lng,
-          roll: liveTelemetry.roll || selectedSat.roll,
-          pitch: liveTelemetry.pitch || selectedSat.pitch,
-          yaw: liveTelemetry.yaw || selectedSat.yaw,
-          health: liveTelemetry.health ?? selectedSat.health,
-        }
-      : selectedSat;
+  // Merge live high-fidelity telemetry pulse
+  const activeSat: SatelliteFleetDefinition = {
+    ...selectedSat,
+    batteryVoltage: liveTelemetry.battery_voltage || selectedSat.batteryVoltage,
+    solarPower: liveTelemetry.solar_power || selectedSat.solarPower,
+    temp: liveTelemetry.temp || selectedSat.temp,
+    lat: liveTelemetry.lat || selectedSat.lat,
+    lng: liveTelemetry.lng || selectedSat.lng,
+    altitude: liveTelemetry.altitude || selectedSat.altitude,
+    velocity: liveTelemetry.velocity || selectedSat.velocity,
+    roll: liveTelemetry.roll || selectedSat.roll,
+    pitch: liveTelemetry.pitch || selectedSat.pitch,
+    yaw: liveTelemetry.yaw || selectedSat.yaw,
+    health: liveTelemetry.health ?? selectedSat.health,
+  };
 
   // Real-time 50Hz telemetry oscillation loop
   useEffect(() => {
@@ -76,18 +74,6 @@ export default function SatelliteDigitalTwin() {
       setTick((t) => (t + 1) % 100000);
     }, 60);
     return () => clearInterval(interval);
-  }, []);
-
-  // Live UTC clock
-  useEffect(() => {
-    const updateTime = () => {
-      const d = new Date();
-      const iso = d.toISOString().replace('T', ' ').substring(0, 19);
-      setUtcTime(`${iso} UTC`);
-    };
-    updateTime();
-    const clockInterval = setInterval(updateTime, 1000);
-    return () => clearInterval(clockInterval);
   }, []);
 
   // Derived live telemetry dynamics
@@ -255,9 +241,10 @@ export default function SatelliteDigitalTwin() {
                 })}
               </div>
 
-              <div className="hidden lg:flex items-center gap-2 px-3.5 py-1.5 rounded-lg border border-cyan-glow/20 bg-black/50 text-star-white/90 font-medium">
-                <Clock size={14} className="text-cyan-glow" />
-                <span className="tracking-wider">{utcTime}</span>
+              {/* Dynamic Mission Clock with Timezone */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 border border-cyan-glow/25 text-star-white font-mono text-xs shadow-[0_0_10px_rgba(99,199,255,0.1)]">
+                <Clock size={13} className="text-cyan-glow animate-pulse" />
+                <span className="tracking-wider font-semibold">{currentClock}</span>
               </div>
             </div>
           </div>
@@ -567,11 +554,11 @@ export default function SatelliteDigitalTwin() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-star-white/50">Last Contact</span>
-                      <span className="text-star-white/80 font-medium">12:45:12 UTC</span>
+                      <span className="text-star-white/80 font-medium font-mono">{formatMissionTime(new Date(Date.now() - 480000), 'hms')}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-star-white/50">Next Pass</span>
-                      <span className="text-cyan-glow font-semibold">13:12:45 UTC</span>
+                      <span className="text-cyan-glow font-semibold font-mono">{formatMissionTime(new Date(Date.now() + 1620000), 'hms')}</span>
                     </div>
                   </div>
 
@@ -705,10 +692,10 @@ export default function SatelliteDigitalTwin() {
 
                   <div className="space-y-3">
                     {[
-                      { time: '14:38:12 UTC', type: 'AUTONOMOUS MITIGATION', desc: 'Battery Bay 3 Shunt Regulator auto-activated in response to thermal elevation', status: 'EXECUTED', color: '#ff3b3b' },
-                      { time: '12:04:18 UTC', type: 'GROUND HANDOFF', desc: `Telemetry tracking established with ${activeSat.groundStation}`, status: 'SUCCESS', color: '#10b981' },
-                      { time: '08:15:00 UTC', type: 'ORBIT PROPAGATION', desc: 'SGP4 orbital state vector refreshed from Space-Track TLE catalogue', status: 'SYNCHRONIZED', color: '#00d4ff' },
-                      { time: '04:30:00 UTC', type: 'ECLIPSE INGRESS', desc: 'Spacecraft entered umbral shadow, battery discharge curve initiated', status: 'NOMINAL', color: '#f59e0b' },
+                      { time: formatMissionTime(new Date(Date.now() - 3600000), 'hms'), type: 'AUTONOMOUS MITIGATION', desc: 'Battery Bay 3 Shunt Regulator auto-activated in response to thermal elevation', status: 'EXECUTED', color: '#ff3b3b' },
+                      { time: formatMissionTime(new Date(Date.now() - 7200000), 'hms'), type: 'GROUND HANDOFF', desc: `Telemetry tracking established with ${activeSat.groundStation}`, status: 'SUCCESS', color: '#10b981' },
+                      { time: formatMissionTime(new Date(Date.now() - 14400000), 'hms'), type: 'ORBIT PROPAGATION', desc: 'SGP4 orbital state vector refreshed from Space-Track TLE catalogue', status: 'SYNCHRONIZED', color: '#00d4ff' },
+                      { time: formatMissionTime(new Date(Date.now() - 21600000), 'hms'), type: 'ECLIPSE INGRESS', desc: 'Spacecraft entered umbral shadow, battery discharge curve initiated', status: 'NOMINAL', color: '#f59e0b' },
                     ].map((ev, i) => (
                       <div key={i} className="p-4 rounded-2xl bg-space-navy/50 border border-glass-border flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-3">
@@ -718,7 +705,7 @@ export default function SatelliteDigitalTwin() {
                             <span className="font-inter text-xs text-muted-gray">{ev.desc}</span>
                           </div>
                         </div>
-                        <span className="font-space text-xs text-star-white/80">{ev.time}</span>
+                        <span className="font-space text-xs text-star-white/80 font-mono">{ev.time}</span>
                       </div>
                     ))}
                   </div>

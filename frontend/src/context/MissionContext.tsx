@@ -15,6 +15,26 @@ import {
   OperatorItem,
   AuditLogItem,
 } from '../lib/api';
+import { FLEET_SATELLITES } from '../lib/satellites';
+
+export type MissionTimezone = 'UTC' | 'IST' | 'EST' | 'PST' | 'JST' | 'LOCAL';
+
+export interface TimezoneOption {
+  code: MissionTimezone;
+  label: string;
+  utcOffset: string;
+  iana: string;
+  center: string;
+}
+
+export const TIMEZONE_OPTIONS: TimezoneOption[] = [
+  { code: 'UTC', label: 'UTC (GMT)', utcOffset: 'UTC+00:00', iana: 'UTC', center: 'Universal Space Ephemeris' },
+  { code: 'IST', label: 'IST (India)', utcOffset: 'UTC+05:30', iana: 'Asia/Kolkata', center: 'ISRO ISTRAC / Master Control' },
+  { code: 'EST', label: 'EST (US East)', utcOffset: 'UTC-05:00', iana: 'America/New_York', center: 'NASA Kennedy / Goddard' },
+  { code: 'PST', label: 'PST (US West)', utcOffset: 'UTC-08:00', iana: 'America/Los_Angeles', center: 'NASA JPL / Hawthorne' },
+  { code: 'JST', label: 'JST (Tokyo)', utcOffset: 'UTC+09:00', iana: 'Asia/Tokyo', center: 'JAXA Tsukuba Space Center' },
+  { code: 'LOCAL', label: 'Local Time', utcOffset: 'Local System', iana: '', center: 'Client Ground Station' },
+];
 
 export interface LiveTelemetryPulse {
   battery_voltage: string;
@@ -31,6 +51,8 @@ export interface LiveTelemetryPulse {
   health: number;
   tracked_objects: number;
   active_alerts: number;
+  eclipse_status?: string;
+  pointing_jitter?: string;
 }
 
 interface MissionContextType {
@@ -40,6 +62,13 @@ interface MissionContextType {
 
   selectedSatelliteId: string;
   setSelectedSatelliteId: (id: string) => void;
+
+  // Timezone System
+  timezone: MissionTimezone;
+  setTimezone: (tz: MissionTimezone) => void;
+  timezoneOptions: TimezoneOption[];
+  formatMissionTime: (dateOrIso?: string | Date | number, formatType?: 'time' | 'full' | 'short' | 'hms') => string;
+  currentClock: string;
 
   satellites: SatelliteAsset[];
   liveTelemetry: LiveTelemetryPulse;
@@ -62,23 +91,23 @@ interface MissionContextType {
 }
 
 const DEFAULT_LIVE_TELEMETRY: LiveTelemetryPulse = {
-  battery_voltage: '28.4 V',
-  solar_power: '1.82 kW',
-  temp: '22.6 °C',
+  battery_voltage: '28.60 V',
+  solar_power: '2.14 kW',
+  temp: '24.2 °C',
   lat: '12.456° N',
   lng: '77.123° E',
-  altitude: '542 km',
-  velocity: '7.59 km/s',
-  roll: '1.2°',
-  pitch: '-0.6°',
-  yaw: '89.3°',
+  altitude: '1,336.00 km',
+  velocity: '7.20 km/s',
+  roll: '+0.120°',
+  pitch: '-0.080°',
+  yaw: '89.30°',
   signal: '-65 dBm',
   health: 98,
   tracked_objects: 128,
   active_alerts: 2,
+  eclipse_status: 'SUNLIT',
+  pointing_jitter: '0.0042° / s',
 };
-
-import { FLEET_SATELLITES } from '../lib/satellites';
 
 const INITIAL_ALERTS: AlertItem[] = [
   {
@@ -152,21 +181,40 @@ const INITIAL_OPERATORS: OperatorItem[] = [
 ];
 
 const INITIAL_AUDIT_LOGS: AuditLogItem[] = [
-  { id: 1, timestamp: new Date(Date.now() - 900000).toISOString(), user: 'System', action: 'Triggered Critical Alert ALT-904', target: 'SENTINEL-6A EPS', result: 'DISPATCHED' },
-  { id: 2, timestamp: new Date(Date.now() - 1320000).toISOString(), user: 'K. Chen', action: 'Acknowledged Conjunction Candidate', target: 'DEBRIS #3842', result: 'SUCCESS' },
-  { id: 3, timestamp: new Date(Date.now() - 2280000).toISOString(), user: 'Dr. Rostova', action: 'Telemetry Stream Diagnostic Run', target: 'SENTINEL-6A Bus', result: 'SUCCESS' },
-  { id: 4, timestamp: new Date(Date.now() - 3600000).toISOString(), user: 'Cmdr Vance', action: 'Shift Handover Briefing Signed', target: 'Station Beta', result: 'VERIFIED' },
+  { id: 101, timestamp: new Date(Date.now() - 3600000).toISOString(), user: 'commander.vance', action: 'System Integrity Check', target: 'FastAPI + TimescaleDB Engine', result: 'SUCCESS', details: 'All 12 spacecraft telemetry channels verified nominal' },
+  { id: 102, timestamp: new Date(Date.now() - 7200000).toISOString(), user: 'k.chen', action: 'Conjunction Analysis Run', target: 'CHANDRAYAAN-3 ⟷ DEBRIS #1948', result: 'COMPLETED', details: 'Miss distance 1.2 km, Pc 1.84e-4 calculated' },
+  { id: 103, timestamp: new Date(Date.now() - 10800000).toISOString(), user: 'elena.rostova', action: 'Thermal Threshold Adjusted', target: 'SENTINEL-6A Battery Bay', result: 'APPLIED', details: 'Upper thermal threshold locked at 42.0°C' },
 ];
+
+const INITIAL_ASSETS: SatelliteAsset[] = FLEET_SATELLITES.map((s) => ({
+  id: s.id,
+  name: s.name,
+  type: s.type,
+  orbit_type: s.orbitType,
+  altitude: s.altitude,
+  altitude_km: s.altitudeKm,
+  inclination: s.inclination,
+  velocity: s.velocity,
+  launch_date: s.launchDate,
+  health: s.health,
+  status: s.status === 'STANDBY' ? 'NOMINAL' : s.status,
+  ground_station: s.groundStation,
+  wave_color: s.waveColor,
+}));
 
 const MissionContext = createContext<MissionContextType | undefined>(undefined);
 
 export function MissionProvider({ children }: { children: React.ReactNode }) {
   const [wsConnected, setWsConnected] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'connecting' | 'disconnected'>('connecting');
-  const [databaseEngine, setDatabaseEngine] = useState('TimescaleDB / PostgreSQL 16');
+  const [databaseEngine, setDatabaseEngine] = useState('PostgreSQL 16 (Render Cloud)');
   const [selectedSatelliteId, setSelectedSatelliteId] = useState('SENTINEL-6A');
 
-  const [satellites, setSatellites] = useState<SatelliteAsset[]>([]);
+  // Timezone State
+  const [timezone, setTimezone] = useState<MissionTimezone>('IST');
+  const [currentClock, setCurrentClock] = useState('');
+
+  const [satellites, setSatellites] = useState<SatelliteAsset[]>(INITIAL_ASSETS);
   const [liveTelemetry, setLiveTelemetry] = useState<LiveTelemetryPulse>(DEFAULT_LIVE_TELEMETRY);
   const [historicalTelemetry, setHistoricalTelemetry] = useState<TelemetryRecord[]>([]);
 
@@ -176,43 +224,118 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
   const [conjunctions, setConjunctions] = useState<ConjunctionItem[]>([]);
   const [conjunctionAnalysis, setConjunctionAnalysis] = useState<ConjunctionAnalysis | null>(null);
   const [riskIncidents, setRiskIncidents] = useState<RiskIncidentItem[]>([]);
-
   const [operators, setOperators] = useState<OperatorItem[]>(INITIAL_OPERATORS);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedSatIdRef = useRef(selectedSatelliteId);
 
-  // 1. Initial REST Fetch
-  const refreshAll = useCallback(async () => {
-    try {
-      const [sats, alts, anos, objs, conjs, risks, ops, logs, hist] = await Promise.allSettled([
-        api.getSatellites(),
-        api.getAlerts(),
-        api.getAnomalies(),
-        api.getOrbitalObjects(20),
-        api.getConjunctions(),
-        api.getRiskIncidents(),
-        api.getOperators(),
-        api.getAuditLogs(),
-        api.getSatelliteTelemetry(selectedSatelliteId, 30),
-      ]);
-
-      if (sats.status === 'fulfilled' && sats.value.length > 0) setSatellites(sats.value);
-      if (alts.status === 'fulfilled' && alts.value.length > 0) setAlerts(alts.value);
-      if (anos.status === 'fulfilled') setAnomalies(anos.value);
-      if (objs.status === 'fulfilled') setOrbitalObjects(objs.value);
-      if (conjs.status === 'fulfilled' && conjs.value.length > 0) setConjunctions(conjs.value);
-      if (risks.status === 'fulfilled') setRiskIncidents(risks.value);
-      if (ops.status === 'fulfilled' && ops.value.length > 0) setOperators(ops.value);
-      if (logs.status === 'fulfilled' && logs.value.length > 0) setAuditLogs(logs.value);
-      if (hist.status === 'fulfilled') setHistoricalTelemetry(hist.value);
-    } catch (e) {
-      console.warn('[STARVANTIS] Error refreshing REST data:', e);
-    }
+  useEffect(() => {
+    selectedSatIdRef.current = selectedSatelliteId;
   }, [selectedSatelliteId]);
 
-  // 2. Real-time WebSocket connection
+  // Mission Time Formatter (Supports UTC, IST, EST, PST, JST, LOCAL)
+  const formatMissionTime = useCallback(
+    (dateOrIso?: string | Date | number, formatType: 'time' | 'full' | 'short' | 'hms' = 'time'): string => {
+      try {
+        const d = dateOrIso
+          ? typeof dateOrIso === 'string' || typeof dateOrIso === 'number'
+            ? new Date(dateOrIso)
+            : dateOrIso
+          : new Date();
+        if (isNaN(d.getTime())) return typeof dateOrIso === 'string' ? dateOrIso : '00:00:00';
+
+        const opt = TIMEZONE_OPTIONS.find((t) => t.code === timezone) || TIMEZONE_OPTIONS[0];
+        const timeZone = opt.iana || undefined;
+
+        if (formatType === 'hms') {
+          const timeStr = d.toLocaleTimeString('en-GB', { timeZone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          return `${timeStr} ${opt.code}`;
+        } else if (formatType === 'full') {
+          const dateStr = d.toLocaleDateString('en-GB', { timeZone, day: '2-digit', month: 'short', year: 'numeric' });
+          const timeStr = d.toLocaleTimeString('en-GB', { timeZone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          return `${dateStr} ${timeStr} ${opt.code}`;
+        } else if (formatType === 'short') {
+          const timeStr = d.toLocaleTimeString('en-GB', { timeZone, hour12: false, hour: '2-digit', minute: '2-digit' });
+          return `${timeStr} ${opt.code}`;
+        } else {
+          const timeStr = d.toLocaleTimeString('en-GB', { timeZone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          return `${timeStr} ${opt.code}`;
+        }
+      } catch {
+        return new Date().toISOString();
+      }
+    },
+    [timezone]
+  );
+
+  // Update live clock every second
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const opt = TIMEZONE_OPTIONS.find((t) => t.code === timezone) || TIMEZONE_OPTIONS[0];
+      const timeZone = opt.iana || undefined;
+      const timeStr = now.toLocaleTimeString('en-GB', { timeZone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setCurrentClock(`${timeStr} ${opt.code}`);
+    };
+
+    updateClock();
+    const timer = setInterval(updateClock, 1000);
+    return () => clearInterval(timer);
+  }, [timezone]);
+
+  // Fetch all initial data from REST API
+  const refreshAll = useCallback(async () => {
+    try {
+      const [satsRes, alertsRes, anomaliesRes, objectsRes, conjRes, riskRes, opsRes, auditRes] =
+        await Promise.allSettled([
+          api.getSatellites(),
+          api.getAlerts(),
+          api.getAnomalies(),
+          api.getOrbitalObjects(),
+          api.getConjunctions(),
+          api.getRiskIncidents(),
+          api.getOperators(),
+          api.getAuditLogs(),
+        ]);
+
+      if (satsRes.status === 'fulfilled' && satsRes.value && satsRes.value.length > 0) {
+        setSatellites(satsRes.value);
+      }
+      if (alertsRes.status === 'fulfilled' && alertsRes.value && alertsRes.value.length > 0) {
+        setAlerts(alertsRes.value);
+      }
+      if (anomaliesRes.status === 'fulfilled' && anomaliesRes.value && anomaliesRes.value.length > 0) {
+        setAnomalies(anomaliesRes.value);
+      }
+      if (objectsRes.status === 'fulfilled' && objectsRes.value && objectsRes.value.length > 0) {
+        setOrbitalObjects(objectsRes.value);
+      }
+      if (conjRes.status === 'fulfilled' && conjRes.value && conjRes.value.length > 0) {
+        setConjunctions(conjRes.value);
+      }
+      if (riskRes.status === 'fulfilled' && riskRes.value && riskRes.value.length > 0) {
+        setRiskIncidents(riskRes.value);
+      }
+      if (opsRes.status === 'fulfilled' && opsRes.value && opsRes.value.length > 0) {
+        setOperators(opsRes.value);
+      }
+      if (auditRes.status === 'fulfilled' && auditRes.value && auditRes.value.length > 0) {
+        setAuditLogs(auditRes.value);
+      }
+
+      // Initial historical telemetry
+      const telRes = await api.getSatelliteTelemetry(selectedSatIdRef.current, 50).catch(() => null);
+      if (telRes && telRes.length > 0) {
+        setHistoricalTelemetry(telRes);
+      }
+    } catch (err) {
+      console.warn('[STARVANTIS] API initialization warning (fallback active):', err);
+    }
+  }, []);
+
+  // Connect to Live Real-time WebSocket
   useEffect(() => {
     let isMounted = true;
 
@@ -235,11 +358,11 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
           if (!isMounted) return;
           try {
             const data = JSON.parse(event.data);
-            
+
             if (data.type === 'CONNECTION_ESTABLISHED') {
               if (data.database_engine) setDatabaseEngine(data.database_engine);
             } else if (data.type === 'LIVE_TELEMETRY_PULSE') {
-              if (data.satellite_id === selectedSatelliteId || !data.satellite_id) {
+              if (data.satellite_id === selectedSatIdRef.current || !data.satellite_id) {
                 setLiveTelemetry(data.telemetry);
               }
             } else if (data.type === 'TELEMETRY_UPDATE') {
@@ -253,7 +376,9 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
                 }));
               }
               if (data.alert) {
-                api.getAlerts().then((res) => { if (res && res.length > 0) setAlerts(res); }).catch(() => {});
+                api.getAlerts().then((res) => {
+                  if (res && res.length > 0) setAlerts(res);
+                }).catch(() => {});
               }
             } else if (data.type === 'ALERT_ACKNOWLEDGED') {
               setAlerts((prev) =>
@@ -269,7 +394,7 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
                   timestamp: data.timestamp,
                   user: data.operator,
                   action: `Acknowledged Alert ${data.alert_id} (via Live WS)`,
-                  target: `Mission Alert System`,
+                  target: 'Mission Alert System',
                   result: 'ACKNOWLEDGED',
                   details: `Real-time acknowledgment received from ${data.operator}`,
                 },
@@ -319,101 +444,137 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) wsRef.current.close();
     };
-  }, [refreshAll, selectedSatelliteId]);
+  }, [refreshAll]);
 
-  // 3. User Actions (Two-Way Reactivity)
-  const ackAlert = async (id: string, operatorName = 'Commander Vance', comment = 'Acknowledged via Mission Control') => {
-    // 1. Optimistic UI update
+  // Acknowledge an active threat alert
+  const ackAlert = async (id: string, operatorName: string = 'Commander Vance', comment?: string) => {
+    const timestamp = new Date().toISOString();
+
     setAlerts((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, acknowledged: true, acknowledged_by: operatorName } : a))
+      prev.map((a) =>
+        a.id === id ? { ...a, acknowledged: true, acknowledged_by: operatorName, acknowledged_at: timestamp } : a
+      )
     );
 
-    // 2. Dispatch over WebSocket for instant peer sync
+    setAuditLogs((prev) => [
+      {
+        id: Date.now(),
+        timestamp,
+        user: operatorName,
+        action: `Acknowledged Alert ${id}`,
+        target: 'Mission Alert System',
+        result: 'SUCCESS',
+        details: comment || `Operator ${operatorName} acknowledged threat alert in real-time console.`,
+      },
+      ...prev,
+    ]);
+
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          action: 'ACK_ALERT',
-          alert_id: id,
-          operator: operatorName,
-          comment: comment,
-        })
-      );
+      try {
+        wsRef.current.send(
+          JSON.stringify({
+            action: 'ACK_ALERT',
+            alert_id: id,
+            operator: operatorName,
+          })
+        );
+      } catch (wsErr) {
+        console.warn('[STARVANTIS] WebSocket send warning:', wsErr);
+      }
     }
 
-    // 3. Persist via REST API
     try {
       await api.acknowledgeAlert(id, operatorName, comment);
-    } catch (err) {
-      console.warn('[STARVANTIS] REST ack error (WS sync was attempted):', err);
+    } catch (apiErr) {
+      console.warn('[STARVANTIS] Backend REST ack warning (proceeding with local state):', apiErr);
     }
   };
 
+  // Run Real-time Conjunction Collision Avoidance Analysis
   const runConjunctionAnalysis = async (req?: {
     primary_satellite_id?: string;
     target_object_id?: string;
     initial_miss_distance_km?: number;
-  }) => {
-    const payload = {
-      primary_satellite_id: req?.primary_satellite_id || 'SENTINEL-6A',
-      target_object_id: req?.target_object_id || 'DEB-3842',
-      initial_miss_distance_km: req?.initial_miss_distance_km ?? 1.2,
-    };
+  }): Promise<ConjunctionAnalysis> => {
+    const primaryId = req?.primary_satellite_id || selectedSatelliteId;
+    const targetId = req?.target_object_id || 'DEBRIS #3842';
+    const missDist = req?.initial_miss_distance_km || 1.2;
 
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(
-        JSON.stringify({
-          action: 'ANALYZE_CONJUNCTION',
-          conjunction: payload,
-        })
-      );
-    }
+    const analysis = await api.analyzeConjunction({
+      primary_satellite_id: primaryId,
+      target_object_id: targetId,
+      initial_miss_distance_km: missDist,
+    });
 
-    const res = await api.analyzeConjunction(payload);
-    setConjunctionAnalysis(res);
-    return res;
+    setConjunctionAnalysis(analysis);
+
+    setAuditLogs((prev) => [
+      {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        user: 'k.chen',
+        action: `Computed Collision Avoidance Burn (${primaryId} ⟷ ${targetId})`,
+        target: 'Foster-1992 3D Conjunction Engine',
+        result: 'COMPUTED',
+        details: `Optimized Delta-V: ${analysis.recommended_maneuver.delta_v_ms} m/s at ${analysis.recommended_maneuver.burn_direction} vector. Post-burn miss distance: ${analysis.recommended_maneuver.post_burn_miss_km} km.`,
+      },
+      ...prev,
+    ]);
+
+    return analysis;
   };
 
+  // Inject manual synthetic telemetry packet
   const injectTelemetry = async (payload: Partial<TelemetryRecord>) => {
-    const fullPayload = {
-      satellite_id: payload.satellite_id || selectedSatelliteId,
-      battery_voltage: payload.battery_voltage ?? 28.4,
-      solar_power_kw: payload.solar_power_kw ?? 1.82,
-      temp_celsius: payload.temp_celsius ?? 22.6,
-      bus_voltage: payload.bus_voltage ?? 28.0,
-      lat: payload.lat ?? 12.456,
-      lng: payload.lng ?? 77.123,
-      altitude_km: payload.altitude_km ?? 542.0,
-      velocity_kms: payload.velocity_kms ?? 7.59,
+    const fullPayload: Partial<TelemetryRecord> = {
+      satellite_id: selectedSatelliteId,
+      timestamp: new Date().toISOString(),
+      battery_voltage: 28.4,
+      solar_power_kw: 1.82,
+      temp_celsius: 22.6,
+      bus_voltage: 28.1,
+      lat: 12.456,
+      lng: 77.123,
+      altitude_km: 542.0,
+      velocity_kms: 7.59,
+      roll_deg: 1.2,
+      pitch_deg: -0.6,
+      yaw_deg: 89.3,
+      signal_dbm: -65,
+      tracked_objects: 128,
+      active_alerts: 2,
+      eps_health: 98,
+      adcs_health: 99,
+      ttc_health: 97,
+      payload_health: 100,
+      anomaly_score: 0.04,
+      is_anomalous: 0,
       ...payload,
     };
 
-    // 1. Optimistic live telemetry update
     setLiveTelemetry((prev) => ({
       ...prev,
-      battery_voltage: `${fullPayload.battery_voltage} V`,
-      solar_power: `${fullPayload.solar_power_kw} kW`,
-      temp: `${fullPayload.temp_celsius} °C`,
-      health: fullPayload.temp_celsius && fullPayload.temp_celsius > 38 ? 74 : prev.health,
+      battery_voltage: fullPayload.battery_voltage ? `${fullPayload.battery_voltage} V` : prev.battery_voltage,
+      solar_power: fullPayload.solar_power_kw ? `${fullPayload.solar_power_kw} kW` : prev.solar_power,
+      temp: fullPayload.temp_celsius ? `${fullPayload.temp_celsius} °C` : prev.temp,
     }));
 
-    // 2. Generate immediate critical alert if high temperature / threat injected
-    if (fullPayload.temp_celsius && fullPayload.temp_celsius > 38) {
+    if (fullPayload.is_anomalous) {
       const generatedAlert: AlertItem = {
         id: `ALT-${Math.floor(1000 + Math.random() * 9000)}`,
-        title: `Thermal Runaway Triggered on ${fullPayload.satellite_id}`,
         severity: 'critical',
-        timestamp: new Date().toISOString().replace('T', ' ').substring(0, 19) + ' UTC',
-        asset: fullPayload.satellite_id || 'SENTINEL-6A',
-        subsystem: 'EPS Thermal Radiator',
-        description: `High sensor temperature (${fullPayload.temp_celsius}°C) detected on ${fullPayload.satellite_id}. Emergency heat dissipation protocol engaged.`,
-        confidence: 99.4,
+        title: `Manual Telemetry Injection: Extreme Sensor Deviation Detected`,
+        subsystem: 'EPS / Power Regulation',
+        asset: selectedSatelliteId,
+        timestamp: formatMissionTime(new Date(), 'hms'),
+        description: `Manual telemetry fault packet injected: ${fullPayload.temp_celsius}°C, ${fullPayload.battery_voltage}V bus.`,
         mitigation: 'Engage active radiator louvers, throttle non-essential sensor payloads, and prepare orbit trim.',
+        confidence: 96,
         acknowledged: false,
       };
       setAlerts((prev) => [generatedAlert, ...prev.filter((a) => a.id !== generatedAlert.id)]);
     }
 
-    // 3. Broadcast over live WebSocket
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(
@@ -427,7 +588,6 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 4. Ingest into backend REST API
     try {
       await api.ingestTelemetry(fullPayload);
     } catch (apiErr) {
@@ -443,6 +603,11 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
         databaseEngine,
         selectedSatelliteId,
         setSelectedSatelliteId,
+        timezone,
+        setTimezone,
+        timezoneOptions: TIMEZONE_OPTIONS,
+        formatMissionTime,
+        currentClock,
         satellites,
         liveTelemetry,
         historicalTelemetry,

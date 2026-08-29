@@ -25,15 +25,12 @@ import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
 export default function MissionControlPreview() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry } = useMission();
-  const [utcTime, setUtcTime] = useState('14:42:19');
+  const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry, formatMissionTime, currentClock, timezone } = useMission();
   const [radarStep, setRadarStep] = useState(0);
   const [tcaSecondsRemaining, setTcaSecondsRemaining] = useState(15676); // ~ 4h 21m 16s
 
   useEffect(() => {
-    setUtcTime(new Date().toISOString().substring(11, 19));
     const clockInterval = setInterval(() => {
-      setUtcTime(new Date().toISOString().substring(11, 19));
       setTcaSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 15676));
     }, 1000);
 
@@ -47,8 +44,24 @@ export default function MissionControlPreview() {
     };
   }, []);
 
-  const activeSat: SatelliteFleetDefinition =
+  const selectedSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
+
+  // Merge live high-fidelity telemetry pulse
+  const activeSat: SatelliteFleetDefinition = {
+    ...selectedSat,
+    batteryVoltage: liveTelemetry.battery_voltage || selectedSat.batteryVoltage,
+    solarPower: liveTelemetry.solar_power || selectedSat.solarPower,
+    temp: liveTelemetry.temp || selectedSat.temp,
+    lat: liveTelemetry.lat || selectedSat.lat,
+    lng: liveTelemetry.lng || selectedSat.lng,
+    altitude: liveTelemetry.altitude || selectedSat.altitude,
+    velocity: liveTelemetry.velocity || selectedSat.velocity,
+    roll: liveTelemetry.roll || selectedSat.roll,
+    pitch: liveTelemetry.pitch || selectedSat.pitch,
+    yaw: liveTelemetry.yaw || selectedSat.yaw,
+    health: liveTelemetry.health ?? selectedSat.health,
+  };
 
   // Dynamic moving coordinates for satellite & uncooperative debris in radar
   const radT = radarStep * 0.025;
@@ -119,8 +132,8 @@ export default function MissionControlPreview() {
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs font-space text-muted-gray flex-wrap">
-              <span className="flex items-center gap-1 text-star-white">
-                <Clock size={13} className="text-cyan-glow" /> UTC: {utcTime}
+              <span className="flex items-center gap-1.5 text-star-white font-mono bg-black/40 px-2.5 py-1 rounded-lg border border-cyan-glow/20">
+                <Clock size={13} className="text-cyan-glow animate-pulse" /> {currentClock}
               </span>
               <span className="text-cyan-glow font-bold">LIVE TIMESCALEDB // OK</span>
               <a
@@ -338,7 +351,7 @@ export default function MissionControlPreview() {
               <div>
                 <span className="text-[10px] text-muted-gray uppercase block font-semibold">TCA CONJUNCTION COUNTDOWN</span>
                 <span className="text-sm md:text-base font-bold text-alert-critical tracking-wider font-mono">
-                  {tcaString} UTC
+                  {tcaString} ({formatMissionTime(new Date(Date.now() + tcaSecondsRemaining * 1000), 'hms')})
                 </span>
               </div>
               <div>

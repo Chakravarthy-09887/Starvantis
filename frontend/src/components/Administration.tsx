@@ -16,7 +16,7 @@ const FALLBACK_OPERATORS = [
 export default function Administration() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { operators, auditLogs, wsConnected } = useMission();
+  const { operators, auditLogs, wsConnected, formatMissionTime, currentClock, timezone } = useMission();
   const [activeTab, setActiveTab] = useState<'operators' | 'audit'>('operators');
 
   const displayOperators = operators.length > 0 ? operators : FALLBACK_OPERATORS;
@@ -137,9 +137,7 @@ export default function Administration() {
                 <div className="p-8 text-center text-muted-gray text-xs">No audit logs recorded yet.</div>
               ) : (
                 auditLogs.map((log) => {
-                  const timeStr = typeof log.timestamp === 'string'
-                    ? (log.timestamp.includes('T') ? log.timestamp.substring(11, 19) + ' UTC' : log.timestamp)
-                    : new Date(log.timestamp).toISOString().substring(11, 19) + ' UTC';
+                  const timeStr = formatMissionTime(log.timestamp, 'full');
 
                   return (
                     <div

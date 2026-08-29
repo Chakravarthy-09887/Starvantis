@@ -3,7 +3,12 @@
  * Connects Next.js Frontend directly with FastAPI + PostgreSQL + TimescaleDB Backend
  */
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+const defaultApiUrl =
+  typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
+    ? 'https://starvantis.onrender.com'
+    : 'http://localhost:8000';
+
+export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || defaultApiUrl).replace(/\/$/, '');
 export const WS_BASE_URL =
   process.env.NEXT_PUBLIC_WS_URL ||
   (API_BASE_URL.startsWith('https://')

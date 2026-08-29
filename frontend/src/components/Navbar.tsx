@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Menu, X, Orbit, Wifi, Database } from 'lucide-react';
+import { Menu, X, Orbit, Wifi, Database, Clock, ChevronDown, Check, Globe } from 'lucide-react';
 import StarvantisLogo from './StarvantisLogo';
-import { useMission } from '../context/MissionContext';
+import { useMission, TIMEZONE_OPTIONS, MissionTimezone } from '../context/MissionContext';
 
 const NAV_LINKS = [
   { label: 'Mission', href: '#mission' },
@@ -20,13 +20,29 @@ const NAV_LINKS = [
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { wsConnected, databaseEngine } = useMission();
+  const [tzDropdownOpen, setTzDropdownOpen] = useState(false);
+  const tzDropdownRef = useRef<HTMLDivElement>(null);
+
+  const { wsConnected, timezone, setTimezone, timezoneOptions, currentClock } = useMission();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 80);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Close timezone dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (tzDropdownRef.current && !tzDropdownRef.current.contains(e.target as Node)) {
+        setTzDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
+
+  const activeTz = timezoneOptions.find((t) => t.code === timezone) || timezoneOptions[0];
 
   return (
     <>
@@ -67,11 +83,84 @@ export default function Navbar() {
             ))}
           </div>
 
-          {/* Right Action Badges & Live Status */}
+          {/* Right Action Badges, Timezone Selector & Live Status */}
           <div className="hidden md:flex items-center gap-3">
+            {/* Mission Timezone Selector & Live Clock */}
+            <div className="relative" ref={tzDropdownRef}>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setTzDropdownOpen(!tzDropdownOpen)}
+                className="px-3 py-1.5 rounded-lg border border-cyan-glow/20 bg-space-navy/40 hover:bg-space-navy/70 hover:border-cyan-glow/40 transition-all flex items-center gap-2 cursor-pointer group shadow-[0_0_12px_rgba(99,199,255,0.08)]"
+                title="Change Mission Epoch Timezone (UTC, IST, EST, PST, JST)"
+              >
+                <Clock size={12} className="text-cyan-glow animate-pulse" />
+                <span className="font-mono text-[11px] text-star-white font-medium tracking-wider">
+                  {currentClock || `${activeTz.code}`}
+                </span>
+                <ChevronDown size={11} className={`text-muted-gray transition-transform duration-300 ${tzDropdownOpen ? 'rotate-180 text-cyan-glow' : ''}`} />
+              </div>
+
+              {/* Timezone Dropdown Menu */}
+              <AnimatePresence>
+                {tzDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.18 }}
+                    className="absolute right-0 mt-2 w-64 rounded-xl border border-cyan-glow/30 bg-space-black/95 backdrop-blur-2xl shadow-[0_10px_30px_rgba(0,0,0,0.8),0_0_20px_rgba(99,199,255,0.15)] py-2 z-50 overflow-hidden"
+                  >
+                    <div className="px-3 py-2 border-b border-glass-border/40 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-[10px] font-space tracking-wider uppercase text-cyan-glow font-bold">
+                        <Globe size={11} />
+                        <span>Mission Epoch Timezone</span>
+                      </div>
+                      <span className="text-[9px] text-muted-gray font-mono">{activeTz.utcOffset}</span>
+                    </div>
+
+                    <div className="py-1">
+                      {timezoneOptions.map((opt) => {
+                        const isSelected = opt.code === timezone;
+                        return (
+                          <div
+                            key={opt.code}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => {
+                              setTimezone(opt.code);
+                              setTzDropdownOpen(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-cyan-glow/15 text-cyan-glow font-bold border-l-2 border-cyan-glow'
+                                : 'text-star-white/70 hover:bg-space-navy/60 hover:text-star-white'
+                            }`}
+                          >
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="font-space font-medium tracking-wide">{opt.label}</span>
+                                <span className="font-mono text-[9px] text-muted-gray bg-white/5 px-1.5 py-0.5 rounded border border-white/5">
+                                  {opt.utcOffset}
+                                </span>
+                              </div>
+                              <span className="text-[9px] text-muted-gray font-inter mt-0.5 truncate max-w-[190px]">
+                                {opt.center}
+                              </span>
+                            </div>
+                            {isSelected && <Check size={13} className="text-cyan-glow flex-shrink-0" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             {/* Live WebSocket Status Badge */}
             <div
-              className={`px-3 py-1 rounded-full border text-[10px] font-space tracking-wider uppercase flex items-center gap-1.5 transition-all ${
+              className={`px-3 py-1.5 rounded-full border text-[10px] font-space tracking-wider uppercase flex items-center gap-1.5 transition-all ${
                 wsConnected
                   ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
                   : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
@@ -84,11 +173,11 @@ export default function Navbar() {
 
             {/* TimescaleDB Badge */}
             <div
-              className="px-2.5 py-1 rounded-full border border-glass-border/40 bg-space-navy/30 text-muted-gray text-[9px] font-space tracking-wider uppercase flex items-center gap-1.5 hidden xl:flex"
-              title="PostgreSQL 16 with TimescaleDB time-series hypertables"
+              className="px-2.5 py-1.5 rounded-full border border-glass-border/40 bg-space-navy/30 text-muted-gray text-[9px] font-space tracking-wider uppercase flex items-center gap-1.5 hidden xl:flex"
+              title="PostgreSQL on Render with TimescaleDB time-series hypertables"
             >
               <Database size={10} className="text-cyan-glow/70" />
-              <span>TIMESCALE DB</span>
+              <span>POSTGRESQL CLOUD</span>
             </div>
 
             <a
@@ -101,7 +190,10 @@ export default function Navbar() {
           </div>
 
           {/* Mobile menu button */}
-          <div role="button" tabIndex={0} onClick={() => setMenuOpen(!menuOpen)}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setMenuOpen(!menuOpen)}
             className="lg:hidden text-star-white/60 hover:text-star-white transition-colors p-2 cursor-pointer"
             aria-label="Toggle menu"
           >
@@ -122,6 +214,28 @@ export default function Navbar() {
           >
             <StarvantisLogo size={56} className="mb-4" />
             <span className="font-space text-lg font-light tracking-[0.3em] text-star-white/90">STARVANTIS</span>
+
+            {/* Mobile Timezone Selector */}
+            <div className="w-full max-w-xs bg-space-navy/50 rounded-xl p-3 border border-cyan-glow/20 flex flex-col gap-2">
+              <span className="text-[10px] font-space tracking-wider uppercase text-cyan-glow flex items-center gap-1.5">
+                <Clock size={11} /> Timezone: {activeTz.label} ({currentClock})
+              </span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {timezoneOptions.map((opt) => (
+                  <div
+                    key={opt.code}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setTimezone(opt.code)}
+                    className={`px-2 py-1 text-center rounded text-[10px] font-space font-medium cursor-pointer transition-colors ${
+                      opt.code === timezone ? 'bg-cyan-glow text-space-black font-bold' : 'bg-white/5 text-white/70 hover:bg-white/10'
+                    }`}
+                  >
+                    {opt.code}
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div className="flex flex-col items-center gap-5 my-4">
               {NAV_LINKS.map((link, i) => (

@@ -25,7 +25,7 @@ import { useMission } from '../context/MissionContext';
 export default function AlertsCenter() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { alerts, ackAlert, wsConnected } = useMission();
+  const { alerts, ackAlert, wsConnected, formatMissionTime, currentClock, timezone } = useMission();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'critical' | 'high' | 'medium' | 'low' | 'unack'>('all');
   const [expandedAlerts, setExpandedAlerts] = useState<Record<string, boolean>>({});
@@ -366,7 +366,7 @@ export default function AlertsCenter() {
                             {alert.subsystem}
                           </span>
                           <span className="px-2 py-0.5 rounded-md bg-black/40 font-space text-[10px] text-muted-gray">
-                            {alert.timestamp}
+                            {formatMissionTime(alert.timestamp, 'hms')}
                           </span>
                         </div>
 

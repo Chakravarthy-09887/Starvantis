@@ -25,7 +25,7 @@ import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
 export default function TelemetryExplorer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry } = useMission();
+  const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry, formatMissionTime, currentClock, timezone } = useMission();
 
   const [activeStreamId, setActiveStreamId] = useState('battery-temp');
   const [refreshKey, setRefreshKey] = useState(0);
@@ -40,7 +40,7 @@ export default function TelemetryExplorer() {
       name: 'BATTERY / SUBSYSTEM TEMPERATURE',
       unit: '°C',
       currentVal:
-        selectedSatelliteId === 'SENTINEL-6A' && liveTelemetry.temp
+        liveTelemetry.temp
           ? liveTelemetry.temp.replace(' °C', '')
           : activeSat.telemetryMetrics.batteryTemp.current.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.batteryTemp.baseline.toFixed(1),
@@ -60,7 +60,7 @@ export default function TelemetryExplorer() {
         { time: 'T-6m', current: activeSat.telemetryMetrics.batteryTemp.baseline + 1.4, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
         { time: 'T-4m', current: activeSat.telemetryMetrics.batteryTemp.baseline + 2.8, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
         { time: 'T-2m', current: activeSat.telemetryMetrics.batteryTemp.baseline + 4.2, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
-        { time: 'NOW', current: activeSat.telemetryMetrics.batteryTemp.current, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
+        { time: 'NOW', current: liveTelemetry.temp ? parseFloat(liveTelemetry.temp.replace(' °C', '')) : activeSat.telemetryMetrics.batteryTemp.current, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
       ],
     },
     {
@@ -68,7 +68,7 @@ export default function TelemetryExplorer() {
       name: 'MAIN 28V REGULATED POWER BUS',
       unit: 'V',
       currentVal:
-        selectedSatelliteId === 'SENTINEL-6A' && liveTelemetry.battery_voltage
+        liveTelemetry.battery_voltage
           ? liveTelemetry.battery_voltage.replace(' V', '')
           : activeSat.telemetryMetrics.busVoltage.current.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.busVoltage.baseline.toFixed(1),
@@ -88,7 +88,7 @@ export default function TelemetryExplorer() {
         { time: 'T-6m', current: activeSat.telemetryMetrics.busVoltage.baseline - 0.3, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
         { time: 'T-4m', current: activeSat.telemetryMetrics.busVoltage.baseline - 0.5, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
         { time: 'T-2m', current: activeSat.telemetryMetrics.busVoltage.baseline - 0.8, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
-        { time: 'NOW', current: activeSat.telemetryMetrics.busVoltage.current, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
+        { time: 'NOW', current: liveTelemetry.battery_voltage ? parseFloat(liveTelemetry.battery_voltage.replace(' V', '')) : activeSat.telemetryMetrics.busVoltage.current, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
       ],
     },
     {
@@ -167,11 +167,11 @@ export default function TelemetryExplorer() {
 
   const toY = (val: number) => 140 - ((val - minVal) / range) * 110;
 
-  // Recent simulated / ingested TimescaleDB packets table
+  // Recent simulated / ingested TimescaleDB packets table with dynamic timezone formatting
   const recentPackets = [
-    { time: '14:48:12 UTC', ch: activeStream.id, val: `${activeStream.currentVal} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
-    { time: '14:48:11 UTC', ch: activeStream.id, val: `${(parseFloat(activeStream.currentVal) - 0.05).toFixed(1)} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
-    { time: '14:48:10 UTC', ch: activeStream.id, val: `${(parseFloat(activeStream.currentVal) - 0.12).toFixed(1)} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
+    { time: formatMissionTime(new Date(), 'hms'), ch: activeStream.id, val: `${activeStream.currentVal} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
+    { time: formatMissionTime(new Date(Date.now() - 1000), 'hms'), ch: activeStream.id, val: `${(parseFloat(activeStream.currentVal) - 0.05).toFixed(1)} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
+    { time: formatMissionTime(new Date(Date.now() - 2000), 'hms'), ch: activeStream.id, val: `${(parseFloat(activeStream.currentVal) - 0.12).toFixed(1)} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
   ];
 
   return (

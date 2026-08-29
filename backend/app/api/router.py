@@ -7,6 +7,7 @@ from app.api.v1.conjunctions import router as conjunctions_router
 from app.api.v1.risk import router as risk_router
 from app.api.v1.alerts import router as alerts_router
 from app.api.v1.copilot import router as copilot_router
+from app.api.v1.spaceweather import router as spaceweather_router
 
 api_router = APIRouter()
 
@@ -18,3 +19,4 @@ api_router.include_router(conjunctions_router)
 api_router.include_router(risk_router)
 api_router.include_router(alerts_router)
 api_router.include_router(copilot_router)
+api_router.include_router(spaceweather_router)

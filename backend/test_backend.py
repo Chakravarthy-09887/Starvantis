@@ -183,7 +183,21 @@ def test_all():
         tc_res = tc_exec.json()
         assert tc_res["status"] == "SUCCESS"
 
-        print("--> ALL 10 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
+        print("11. Testing Space Weather & Radiation Belt Threat Matrix...")
+        sw_resp = client.get("/api/v1/space-weather/live")
+        assert sw_resp.status_code == 200
+        sw_data = sw_resp.json()
+        assert "kp_index" in sw_data
+        assert "solar_wind_speed_kms" in sw_data
+
+        rad_resp = client.get("/api/v1/space-weather/radiation/SENTINEL-6A")
+        assert rad_resp.status_code == 200
+        rad_data = rad_resp.json()
+        assert rad_data["satellite_id"] == "SENTINEL-6A"
+        assert "cumulative_dose_krad" in rad_data
+        assert "is_in_saa" in rad_data
+
+        print("--> ALL 11 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
 
 
 if __name__ == "__main__":

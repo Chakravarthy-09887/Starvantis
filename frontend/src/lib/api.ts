@@ -231,6 +231,36 @@ export interface CopilotResponse {
   suggested_followups: string[];
 }
 
+export interface SpaceWeatherIndices {
+  timestamp: string;
+  kp_index: number;
+  storm_level: string;
+  storm_category: string;
+  solar_wind_speed_kms: number;
+  solar_wind_density_pcm3: number;
+  imf_bz_nt: number;
+  goes_xray_flux: string;
+  flare_class: string;
+  radio_flux_f107: number;
+  aditya_l1_stream: string;
+  saa_status: string;
+}
+
+export interface SpacecraftRadiationDose {
+  satellite_id: string;
+  satellite_name: string;
+  sub_lat: number;
+  sub_lng: number;
+  altitude_km: number;
+  is_in_saa: boolean;
+  is_in_van_allen: boolean;
+  ambient_flux_pcm2s: number;
+  cumulative_dose_krad: number;
+  seu_risk_level: string;
+  solar_cell_degradation_pct: number;
+  recommended_mitigation: string;
+}
+
 export const api = {
   // Satellites & Fleet
   getSatellites: () => fetchApi<SatelliteAsset[]>('/satellites'),
@@ -287,4 +317,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+
+  // Space Weather & Radiation Belt Threat Matrix
+  getSpaceWeather: () => fetchApi<SpaceWeatherIndices>('/space-weather/live'),
+  getSpacecraftRadiation: (satelliteId: string) =>
+    fetchApi<SpacecraftRadiationDose>(`/space-weather/radiation/${satelliteId}`),
 };

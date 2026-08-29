@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { label: 'Overview', href: '#overview' },
   { label: 'Primary Control', href: '#satellite-inspector' },
   { label: 'Telemetry', href: '#telemetry' },
+  { label: 'Space Weather', href: '#space-weather' },
   { label: 'Orbital Risk', href: '#orbital' },
   { label: 'Alerts', href: '#alerts' },
   { label: 'Admin', href: '#admin' },

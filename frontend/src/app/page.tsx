@@ -15,6 +15,7 @@ import DigitalTwinSection from '../components/DigitalTwinSection';
 import SatelliteDigitalTwin from '../components/SatelliteDigitalTwin';
 import TelemetryExplorer from '../components/TelemetryExplorer';
 import OrbitalEnvironment from '../components/OrbitalEnvironment';
+import SpaceWeatherCenter from '../components/SpaceWeatherCenter';
 import ConjunctionSection from '../components/ConjunctionSection';
 import MissionRiskCenter from '../components/MissionRiskCenter';
 import AlertsCenter from '../components/AlertsCenter';
@@ -75,9 +76,13 @@ export default function Home() {
 
       {/* 10. Interactive 3D Orbital Environment & SGP4 Radar */}
       <OrbitalEnvironment />
+      <OrbitLines label="SPACE WEATHER &amp; RADIATION BELTS // NOAA SWPC" />
+
+      {/* 11. Real-Time Space Weather & SAA Radiation Threat Matrix */}
+      <SpaceWeatherCenter />
       <OrbitLines label="CONJUNCTION INTERSECTION SOLVER" />
 
-      {/* 11. Conjunction Trajectory Intersection & TCA Analysis */}
+      {/* 12. Conjunction Trajectory Intersection & TCA Analysis */}
       <ConjunctionSection />
       <OrbitLines label="MISSION RISK FUSION ENGINE" />
 

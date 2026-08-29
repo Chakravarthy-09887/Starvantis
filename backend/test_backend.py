@@ -229,7 +229,27 @@ def test_all():
         assert "doppler_shift_khz" in link_list[0]
         assert "elevation_deg" in link_list[0]
 
-        print("--> ALL 13 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
+        print("14. Testing Spacecraft Cyber-Defense & Anti-Spoofing Matrix...")
+        cyb_resp = client.get("/api/v1/cyber-defense/status/SENTINEL-6A")
+        assert cyb_resp.status_code == 200
+        cyb_data = cyb_resp.json()
+        assert cyb_data["satellite_id"] == "SENTINEL-6A"
+        assert "ccsds_sdls_crypto_mode" in cyb_data
+        assert "gnss_raim_status" in cyb_data
+
+        ver_resp = client.post("/api/v1/cyber-defense/verify-packet", json={
+            "satellite_id": "SENTINEL-6A",
+            "command_name": "CMD_THRUSTER_FIRING_VECTOR",
+            "raw_payload_hex": "0x434D445F4255524E5F564543544F52",
+            "signature_hmac": "AUTO_GENERATE",
+            "operator_key_id": "OP-KEY-VAULT-2026-A"
+        })
+        assert ver_resp.status_code == 200
+        ver_data = ver_resp.json()
+        assert ver_data["status"] == "VERIFIED_AUTHENTIC"
+        assert ver_data["is_authentic"] is True
+
+        print("--> ALL 14 TEST SUITES COMPLETED AND PASSED WITH 100% SUCCESS! <--")
 
 
 if __name__ == "__main__":

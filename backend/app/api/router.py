@@ -10,6 +10,7 @@ from app.api.v1.copilot import router as copilot_router
 from app.api.v1.spaceweather import router as spaceweather_router
 from app.api.v1.deepspace import router as deepspace_router
 from app.api.v1.groundstations import router as groundstations_router
+from app.api.v1.cyberdefense import router as cyberdefense_router
 
 api_router = APIRouter()
 
@@ -24,3 +25,4 @@ api_router.include_router(copilot_router)
 api_router.include_router(spaceweather_router)
 api_router.include_router(deepspace_router)
 api_router.include_router(groundstations_router)
+api_router.include_router(cyberdefense_router)

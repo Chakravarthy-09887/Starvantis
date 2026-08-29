@@ -340,6 +340,41 @@ export interface ActiveSpacecraftLink {
   pass_duration_sec: number;
 }
 
+export interface CyberThreatLog {
+  id: string;
+  timestamp_iso: string;
+  source_rf_carrier: string;
+  attack_vector: string;
+  severity: string;
+  mitigation_action: string;
+  quarantined: boolean;
+}
+
+export interface SpacecraftCyberThreatStatus {
+  satellite_id: string;
+  satellite_name: string;
+  overall_threat_level: string;
+  trust_index_pct: number;
+  ccsds_sdls_crypto_mode: string;
+  key_rotation_status: string;
+  gnss_raim_status: string;
+  gps_pseudorange_residual_ns: number;
+  carrier_to_noise_c_n0_dbhz: number;
+  frame_sequence_counter: number;
+  active_crypto_suite: string;
+  quarantined_packets_24h: number;
+  threat_logs: CyberThreatLog[];
+}
+
+export interface PacketVerificationResult {
+  status: string;
+  satellite_id: string;
+  is_authentic: boolean;
+  computed_hmac: string;
+  trust_score: number;
+  action_taken: string;
+}
+
 export const api = {
   // Satellites & Fleet
   getSatellites: () => fetchApi<SatelliteAsset[]>('/satellites'),
@@ -411,4 +446,13 @@ export const api = {
   getGroundStations: () => fetchApi<GroundStationDefinition[]>('/ground-stations/stations'),
   getSatelliteGroundLinks: (satelliteId: string) =>
     fetchApi<ActiveSpacecraftLink[]>(`/ground-stations/link/${satelliteId}`),
+
+  // Spacecraft Cyber-Defense & Anti-Spoofing Matrix
+  getCyberDefenseStatus: (satelliteId: string) =>
+    fetchApi<SpacecraftCyberThreatStatus>(`/cyber-defense/status/${satelliteId}`),
+  verifyUplinkPacket: (payload: { satellite_id: string; command_name: string; raw_payload_hex: string; signature_hmac: string; operator_key_id: string }) =>
+    fetchApi<PacketVerificationResult>('/cyber-defense/verify-packet', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };

@@ -24,6 +24,7 @@ import LandingDescentSimulation from '../components/LandingDescentSimulation';
 import SurfaceLandingAnalysis from '../components/SurfaceLandingAnalysis';
 import Administration from '../components/Administration';
 import GroundStationNetwork from '../components/GroundStationNetwork';
+import CyberDefenseMatrix from '../components/CyberDefenseMatrix';
 import MissionControlPreview from '../components/MissionControlPreview';
 import DataFlow from '../components/DataFlow';
 import PlatformCapabilities from '../components/PlatformCapabilities';
@@ -114,9 +115,13 @@ export default function Home() {
 
       {/* 17. Worldwide Ground Station Network, DSN Parabolic Dishes & RF Doppler Shift */}
       <GroundStationNetwork />
+      <OrbitLines label="SPACECRAFT CYBER-DEFENSE &amp; CCSDS CRYPTO MATRIX" />
+
+      {/* 18. Zero-Trust Cyber Defense, GNSS Anti-Spoofing & Hardware Root-of-Trust */}
+      <CyberDefenseMatrix />
       <OrbitLines label="INTEGRATED OPERATIONS DECK" />
 
-      {/* 18. Live Integrated Mission Control Interface Preview */}
+      {/* 19. Live Integrated Mission Control Interface Preview */}
       <MissionControlPreview />
       <OrbitLines label="TIMESCALEDB ARCHITECTURE &amp; DATA FLOW" />
 

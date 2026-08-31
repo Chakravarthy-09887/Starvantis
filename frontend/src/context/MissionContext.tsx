@@ -394,7 +394,7 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
     let fallbackAttempted = false;
 
     // Wake up Render cloud backend if sleeping
-    fetch('https://starvantis.onrender.com/health', { mode: 'no-cors' }).catch(() => {});
+    fetch('https://starvantis-1.onrender.com/health', { mode: 'no-cors' }).catch(() => {});
 
     function getTargetWsUrl(): string {
       if (typeof window === 'undefined') return WS_BASE_URL;
@@ -402,7 +402,7 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       if (isLocalHost && !fallbackAttempted) {
         return WS_BASE_URL;
       }
-      return 'wss://starvantis.onrender.com/ws/mission';
+      return 'wss://starvantis-1.onrender.com/ws/mission';
     }
 
     function connectWebSocket() {

@@ -24,7 +24,7 @@ This guide walks you through deploying the **STARVANTIS** platform:
    - `NASA_API_KEY`: `wxu9OqadiasUMrH5fC2NaF33AsXfLiQ7FCRsN2yH`
    - `SECRET_KEY`: (Click *Generate* or enter any secure string)
 5. Click **Create Web Service**.
-6. Once deployed, copy your backend URL (e.g. `https://starvantis-backend.onrender.com`).
+6. Once deployed, copy your backend URL (`https://starvantis-1.onrender.com`).
 
 ---
 
@@ -50,10 +50,10 @@ This guide walks you through deploying the **STARVANTIS** platform:
    - **Framework Preset**: `Next.js`
    - **Root Directory**: Click *Edit* and select **`frontend`**.
 4. Configure Environment Variables:
-   - `NEXT_PUBLIC_API_URL`: Your deployed backend URL (e.g. `https://starvantis-backend.onrender.com` or `https://starvantis-backend.up.railway.app`)
-   - `NEXT_PUBLIC_WS_URL`: (Optional — automatically derived from `NEXT_PUBLIC_API_URL` if omitted, e.g. `wss://starvantis-backend.onrender.com/ws/mission`)
+   - `NEXT_PUBLIC_API_URL`: `https://starvantis-1.onrender.com`
+   - `NEXT_PUBLIC_WS_URL`: `wss://starvantis-1.onrender.com/ws/mission`
 5. Click **Deploy**.
-6. Your site will be live instantly with a global CDN URL (e.g. `https://starvantis.vercel.app`)!
+6. Your site will be live instantly with a global CDN URL!
 
 ---
 
@@ -63,10 +63,10 @@ This guide walks you through deploying the **STARVANTIS** platform:
 3. Configure the Build settings:
    - **Base directory**: `frontend`
    - **Build command**: `npm run build`
-   - **Publish directory**: `frontend/.next`
+   - **Publish directory**: `frontend/out`
 4. Under **Environment variables**, add:
-   - `NEXT_PUBLIC_API_URL`: Your deployed backend URL (e.g. `https://starvantis-backend.onrender.com`)
-5. Click **Deploy Starvantis**.
+   - `NEXT_PUBLIC_API_URL`: `https://starvantis-1.onrender.com`
+5. Click **Deploy Starvantis** (Live at `https://starvantisxintelligence.netlify.app/`).
 
 ---
 

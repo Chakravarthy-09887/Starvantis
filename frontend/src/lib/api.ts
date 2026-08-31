@@ -5,7 +5,7 @@
 
 const defaultApiUrl =
   typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-    ? 'https://starvantis.onrender.com'
+    ? 'https://starvantis-1.onrender.com'
     : 'http://localhost:8000';
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || defaultApiUrl).replace(/\/$/, '');
@@ -226,7 +226,7 @@ export interface CopilotResponse {
   intent: string;
   summary: string;
   detailed_analysis: string;
-  technical_metrics: Record<string, string>;
+  technical_metrics: Record<string, any>;
   suggested_telecommand?: CopilotTelecommand | null;
   suggested_followups: string[];
 }

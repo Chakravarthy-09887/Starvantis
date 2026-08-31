@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
   AlertOctagon,
@@ -21,6 +21,7 @@ import {
   BellRing,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
+import { alarmAudio } from '../lib/alarmAudio';
 
 export default function AlertsCenter() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,81 +33,44 @@ export default function AlertsCenter() {
   const [successToast, setSuccessToast] = useState<string | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isBeeping, setIsBeeping] = useState(false);
-  const beepIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  const getAudioContext = () => {
-    if (typeof window === 'undefined') return null;
-    if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (AudioCtx) {
-        audioCtxRef.current = new AudioCtx();
-      }
-    }
-    if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
-      audioCtxRef.current.resume();
-    }
-    return audioCtxRef.current;
-  };
+  // Subscribe to global alarm audio state
+  useEffect(() => {
+    const unsubscribe = alarmAudio.subscribe((playing) => {
+      setIsBeeping(playing);
+    });
+    return unsubscribe;
+  }, []);
 
-  // Emit a single high-tech aerospace alert beep
-  const emitBeep = () => {
-    try {
-      const ctx = getAudioContext();
-      if (!ctx) return;
-      const now = ctx.currentTime;
-
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.exponentialRampToValueAtTime(1040, now + 0.08);
-
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.2);
-    } catch (err) {
-      console.warn('Continuous beep error:', err);
-    }
-  };
-
-  // Stop continuous beep (manual off)
-  const stopContinuousBeep = () => {
-    if (beepIntervalRef.current) {
-      clearInterval(beepIntervalRef.current);
-      beepIntervalRef.current = null;
-    }
-    setIsBeeping(false);
-  };
-
-  // Start continuous looping beep
-  const startContinuousBeep = () => {
-    stopContinuousBeep();
-    emitBeep();
-    beepIntervalRef.current = setInterval(() => {
-      emitBeep();
-    }, 450);
-    setIsBeeping(true);
-  };
+  // Sync soundEnabled with alarmAudio
+  useEffect(() => {
+    alarmAudio.setSoundEnabled(soundEnabled);
+  }, [soundEnabled]);
 
   const toggleContinuousBeep = () => {
     if (isBeeping) {
-      stopContinuousBeep();
+      alarmAudio.stop();
     } else {
-      startContinuousBeep();
+      alarmAudio.play(true);
     }
   };
 
+  const stopContinuousBeep = () => {
+    alarmAudio.stop();
+  };
+
   const playAckChime = () => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || typeof window === 'undefined') return;
     try {
-      const ctx = getAudioContext();
+      if (!audioCtxRef.current || audioCtxRef.current.state === 'closed') {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) audioCtxRef.current = new AudioCtx();
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+      const ctx = audioCtxRef.current;
       if (!ctx) return;
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
@@ -126,11 +90,8 @@ export default function AlertsCenter() {
   };
 
   // Cleanup on unmount
-  React.useEffect(() => {
+  useEffect(() => {
     return () => {
-      if (beepIntervalRef.current) {
-        clearInterval(beepIntervalRef.current);
-      }
       if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
         audioCtxRef.current.close().catch(() => {});
       }

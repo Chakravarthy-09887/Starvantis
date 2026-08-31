@@ -367,6 +367,60 @@ export interface ActiveSpacecraftLink {
   pass_duration_sec: number;
 }
 
+export interface DSNAntennaNode {
+  antenna_id: string;
+  complex_name: string;
+  diameter_m: number;
+  tracked_spacecraft: string;
+  uplink_freq_mhz: number;
+  downlink_freq_mhz: number;
+  tx_power_kw: number;
+  rx_cryo_temp_k: number;
+  wind_speed_kmh: number;
+  azimuth_deg: number;
+  elevation_deg: number;
+  status: string;
+}
+
+export interface DSNComplexStatus {
+  complex_id: string;
+  name: string;
+  location: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+  antennas: DSNAntennaNode[];
+  active_spacecraft_count: number;
+  network_health: string;
+}
+
+export interface PassPredictionItem {
+  pass_id: string;
+  station_id: string;
+  station_name: string;
+  satellite_id: string;
+  aos_time_iso: string;
+  peak_time_iso: string;
+  los_time_iso: string;
+  max_elevation_deg: number;
+  pass_duration_min: number;
+  azimuth_at_aos_deg: number;
+  azimuth_at_los_deg: number;
+  link_quality: 'EXCELLENT' | 'GOOD' | 'LOW_ELEVATION';
+}
+
+export interface AntennaSteerResponse {
+  status: string;
+  station_id: string;
+  target_azimuth_deg: number;
+  target_elevation_deg: number;
+  pointing_error_deg: number;
+  rf_pointing_loss_db: number;
+  achieved_carrier_lock: boolean;
+  carrier_snr_db: number;
+  message: string;
+}
+
 export interface CyberThreatLog {
   id: string;
   timestamp_iso: string;
@@ -377,6 +431,22 @@ export interface CyberThreatLog {
   quarantined: boolean;
 }
 
+export interface GNSSConstellationStatus {
+  name: string;
+  tracked_sats: number;
+  health_status: string;
+  pseudorange_residual_ns: number;
+  c_n0_dbhz: number;
+}
+
+export interface PacketPipelineStats {
+  demodulated_fps: number;
+  frame_counter_valid_pct: number;
+  hmac_authenticated_pct: number;
+  zero_trust_quarantined_fps: number;
+  obc_queue_status: string;
+}
+
 export interface SpacecraftCyberThreatStatus {
   satellite_id: string;
   satellite_name: string;
@@ -384,6 +454,9 @@ export interface SpacecraftCyberThreatStatus {
   trust_index_pct: number;
   ccsds_sdls_crypto_mode: string;
   key_rotation_status: string;
+  key_epoch_id?: string;
+  key_entropy_bits?: number;
+  hsm_enclave_status?: string;
   gnss_raim_status: string;
   gps_pseudorange_residual_ns: number;
   carrier_to_noise_c_n0_dbhz: number;
@@ -391,6 +464,8 @@ export interface SpacecraftCyberThreatStatus {
   active_crypto_suite: string;
   quarantined_packets_24h: number;
   threat_logs: CyberThreatLog[];
+  gnss_constellations?: GNSSConstellationStatus[];
+  packet_pipeline?: PacketPipelineStats;
 }
 
 export interface PacketVerificationResult {
@@ -400,6 +475,27 @@ export interface PacketVerificationResult {
   computed_hmac: string;
   trust_score: number;
   action_taken: string;
+}
+
+export interface KeyRotationResult {
+  status: string;
+  satellite_id: string;
+  new_key_epoch_id: string;
+  session_key_fingerprint: string;
+  entropy_bits: number;
+  valid_until_iso: string;
+  message: string;
+}
+
+export interface AttackSimulationResult {
+  status: string;
+  attack_type: string;
+  satellite_id: string;
+  threat_severity: string;
+  detected_anomaly: string;
+  autonomous_mitigation: string;
+  flight_computer_action: string;
+  quarantined_log: CyberThreatLog;
 }
 
 export const api = {
@@ -473,12 +569,30 @@ export const api = {
   getGroundStations: () => fetchApi<GroundStationDefinition[]>('/ground-stations/stations'),
   getSatelliteGroundLinks: (satelliteId: string) =>
     fetchApi<ActiveSpacecraftLink[]>(`/ground-stations/link/${satelliteId}`),
+  getDSNStatus: () => fetchApi<DSNComplexStatus[]>('/ground-stations/dsn-status'),
+  getPassPredictions: (satelliteId: string) =>
+    fetchApi<PassPredictionItem[]>(`/ground-stations/pass-predictions/${satelliteId}`),
+  steerAntenna: (payload: { station_id: string; satellite_id: string; target_azimuth_deg: number; target_elevation_deg: number }) =>
+    fetchApi<AntennaSteerResponse>('/ground-stations/steer-antenna', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // Spacecraft Cyber-Defense & Anti-Spoofing Matrix
   getCyberDefenseStatus: (satelliteId: string) =>
     fetchApi<SpacecraftCyberThreatStatus>(`/cyber-defense/status/${satelliteId}`),
   verifyUplinkPacket: (payload: { satellite_id: string; command_name: string; raw_payload_hex: string; signature_hmac: string; operator_key_id: string }) =>
     fetchApi<PacketVerificationResult>('/cyber-defense/verify-packet', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  rotateCyberKeys: (payload: { satellite_id: string; operator_id?: string; crypto_suite?: string }) =>
+    fetchApi<KeyRotationResult>('/cyber-defense/rotate-keys', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  simulateCyberAttack: (payload: { satellite_id: string; attack_type: string }) =>
+    fetchApi<AttackSimulationResult>('/cyber-defense/simulate-attack', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),

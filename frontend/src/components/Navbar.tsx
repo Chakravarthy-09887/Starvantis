@@ -233,17 +233,20 @@ export default function Navbar() {
               </AnimatePresence>
             </div>
 
-            {/* Live WebSocket Status Pill */}
+            {/* Live WebSocket & Telemetry Status Pill */}
             <div
               className={`px-2.5 py-1.5 rounded-full border text-[9px] font-space tracking-wider uppercase flex items-center gap-1.5 transition-all ${
                 wsConnected
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
-                  : 'border-amber-500/30 bg-amber-500/10 text-amber-400'
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.35)]'
+                  : 'border-cyan-glow/40 bg-cyan-glow/10 text-cyan-glow shadow-[0_0_12px_rgba(99,199,255,0.25)]'
               }`}
-              title={wsConnected ? 'WebSocket Stream 1Hz Active' : 'Connecting WebSocket...'}
+              title={wsConnected ? 'WebSocket 2-Way Real-time Stream Active' : 'Live 1Hz Keplerian Telemetry Stream Active (Auto-Syncing WS)'}
             >
-              <Wifi size={10} className={wsConnected ? 'animate-pulse text-emerald-400' : 'text-amber-400'} />
-              <span className="font-semibold hidden sm:inline">{wsConnected ? 'LIVE' : 'SYNC'}</span>
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${wsConnected ? 'bg-emerald-400' : 'bg-cyan-glow'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${wsConnected ? 'bg-emerald-500' : 'bg-cyan-glow'}`}></span>
+              </span>
+              <span className="font-bold tracking-wider hidden sm:inline">{wsConnected ? 'LIVE 1Hz • WS' : 'LIVE 1Hz'}</span>
             </div>
 
             {/* 3-Dash Menu Bar Button (Permanent Mission Drawer Toggle) */}

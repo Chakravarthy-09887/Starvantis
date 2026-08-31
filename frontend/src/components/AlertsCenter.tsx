@@ -247,12 +247,12 @@ export default function AlertsCenter() {
             <span
               className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${
                 wsConnected
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-bold'
-                  : 'border-alert-critical/30 bg-alert-critical/10 text-alert-critical'
+                  ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 font-bold shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                  : 'border-cyan-glow/40 bg-cyan-glow/10 text-cyan-glow font-bold'
               }`}
             >
-              <Wifi size={12} className={wsConnected ? 'animate-pulse' : ''} />
-              <span>{wsConnected ? '2-WAY WS SYNC ACTIVE' : 'CONNECTING WS'}</span>
+              <Wifi size={12} className="animate-pulse" />
+              <span>{wsConnected ? '2-WAY WS SYNC ACTIVE' : 'LIVE 1Hz TELEMETRY STREAM'}</span>
             </span>
           </div>
         </div>

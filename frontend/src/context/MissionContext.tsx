@@ -394,7 +394,12 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
     let fallbackAttempted = false;
 
     // Wake up Render cloud backend if sleeping
-    fetch('https://starvantis-1.onrender.com/health', { mode: 'no-cors' }).catch(() => {});
+    const wakeUpBackend = () => {
+      fetch('https://starvantis-1.onrender.com/health', { mode: 'no-cors' }).catch(() => {});
+      fetch('https://starvantis-1.onrender.com/', { mode: 'no-cors' }).catch(() => {});
+    };
+    wakeUpBackend();
+    const wakeUpInterval = setInterval(wakeUpBackend, 15000);
 
     function getTargetWsUrl(): string {
       if (typeof window === 'undefined') return WS_BASE_URL;
@@ -517,6 +522,7 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       isMounted = false;
+      clearInterval(wakeUpInterval);
       clearInterval(pingInterval);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (wsRef.current) wsRef.current.close();

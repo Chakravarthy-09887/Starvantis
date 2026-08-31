@@ -231,6 +231,16 @@ export interface CopilotResponse {
   suggested_followups: string[];
 }
 
+export interface SolarFlareEvent {
+  id: string;
+  class_type: string;
+  active_region: string;
+  peak_time_utc: string;
+  flux_wm2: number;
+  cme_associated: boolean;
+  radio_blackout_level: string;
+}
+
 export interface SpaceWeatherIndices {
   timestamp: string;
   kp_index: number;
@@ -238,12 +248,22 @@ export interface SpaceWeatherIndices {
   storm_category: string;
   solar_wind_speed_kms: number;
   solar_wind_density_pcm3: number;
+  solar_wind_pressure_npa?: number;
+  magnetopause_standoff_re?: number;
   imf_bz_nt: number;
+  imf_bt_nt?: number;
+  dst_index_nt?: number;
+  auroral_power_gw?: number;
   goes_xray_flux: string;
   flare_class: string;
   radio_flux_f107: number;
   aditya_l1_stream: string;
   saa_status: string;
+  van_allen_inner_flux?: string;
+  van_allen_outer_flux?: string;
+  kp_history_24h?: Array<{ time: string; kp: number }>;
+  solar_wind_history_24h?: Array<{ time: string; speed: number; pressure: number }>;
+  recent_flares?: SolarFlareEvent[];
 }
 
 export interface SpacecraftRadiationDose {
@@ -252,12 +272,19 @@ export interface SpacecraftRadiationDose {
   sub_lat: number;
   sub_lng: number;
   altitude_km: number;
+  orbit_type?: string;
   is_in_saa: boolean;
   is_in_van_allen: boolean;
+  van_allen_region?: string;
   ambient_flux_pcm2s: number;
   cumulative_dose_krad: number;
+  tid_limit_krad?: number;
+  tid_health_pct?: number;
   seu_risk_level: string;
+  edac_scrub_rate_hz?: number;
   solar_cell_degradation_pct: number;
+  saa_ingress_time_utc?: string;
+  saa_transit_duration_min?: number;
   recommended_mitigation: string;
 }
 

@@ -18,7 +18,7 @@ def test_copilot():
     ]
 
     print("========================================")
-    print("TESTING ENHANCED AERO-AI COPILOT QUERIES")
+    print("TESTING ENHANCED JARVIS COPILOT QUERIES")
     print("========================================")
 
     for prompt, sat_id, expected_intent in test_queries:
@@ -62,7 +62,7 @@ def test_copilot():
     print(f" -> Execution Result: {exec_data['status']} - {exec_data['message']}")
 
     print("\n========================================================")
-    print("ALL AERO-AI COPILOT TESTS PASSED WITH 100% SUCCESS!")
+    print("ALL JARVIS COPILOT TESTS PASSED WITH 100% SUCCESS!")
     print("========================================================")
 
 if __name__ == "__main__":

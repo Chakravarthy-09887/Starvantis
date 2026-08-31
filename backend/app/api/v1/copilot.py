@@ -19,7 +19,7 @@ from app.models.telemetry import Telemetry
 from app.models.user import AuditLog
 
 logger = logging.getLogger("starvantis.copilot")
-router = APIRouter(prefix="/copilot", tags=["AERO-AI Aerospace Flight Director"])
+router = APIRouter(prefix="/copilot", tags=["JARVIS Aerospace Flight Director"])
 
 
 class CopilotQueryRequest(BaseModel):

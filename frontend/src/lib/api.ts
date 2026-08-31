@@ -543,7 +543,7 @@ export const api = {
   getOperators: () => fetchApi<OperatorItem[]>('/auth/operators'),
   getAuditLogs: () => fetchApi<AuditLogItem[]>('/auth/audit-logs'),
 
-  // AERO-AI Flight Director Copilot
+  // JARVIS Flight Director Copilot
   queryCopilot: (payload: { prompt: string; satellite_id?: string; operator?: string; context?: any }) =>
     fetchApi<CopilotResponse>('/copilot/query', {
       method: 'POST',

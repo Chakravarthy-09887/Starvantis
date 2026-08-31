@@ -192,36 +192,147 @@ export default function ConjunctionSection() {
     const z2 = y * sinX + z1 * cosX;
 
     // Perspective projection
-    const scale = 360 / (360 + z2 * 0.5);
+    const scale = 380 / (380 + z2 * 0.45);
     return {
       px: 300 + x1 * scale,
       py: 180 + y2 * scale,
       scale,
+      zDepth: z2,
     };
   };
 
-  // 3D Satellite & Debris Points at current scrub
-  const p3Sat = project3D((t - 0.7) * 340 + deltaVx * 40, (t - 0.7) * 80 + deltaVz * 35, (t - 0.7) * -120 + deltaVy * 30);
-  const p3Deb = project3D((0.7 - t) * 320, (t - 0.7) * -110, (t - 0.7) * 240);
+  // Distinct Per-Satellite 3D Trajectory Math
+  const getTrajectory3DPoint = (satId: string, trajType: string, progress: number, isDeflected: boolean, dVx = 0, dVy = 0, dVz = 0) => {
+    const tNorm = progress - 0.7; // t=0 at TCA
+    const dFactor = isDeflected ? progress : 0;
+
+    if (satId === 'CHANDRAYAAN-3' || trajType === 'cislunar-hyperbolic') {
+      // Lunar Polar Orbit (90° Inclination around Moon)
+      const r = 110;
+      const angle = (progress - 0.7) * Math.PI * 1.5;
+      const x = Math.sin(angle) * r * 0.35 + dVx * 45 * dFactor;
+      const y = Math.cos(angle) * r + dVz * 35 * dFactor;
+      const z = Math.sin(angle) * r + dVy * 40 * dFactor;
+      return { x, y, z };
+    } else if (satId === 'ADITYA-L1' || trajType === 'lagrange-halo') {
+      // Sun-Earth L1 Halo Lissajous 3D loop
+      const x = Math.sin((progress - 0.7) * Math.PI * 2) * 140 + dVx * 45 * dFactor;
+      const y = Math.sin((progress - 0.7) * Math.PI * 4) * 45 + dVz * 35 * dFactor;
+      const z = Math.cos((progress - 0.7) * Math.PI * 2) * 90 + dVy * 40 * dFactor;
+      return { x, y, z };
+    } else if (satId === 'STARLINK-4012' || trajType === 'coplanar-overtake') {
+      // Coplanar In-Plane Mega-Constellation Overtake
+      const x = (progress - 0.7) * 360 + dVx * 50 * dFactor;
+      const y = Math.sin((progress - 0.7) * Math.PI * 2) * 15 + dVz * 30 * dFactor;
+      const z = 8 + dVy * 35 * dFactor;
+      return { x, y, z };
+    } else if (satId === 'INSAT-3DR') {
+      // Geostationary Equatorial Arc (35,786 km GEO ring)
+      const angle = (progress - 0.7) * Math.PI * 1.2;
+      const r = 160;
+      const x = Math.sin(angle) * r + dVx * 45 * dFactor;
+      const y = 5 + dVz * 35 * dFactor;
+      const z = Math.cos(angle) * r * 0.4 + dVy * 40 * dFactor;
+      return { x, y, z };
+    } else {
+      // Low Earth Orbit (Sentinel-6A, Cartosat-3, Landsat-9, RISAT-2BR1) SSO
+      const angle = (progress - 0.7) * Math.PI * 1.6;
+      const r = 135;
+      const incRad = (primaryConj.crossingAngleDeg * Math.PI) / 180;
+      const x = Math.sin(angle) * r + dVx * 45 * dFactor;
+      const y = Math.cos(angle) * r * Math.sin(incRad) + dVz * 35 * dFactor;
+      const z = Math.cos(angle) * r * Math.cos(incRad) + dVy * 40 * dFactor;
+      return { x, y, z };
+    }
+  };
+
+  const getDebris3DPoint = (satId: string, trajType: string, progress: number) => {
+    const tNorm = 0.7 - progress;
+
+    if (satId === 'CHANDRAYAAN-3' || trajType === 'cislunar-hyperbolic') {
+      // LRO-Debris crossing from polar north to south
+      const x = tNorm * 310;
+      const y = tNorm * 120 + Math.sin(progress * Math.PI) * 25;
+      const z = (progress - 0.7) * 220;
+      return { x, y, z };
+    } else if (satId === 'ADITYA-L1' || trajType === 'lagrange-halo') {
+      // Hyperbolic Solar Wind Debris Stream
+      const x = tNorm * 280;
+      const y = (progress - 0.7) * -95;
+      const z = tNorm * 210;
+      return { x, y, z };
+    } else if (satId === 'STARLINK-4012' || trajType === 'coplanar-overtake') {
+      // Overtaking derelict rocket body
+      const x = tNorm * 380;
+      const y = -14 + Math.sin(progress * Math.PI * 2) * 12;
+      const z = (progress - 0.7) * 40;
+      return { x, y, z };
+    } else if (satId === 'INSAT-3DR') {
+      // Drifting graveyard orbit fragment
+      const x = tNorm * 300;
+      const y = -20 + tNorm * 60;
+      const z = (progress - 0.7) * 190;
+      return { x, y, z };
+    } else {
+      // ASAT / Fengyun Fragmentation Shower
+      const x = tNorm * 320;
+      const y = (progress - 0.7) * -110;
+      const z = (progress - 0.7) * 240;
+      return { x, y, z };
+    }
+  };
+
+  // 3D Nodes at current scrub epoch
+  const p3SatRaw = getTrajectory3DPoint(activeSat.id, primaryConj.trajectoryType, t, true, deltaVx, deltaVy, deltaVz);
+  const p3DebRaw = getDebris3DPoint(activeSat.id, primaryConj.trajectoryType, t);
+  const p3Sat = project3D(p3SatRaw.x, p3SatRaw.y, p3SatRaw.z);
+  const p3Deb = project3D(p3DebRaw.x, p3DebRaw.y, p3DebRaw.z);
   const p3Tca = project3D(0, 0, 0);
 
-  // Generate 3D trajectory path strings
+  // Generate 3D trajectory curves
   const satPath3DPoints: string[] = [];
   const debPath3DPoints: string[] = [];
   const evasionPath3DPoints: string[] = [];
 
-  for (let step = 0; step <= 20; step++) {
-    const st = step / 20;
-    const ptSat = project3D((st - 0.7) * 340, (st - 0.7) * 80, (st - 0.7) * -120);
-    satPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptSat.px.toFixed(1)} ${ptSat.py.toFixed(1)}`);
+  for (let step = 0; step <= 24; step++) {
+    const st = step / 24;
+    // Nominal un-deflected trajectory
+    const ptNomRaw = getTrajectory3DPoint(activeSat.id, primaryConj.trajectoryType, st, false);
+    const ptNom = project3D(ptNomRaw.x, ptNomRaw.y, ptNomRaw.z);
+    satPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptNom.px.toFixed(1)} ${ptNom.py.toFixed(1)}`);
 
-    const ptDeb = project3D((0.7 - st) * 320, (st - 0.7) * -110, (st - 0.7) * 240);
-    debPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptDeb.px.toFixed(1)} ${ptDeb.py.toFixed(1)}`);
+    // Debris trajectory
+    const ptDebR = getDebris3DPoint(activeSat.id, primaryConj.trajectoryType, st);
+    const ptDebProj = project3D(ptDebR.x, ptDebR.y, ptDebR.z);
+    debPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptDebProj.px.toFixed(1)} ${ptDebProj.py.toFixed(1)}`);
 
-    // Deflected evasion trajectory curve
-    const ptEva = project3D((st - 0.7) * 340 + deltaVx * 40 * st, (st - 0.7) * 80 + deltaVz * 35 * st, (st - 0.7) * -120 + deltaVy * 30 * st);
+    // Post-Burn Deflected Evasion Trajectory
+    const ptEvaRaw = getTrajectory3DPoint(activeSat.id, primaryConj.trajectoryType, st, true, deltaVx, deltaVy, deltaVz);
+    const ptEva = project3D(ptEvaRaw.x, ptEvaRaw.y, ptEvaRaw.z);
     evasionPath3DPoints.push(`${step === 0 ? 'M' : 'L'} ${ptEva.px.toFixed(1)} ${ptEva.py.toFixed(1)}`);
   }
+
+  // Central Celestial Body Details
+  const centralBodyName =
+    activeSat.id === 'CHANDRAYAAN-3'
+      ? 'THE MOON (LUNAR ORBIT)'
+      : activeSat.id === 'ADITYA-L1'
+      ? 'SUN-EARTH L1 LIBRATION POINT'
+      : 'EARTH (LOW / GEO ORBIT)';
+
+  const centralBodyColor =
+    activeSat.id === 'CHANDRAYAAN-3'
+      ? '#94a3b8'
+      : activeSat.id === 'ADITYA-L1'
+      ? '#facc15'
+      : '#38bdf8';
+
+  const centralBodyRadius =
+    activeSat.id === 'CHANDRAYAAN-3'
+      ? 26
+      : activeSat.id === 'ADITYA-L1'
+      ? 16
+      : 32;
 
   return (
     <section id="orbital" className="section-spacing relative overflow-hidden" ref={containerRef}>
@@ -375,6 +486,45 @@ export default function ConjunctionSection() {
                 {viewMode === '3d' ? (
                   /* 3D ASTRODYNAMICS ISOMETRIC CANVAS */
                   <g>
+                    {/* Central Celestial Body (Earth / Moon / L1 Point) */}
+                    {(() => {
+                      const pBody = project3D(0, 0, 0);
+                      return (
+                        <g transform={`translate(${pBody.px}, ${pBody.py})`}>
+                          <circle
+                            r={centralBodyRadius * pBody.scale}
+                            fill={centralBodyColor}
+                            opacity="0.2"
+                            className="animate-pulse"
+                          />
+                          <circle
+                            r={(centralBodyRadius + 4) * pBody.scale}
+                            fill="none"
+                            stroke={centralBodyColor}
+                            strokeWidth="1.2"
+                            strokeDasharray="4,3"
+                            opacity="0.6"
+                          />
+                          <circle
+                            r={centralBodyRadius * 0.7 * pBody.scale}
+                            fill={centralBodyColor}
+                            opacity="0.85"
+                          />
+                          <text
+                            x="0"
+                            y={(centralBodyRadius + 14) * pBody.scale}
+                            fill={centralBodyColor}
+                            fontSize="8"
+                            fontFamily="'Space Grotesk', sans-serif"
+                            fontWeight="bold"
+                            textAnchor="middle"
+                          >
+                            {centralBodyName}
+                          </text>
+                        </g>
+                      );
+                    })()}
+
                     {/* 3D Coordinate Grid Plane */}
                     {[-150, -75, 0, 75, 150].map((coord) => {
                       const pA = project3D(-180, 0, coord);
@@ -389,45 +539,45 @@ export default function ConjunctionSection() {
                       );
                     })}
 
-                    {/* 3D XYZ Vector Axes */}
+                    {/* 3D XYZ RIC Vector Axes */}
                     {(() => {
                       const o = project3D(0, 0, 0);
-                      const axX = project3D(90, 0, 0);
-                      const axY = project3D(0, -70, 0);
-                      const axZ = project3D(0, 0, 90);
+                      const axX = project3D(100, 0, 0);
+                      const axY = project3D(0, -80, 0);
+                      const axZ = project3D(0, 0, 100);
                       return (
                         <g>
                           <line x1={o.px} y1={o.py} x2={axX.px} y2={axX.py} stroke="#00d4ff" strokeWidth="1.5" />
-                          <text x={axX.px + 4} y={axX.py} fill="#00d4ff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+V (In-Track)</text>
+                          <text x={axX.px + 4} y={axX.py} fill="#00d4ff" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+V (In-Track)</text>
                           <line x1={o.px} y1={o.py} x2={axY.px} y2={axY.py} stroke="#10b981" strokeWidth="1.5" />
-                          <text x={axY.px} y={axY.py - 4} fill="#10b981" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+R (Radial)</text>
+                          <text x={axY.px} y={axY.py - 4} fill="#10b981" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+R (Radial)</text>
                           <line x1={o.px} y1={o.py} x2={axZ.px} y2={axZ.py} stroke="#fbbf24" strokeWidth="1.5" />
-                          <text x={axZ.px + 4} y={axZ.py + 4} fill="#fbbf24" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+W (Cross-Track)</text>
+                          <text x={axZ.px + 4} y={axZ.py + 4} fill="#fbbf24" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+W (Cross-Track)</text>
                         </g>
                       );
                     })()}
 
                     {/* 3D Pre-Burn Nominal Satellite Trajectory Path */}
-                    <path d={satPath3DPoints.join(' ')} fill="none" stroke="rgba(0, 212, 255, 0.35)" strokeWidth="1.5" strokeDasharray="4,4" />
+                    <path d={satPath3DPoints.join(' ')} fill="none" stroke="rgba(0, 212, 255, 0.45)" strokeWidth="1.8" strokeDasharray="4,4" />
 
                     {/* 3D Debris Trajectory Path */}
-                    <path d={debPath3DPoints.join(' ')} fill="none" stroke="rgba(255, 59, 59, 0.45)" strokeWidth="1.5" strokeDasharray="3,3" />
+                    <path d={debPath3DPoints.join(' ')} fill="none" stroke="rgba(255, 59, 59, 0.55)" strokeWidth="1.8" strokeDasharray="3,3" />
 
                     {/* 3D Post-Burn Deflected Evasion Trajectory (Green) */}
-                    <path d={evasionPath3DPoints.join(' ')} fill="none" stroke="#10b981" strokeWidth="2.2" />
+                    <path d={evasionPath3DPoints.join(' ')} fill="none" stroke="#10b981" strokeWidth="2.5" />
 
                     {/* 3D 3-Sigma Covariance Ellipsoids at TCA */}
                     <g transform={`translate(${p3Tca.px}, ${p3Tca.py})`}>
                       {/* Primary Spacecraft Covariance Bubble (Blue) */}
-                      <ellipse rx="36" ry="18" fill="rgba(0, 212, 255, 0.08)" stroke="#00d4ff" strokeWidth="1" strokeDasharray="3,3" />
+                      <ellipse rx="38" ry="20" fill="rgba(0, 212, 255, 0.12)" stroke="#00d4ff" strokeWidth="1.2" strokeDasharray="3,3" />
                       {/* Debris Hazard Covariance Bubble (Red) */}
-                      <ellipse rx="48" ry="24" fill="rgba(255, 59, 59, 0.12)" stroke="#ff3b3b" strokeWidth="1.5" className="animate-pulse" />
+                      <ellipse rx="52" ry="26" fill="rgba(255, 59, 59, 0.15)" stroke="#ff3b3b" strokeWidth="1.5" className="animate-pulse" />
                       <circle r="4" fill="#ff3b3b" />
-                      <text x="12" y="-8" fill="#ff3b3b" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                        TCA CONJUNCTION EPOCH
+                      <text x="14" y="-10" fill="#ff3b3b" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        TCA CONJUNCTION EPOCH ({primaryConj.crossingAngleDeg}° CROSSING)
                       </text>
-                      <text x="12" y="6" fill="rgba(232, 237, 242, 0.8)" fontSize="9" fontFamily="'Inter', sans-serif">
-                        Original: {primaryConj.miss_distance_km} km | Deflected: {postBurnMissKm} km
+                      <text x="14" y="6" fill="rgba(232, 237, 242, 0.85)" fontSize="8.5" fontFamily="'Inter', sans-serif">
+                        Nominal Miss: {primaryConj.miss_distance_km} km ➔ Post-Burn: {postBurnMissKm} km (Pc: {postBurnPc.toExponential(2)})
                       </text>
                     </g>
 
@@ -436,10 +586,10 @@ export default function ConjunctionSection() {
                       <circle r="7" fill="#00d4ff" className="animate-pulse" />
                       <circle r="16" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.7" />
                       <text x="14" y="-8" fill="#00d4ff" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                        {primaryConj.primary_code}
+                        {primaryConj.primary_code} [{activeSat.agency}]
                       </text>
                       <text x="14" y="6" fill="#10b981" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                        ΔV: {totalDeltaV.toFixed(2)} m/s
+                        ΔV: {totalDeltaV.toFixed(2)} m/s (Prop: {hydrazineCostKg} kg)
                       </text>
                     </g>
 
@@ -448,14 +598,14 @@ export default function ConjunctionSection() {
                       <circle r="6" fill="#ff3b3b" className="animate-pulse" />
                       <circle r="14" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.7" />
                       <text x="14" y="14" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                        {primaryConj.target_object_id}
+                        {primaryConj.target_object_id} ({primaryConj.risk_level})
                       </text>
                     </g>
 
                     {/* Laser Distance Measuring Line */}
-                    <line x1={p3Sat.px} y1={p3Sat.py} x2={p3Deb.px} y2={p3Deb.py} stroke="rgba(251, 191, 36, 0.6)" strokeWidth="1" strokeDasharray="2,2" />
+                    <line x1={p3Sat.px} y1={p3Sat.py} x2={p3Deb.px} y2={p3Deb.py} stroke="rgba(251, 191, 36, 0.7)" strokeWidth="1.2" strokeDasharray="3,2" />
                     <text x={(p3Sat.px + p3Deb.px) / 2 + 8} y={(p3Sat.py + p3Deb.py) / 2 - 4} fill="#fbbf24" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                      SEP: {scrubDistKm} km
+                      SLANT RANGE: {scrubDistKm} km
                     </text>
                   </g>
                 ) : (

@@ -98,7 +98,7 @@ export default function AeroCopilotHUD() {
       id: 'init-1',
       sender: 'copilot',
       timestamp: '14:45:00',
-      text: 'AERO-AI Autonomous Flight Director initialized and synchronized with PostgreSQL 16 & TimescaleDB hypertable stream.\n\nReady for natural language telecommanding, SGP4 collision avoidance burns, Lunar EDL guidance, and deep-space telemetry diagnostics.',
+      text: 'JARVIS Autonomous Flight Director initialized and synchronized with PostgreSQL 16 & TimescaleDB hypertable stream.\n\nReady for natural language telecommanding, SGP4 collision avoidance burns, Lunar EDL guidance, and deep-space telemetry diagnostics.',
     },
   ]);
 
@@ -320,7 +320,7 @@ export default function AeroCopilotHUD() {
         speakText(`Telecommand ${tc.command_id} uplinked and confirmed for ${tc.satellite_id}.`);
       }
     } catch (err) {
-      console.warn('[AERO-AI] Telecommand execution note:', err);
+      console.warn('[JARVIS] Telecommand execution note:', err);
     }
   };
 
@@ -329,7 +329,7 @@ export default function AeroCopilotHUD() {
     try {
       const logData = {
         platform: 'STARVANTIS AEROSPACE INTELLIGENCE',
-        missionControlSession: 'AERO-AI FLIGHT DIRECTOR LOG',
+        missionControlSession: 'JARVIS FLIGHT DIRECTOR LOG',
         exportedAt: new Date().toISOString(),
         targetSatellite: selectedSatelliteId,
         operator: 'Commander Vance',
@@ -348,7 +348,7 @@ export default function AeroCopilotHUD() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `STARVANTIS_AeroCopilot_Log_${selectedSatelliteId}_${Date.now()}.json`;
+      a.download = `STARVANTIS_JARVIS_Log_${selectedSatelliteId}_${Date.now()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -406,7 +406,7 @@ export default function AeroCopilotHUD() {
 
           <div className="flex flex-col text-left">
             <span className="font-space text-xs font-bold tracking-wider text-cyan-glow flex items-center gap-1">
-              <span>AERO-AI COPILOT</span>
+              <span>JARVIS COPILOT</span>
               <Sparkles size={11} className="text-amber-400 animate-pulse" />
             </span>
             <span className="font-mono text-[9px] text-star-white/60 tracking-wider flex items-center gap-1.5">
@@ -650,7 +650,7 @@ export default function AeroCopilotHUD() {
                 >
                   <div className="flex items-center gap-2 text-[10px] font-mono text-muted-gray mb-1 px-1">
                     <span className="font-semibold text-star-white/70">
-                      {msg.sender === 'operator' ? 'COMMANDER VANCE' : 'AERO-AI FLIGHT DIRECTOR'}
+                      {msg.sender === 'operator' ? 'COMMANDER VANCE' : 'JARVIS FLIGHT DIRECTOR'}
                     </span>
                     <span>•</span>
                     <span>{msg.timestamp}</span>
@@ -839,7 +839,7 @@ export default function AeroCopilotHUD() {
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-                placeholder={`Ask AERO-AI about ${selectedSatelliteId} telemetry, Lunar EDL, or CAM burns...`}
+                placeholder={`Ask JARVIS about ${selectedSatelliteId} telemetry, Lunar EDL, or CAM burns...`}
                 className="flex-1 bg-black/60 border border-cyan-glow/20 rounded-xl px-3.5 py-2 text-xs text-star-white placeholder:text-muted-gray focus:outline-none focus:border-cyan-glow font-space"
               />
 
@@ -853,7 +853,7 @@ export default function AeroCopilotHUD() {
                     ? 'border-cyan-glow bg-cyan-glow text-space-black font-bold shadow-[0_0_15px_rgba(99,199,255,0.4)]'
                     : 'border-white/10 bg-black/40 text-muted-gray cursor-not-allowed'
                 }`}
-                title="Send query to AERO-AI"
+                title="Send query to JARVIS"
               >
                 <Send size={16} />
               </div>

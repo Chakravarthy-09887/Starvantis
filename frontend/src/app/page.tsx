@@ -145,7 +145,7 @@ export default function Home() {
       {/* 22. Deep Footer with NASA & Open Source Astrodynamics Attributions */}
       <Footer />
 
-      {/* Autonomous AERO-AI Natural Language Flight Director Copilot HUD */}
+      {/* Autonomous JARVIS Natural Language Flight Director Copilot HUD */}
       <AeroCopilotHUD />
     </main>
   );

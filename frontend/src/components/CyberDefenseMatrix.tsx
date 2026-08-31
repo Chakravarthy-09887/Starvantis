@@ -151,9 +151,12 @@ export default function CyberDefenseMatrix() {
     }
   };
 
+  const [simCompleted, setSimCompleted] = useState<boolean>(false);
+
   const handleSimulateAttack = async () => {
     if (isSimulating) return;
     setIsSimulating(true);
+    setSimCompleted(false);
     setSimStep(1);
     setSimMessage('STAGE 1: Ingesting RF Carrier and evaluating frame parity...');
 
@@ -188,7 +191,15 @@ export default function CyberDefenseMatrix() {
       setSimStep(5);
       setSimMessage('STAGE 5: Threat neutralized. OBC protected, telemetry isolated to quarantine log.');
       setIsSimulating(false);
-    }, 4000);
+      setSimCompleted(true);
+    }, 3800);
+  };
+
+  const handleResetSimulation = () => {
+    setIsSimulating(false);
+    setSimCompleted(false);
+    setSimStep(0);
+    setSimMessage('');
   };
 
   const handleVerifyPacket = async (type: 'AUTHENTIC' | 'MALICIOUS_FORGERY') => {
@@ -439,7 +450,7 @@ export default function CyberDefenseMatrix() {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-4 p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-between text-xs font-space text-amber-300"
+              className="mb-4 p-3 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-between text-xs font-space text-amber-300"
             >
               <div className="flex items-center gap-2">
                 <RefreshCw size={14} className="animate-spin text-amber-400" />
@@ -451,10 +462,35 @@ export default function CyberDefenseMatrix() {
             </motion.div>
           )}
 
+          {simCompleted && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-4 p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-400/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-space text-emerald-300 shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+            >
+              <div className="flex items-center gap-2.5">
+                <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-bold block text-star-white">STAGE 05 / 05 // ATTACK MITIGATION COMPLETE</span>
+                  <span className="text-[11px] text-emerald-400/90 font-inter">
+                    Malicious packet quarantined to audit log. Spacecraft OBC running undisturbed on nominal flight cycle.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleResetSimulation}
+                className="px-3 py-1.5 rounded-xl bg-emerald-500 text-black hover:bg-emerald-400 font-bold text-[10px] uppercase tracking-wider cursor-pointer shrink-0"
+              >
+                RESET SIMULATOR
+              </button>
+            </motion.div>
+          )}
+
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 relative">
             {pipelineStages.map((stage) => {
               const isActiveInSim = isSimulating && simStep === stage.id;
-              const isPassedInSim = isSimulating && simStep > stage.id;
+              const isPassedInSim = (isSimulating && simStep > stage.id) || (simCompleted && simStep >= stage.id);
               return (
                 <div
                   key={stage.id}
@@ -462,7 +498,7 @@ export default function CyberDefenseMatrix() {
                     isActiveInSim
                       ? 'bg-amber-500/25 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.4)] scale-[1.03] ring-1 ring-amber-400'
                       : isPassedInSim
-                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.15)]'
                       : 'bg-black/50 border-white/10'
                   }`}
                 >
@@ -749,27 +785,38 @@ export default function CyberDefenseMatrix() {
               </p>
 
               {/* Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4">
                 <button
                   type="button"
                   onClick={() => handleVerifyPacket('AUTHENTIC')}
                   disabled={testingPacket || isSimulating}
-                  className="px-3.5 py-3 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-space text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer disabled:opacity-50"
+                  className="px-3 py-3 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-space text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer disabled:opacity-50"
                 >
                   <CheckCircle2 size={16} />
-                  <span>INJECT AUTHENTIC PACKET</span>
-                  <span className="text-[8px] font-mono text-emerald-400/80 font-normal">Valid HMAC Key</span>
+                  <span>INGEST VALID PACKET</span>
+                  <span className="text-[8px] font-mono text-emerald-400/80 font-normal">Valid Key &amp; Ack Receipt</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleVerifyPacket('MALICIOUS_FORGERY')}
                   disabled={testingPacket || isSimulating}
-                  className="px-3.5 py-3 rounded-2xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-space text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer disabled:opacity-50"
+                  className="px-3 py-3 rounded-2xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-space text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer disabled:opacity-50"
                 >
                   <AlertTriangle size={16} />
-                  <span>INJECT FORGED PACKET</span>
-                  <span className="text-[8px] font-mono text-red-400/80 font-normal">Tampered Hash</span>
+                  <span>INGEST FORGED PACKET</span>
+                  <span className="text-[8px] font-mono text-red-400/80 font-normal">Tampered Hash Isolation</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleVerifyPacket('AUTHENTIC')}
+                  disabled={testingPacket || isSimulating}
+                  className="px-3 py-3 rounded-2xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/50 text-cyan-300 font-space text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer disabled:opacity-50"
+                >
+                  <Radio size={16} />
+                  <span>ACK PACKET INGESTION</span>
+                  <span className="text-[8px] font-mono text-cyan-300/80 font-normal">Instant Crypto Certificate</span>
                 </button>
               </div>
 

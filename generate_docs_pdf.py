@@ -265,7 +265,7 @@ def build_pdf(filename="STARVANTIS_Project_Terms_References_Architecture_Guide.p
         body_style
     ))
     story.append(Paragraph(
-        "The STARVANTIS platform integrates real-time multi-variate telemetry streaming, SGP4 orbital propagation, 2D Gaussian collision probability calculations, Tsiolkovsky &Delta;V evasion solvers, Entry Descent and Landing (EDL) simulations, space weather radiation tracking, defense-grade cybersecurity (CCSDS SDLS), and natural language flight direction (AERO-AI Copilot) into a unified, high-performance mission control center.",
+        "The STARVANTIS platform integrates real-time multi-variate telemetry streaming, SGP4 orbital propagation, 2D Gaussian collision probability calculations, Tsiolkovsky &Delta;V evasion solvers, Entry Descent and Landing (EDL) simulations, space weather radiation tracking, defense-grade cybersecurity (CCSDS SDLS), and natural language flight direction (JARVIS Copilot) into a unified, high-performance mission control center.",
         body_style
     ))
     
@@ -662,7 +662,7 @@ def build_pdf(filename="STARVANTIS_Project_Terms_References_Architecture_Guide.p
     story.append(PageBreak())
 
     # =========================================================================
-    # PAGE 8: CYBER DEFENSE MATRIX & AERO-AI COPILOT
+    # PAGE 8: CYBER DEFENSE MATRIX & JARVIS COPILOT
     # =========================================================================
     story.append(Paragraph("3.7 Spacecraft Cyber-Defense &amp; Anti-Spoofing Matrix", h2_style))
     cyber_terms = [
@@ -704,7 +704,7 @@ def build_pdf(filename="STARVANTIS_Project_Terms_References_Architecture_Guide.p
     story.append(t_cyber)
     story.append(Spacer(1, 6))
 
-    story.append(Paragraph("3.8 AERO-AI Flight Director &amp; Natural Language Copilot", h2_style))
+    story.append(Paragraph("3.8 JARVIS Flight Director &amp; Natural Language Copilot", h2_style))
     story.append(Paragraph(
         "<b>What it is:</b> An aerospace domain-specific AI copilot that translates natural language operational queries into physics-grounded diagnostics, ephemeris calculations, and cryptographically verified telecommands.<br/>"
         "<b>Why it is used:</b> Enables human operators to rapidly diagnose complex fleet anomalies, query collision parameters, and authorize delta-V burn sequences using natural language with built-in aerospace safety constraints and immutable audit logs.",
@@ -712,7 +712,7 @@ def build_pdf(filename="STARVANTIS_Project_Terms_References_Architecture_Guide.p
     ))
 
     story.append(make_callout(
-        "🤖 AERO-AI COPILOT COMMAND LIFECYCLE",
+        "🤖 JARVIS COPILOT COMMAND LIFECYCLE",
         "1. <b>Intent Classification:</b> NLP intent parser identifies domain (<b>CONJUNCTION</b>, <b>POWER_THERMAL</b>, <b>EPHEMERIS</b>, <b>FLEET_HEALTH</b>).<br/>"
         "2. <b>Physics Engine Calculation:</b> Generates precise metrics (e.g. 0.42 m/s retrograde burn, 0.38 kg hydrazine consumption, 99.8% risk reduction).<br/>"
         "3. <b>Cryptographic Payload Generation:</b> Generates a formatted <b>TelecommandPayload</b> with unique <b>AUTH-SIG</b> hash.<br/>"
@@ -801,7 +801,7 @@ def build_pdf(filename="STARVANTIS_Project_Terms_References_Architecture_Guide.p
         ("Slide 6: Deep-Space & Lagrange Observatories", "Highlight Aditya-L1 Sun-Earth L1 solar wind streams, Chandrayaan-3 ChaSTE subsurface temperature probes, and JWST L2 MIRI 6.4K cryocooler."),
         ("Slide 7: Space Weather & Radiation Matrix", "Discuss solar wind speed, Kp geomagnetic storm levels, and South Atlantic Anomaly (SAA) single-event upset mitigations."),
         ("Slide 8: Spacecraft Cyber Defense (CCSDS SDLS)", "Show cryptographic HMAC-SHA256 root-of-trust verification, GNSS anti-spoofing via RAIM, and replay attack neutralization."),
-        ("Slide 9: AERO-AI Natural Language Copilot", "Execute a live query commanding a collision avoidance burn, showing the verified telecommand payload and audit logging."),
+        ("Slide 9: JARVIS Natural Language Copilot", "Execute a live query commanding a collision avoidance burn, showing the verified telecommand payload and audit logging."),
         ("Slide 10: Conclusion & Future Roadmap", "Summarize aerospace contributions, automated autonomous flight operations, and future extensions to interplanetary fleets."),
     ]
     for title, desc in slides:
@@ -815,7 +815,7 @@ def build_pdf(filename="STARVANTIS_Project_Terms_References_Architecture_Guide.p
         "<b>3. Conjunction Analysis:</b> Open Conjunctions tab. Show active threat with uncooperative debris (P<sub>c</sub> = 1.84 &times; 10<sup>-4</sup>). Click <i>Run Trajectory Analysis</i> to show the recommended 0.42 m/s retrograde burn expanding miss distance to 18.6 km.<br/>"
         "<b>4. Chandrayaan-3 EDL:</b> Toggle between <i>Chandrayaan-2 Failure Analysis</i> and <i>Chandrayaan-3 Mitigation</i> on Phase 3 (Fine Braking) to explain the Laser Doppler Velocimeter (LDV).<br/>"
         "<b>5. Cyber-Defense Uplink:</b> Click <i>Verify Uplink Packet</i> to demonstrate flight-hardware HMAC cryptographic verification and replay attack blocking.<br/>"
-        "<b>6. Copilot Execution:</b> Ask AERO-AI: <i>'Execute collision avoidance maneuver for Sentinel-6A'</i>. Click <i>Authorize &amp; Transmit</i> to log the verified audit trail.",
+        "<b>6. Copilot Execution:</b> Ask JARVIS: <i>'Execute collision avoidance maneuver for Sentinel-6A'</i>. Click <i>Authorize &amp; Transmit</i> to log the verified audit trail.",
         body_style
     ))
 

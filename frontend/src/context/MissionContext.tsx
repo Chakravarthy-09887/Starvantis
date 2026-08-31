@@ -17,6 +17,7 @@ import {
   AuditLogItem,
 } from '../lib/api';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
+import { alarmAudio } from '../lib/alarmAudio';
 
 export type MissionTimezone = 'UTC' | 'IST' | 'EST' | 'PST' | 'JST' | 'LOCAL';
 
@@ -76,6 +77,8 @@ interface MissionContextType {
   historicalTelemetry: TelemetryRecord[];
 
   alerts: AlertItem[];
+  alertScanCountdownSeconds: number;
+  dispatchLiveAlert: () => void;
   anomalies: AnomalyItem[];
   orbitalObjects: OrbitalObjectItem[];
   conjunctions: ConjunctionItem[];
@@ -173,6 +176,118 @@ const INITIAL_ALERTS: AlertItem[] = [
   },
 ];
 
+export interface DynamicAlertTemplate {
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  subsystem: string;
+  asset: string;
+  description: string;
+  mitigation: string;
+  confidence: number;
+}
+
+const DYNAMIC_ALERT_POOL: DynamicAlertTemplate[] = [
+  {
+    severity: 'critical',
+    title: 'Battery Cell #3 Thermal Runaway Divergence',
+    subsystem: 'EPS / Power Regulation',
+    asset: 'SENTINEL-6A',
+    description: 'Temperature gradient accelerated to +16.4°C over baseline (42.6°C vs 26.2°C nominal). AI anomaly confidence 0.96.',
+    mitigation: 'Autonomous Peak-Power Shunt Regulator activated. Load diverted to Battery Bay 1.',
+    confidence: 96,
+  },
+  {
+    severity: 'critical',
+    title: 'Orbital SGP4 Conjunction TCA Proximity Breach',
+    subsystem: 'AODCS / Radar Surveillance',
+    asset: 'CHANDRAYAAN-3 ⟷ DEBRIS #1948',
+    description: 'TCA within 03:12:45 with miss distance 0.88 km (threshold < 25 km). Pc = 3.12e-4 requires CAM burn.',
+    mitigation: 'Compute prograde delta-V apolune burn (+0.24 m/s) to push radial separation to 24.2 km.',
+    confidence: 98,
+  },
+  {
+    severity: 'high',
+    title: 'Aditya-L1 STEPS Solar Proton Energy Surge',
+    subsystem: 'PAYLOAD / Space Weather',
+    asset: 'ADITYA-L1',
+    description: 'Energetic solar proton flux exceeded 10⁴ pfu at >10 MeV following M8.4 coronal mass ejection flare.',
+    mitigation: 'Deploy payload radiation shielding latch and toggle high-voltage detectors to Safe Standby.',
+    confidence: 93,
+  },
+  {
+    severity: 'high',
+    title: 'Reaction Wheel #3 Friction Torque Ripple Surge',
+    subsystem: 'ADCS / Momentum Wheels',
+    asset: 'CARTOSAT-3',
+    description: 'Bearing drag torque ripple elevated by 24 mNm during high-rate slew maneuver over target grid.',
+    mitigation: 'Switch attitude actuation torque allocation to magnetic torque rods and wheel #4 redundant axis.',
+    confidence: 91,
+  },
+  {
+    severity: 'medium',
+    title: 'Laser Inter-Satellite Crosslink Jitter Outlier',
+    subsystem: 'TT&C / Optical Comms',
+    asset: 'STARLINK-4012',
+    description: 'Beam pointing jitter reached 12.4 µrad on inter-plane crosslink. BER briefly drifted to 2.4e-6.',
+    mitigation: 'Fine-steering fast steering mirror (FSM) closed-loop bandwidth recalibrated.',
+    confidence: 88,
+  },
+  {
+    severity: 'medium',
+    title: 'TIRS-2 Cryocooler Cold Finger Temperature Ripple',
+    subsystem: 'PAYLOAD / Thermal Control',
+    asset: 'LANDSAT-9',
+    description: 'Cryogenic cold head at 43.1 K (+1.1 K drift) during high sun-angle orbital eclipse exit.',
+    mitigation: 'Pulse-tube cryocooler compressor drive frequency adjusted from 58.2 Hz to 60.1 Hz.',
+    confidence: 87,
+  },
+  {
+    severity: 'low',
+    title: 'GNSS NavIC Carrier-Phase Slip at Svalbard Pass',
+    subsystem: 'NAV / GNSS Receiver',
+    asset: 'RISAT-2BR1',
+    description: 'Single-epoch ionospheric delay jump caused cycle slip on L5 channel. Resolved on L1 dual-frequency filter.',
+    mitigation: 'Auto-cleared via Kalman filter innovation gating. Nominal lock resumed in 120ms.',
+    confidence: 99,
+  },
+  {
+    severity: 'high',
+    title: 'GEO West Graveyard Drift Conjunction Warning',
+    subsystem: 'AODCS / Geostationary Ring',
+    asset: 'INSAT-3DR',
+    description: 'Derelict apogee kick motor fragment predicted within 4.8 km during north-south inclination stationkeeping.',
+    mitigation: 'East-west tri-propellant thruster trim burn scheduled at next node crossing.',
+    confidence: 94,
+  },
+  {
+    severity: 'medium',
+    title: 'Hydrazine RCS Catalyst Bed Heater Anomaly',
+    subsystem: 'PROPULSION / RCS',
+    asset: 'SENTINEL-6A',
+    description: 'RCS thruster pack 2 catalyst bed pre-heater thermistor reading 88°C (nominal >110°C).',
+    mitigation: 'Switched secondary redundant heater circuit to continuous active mode.',
+    confidence: 89,
+  },
+  {
+    severity: 'critical',
+    title: 'High-Energy Solar Cosmic Ray Radiation Spike',
+    subsystem: 'EPS / Radiation Belts',
+    asset: 'ADITYA-L1',
+    description: 'South Atlantic Anomaly equivalent flux detected outside magnetosphere: dose rate 1.48 rad/hr.',
+    mitigation: 'Autonomous payload protective down-clock and memory SEU scrubber cycle initiated.',
+    confidence: 97,
+  },
+  {
+    severity: 'high',
+    title: 'Star Tracker Optical Stray Light SNR Drop',
+    subsystem: 'ADCS / Optical Sensors',
+    asset: 'CARTOSAT-3',
+    description: 'Stray albedo reflection from polar ice cap elevated background noise on focal plane detector.',
+    mitigation: 'Shifted attitude determination Kalman filter to Gyro-Aided Mode.',
+    confidence: 92,
+  },
+];
+
 const INITIAL_OPERATORS: OperatorItem[] = [
   { id: 1, username: 'commander.vance', email: 'vance@starvantis.space', full_name: 'Commander Vance', role: 'Mission Director', access_level: 'LEVEL 5 (EXEC)', assigned_satellites: 'ALL ASSETS', status: 'ACTIVE' },
   { id: 2, username: 'elena.rostova', email: 'rostova@starvantis.space', full_name: 'Dr. Elena Rostova', role: 'Systems Engineer', access_level: 'LEVEL 4 (SYS)', assigned_satellites: 'SENTINEL-6A', status: 'ACTIVE' },
@@ -220,6 +335,10 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
   const [historicalTelemetry, setHistoricalTelemetry] = useState<TelemetryRecord[]>([]);
 
   const [alerts, setAlerts] = useState<AlertItem[]>(INITIAL_ALERTS);
+  const [alertScanCountdownSeconds, setAlertScanCountdownSeconds] = useState<number>(300); // 5-minute countdown (300s)
+  const alertIndexRef = useRef<number>(0);
+  const alertIdCounterRef = useRef<number>(905);
+
   const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
   const [orbitalObjects, setOrbitalObjects] = useState<OrbitalObjectItem[]>([]);
   const [conjunctions, setConjunctions] = useState<ConjunctionItem[]>([]);
@@ -337,6 +456,67 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
     const timer = setInterval(updateClockAndTelemetry, 1000);
     return () => clearInterval(timer);
   }, [timezone]);
+
+  // Dispatch a realistic live space mission alert
+  const dispatchLiveAlert = useCallback(() => {
+    const template = DYNAMIC_ALERT_POOL[alertIndexRef.current % DYNAMIC_ALERT_POOL.length];
+    alertIndexRef.current += 1;
+    alertIdCounterRef.current += 1;
+    const newAlertId = `ALT-${alertIdCounterRef.current}`;
+    const timestampStr = formatMissionTime(new Date(), 'time');
+
+    const newAlert: AlertItem = {
+      id: newAlertId,
+      severity: template.severity,
+      title: template.title,
+      subsystem: template.subsystem,
+      asset: template.asset,
+      timestamp: timestampStr,
+      description: template.description,
+      mitigation: template.mitigation,
+      confidence: template.confidence,
+      acknowledged: false,
+    };
+
+    setAlerts((prev) => [newAlert, ...prev.slice(0, 24)]);
+    setAlertScanCountdownSeconds(300); // reset 5-minute timer
+
+    // Log to mission audit trail
+    setAuditLogs((prev) => [
+      {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        user: 'AI-Telemetry-Watcher',
+        action: `Live Alert Dispatched [${newAlertId}]`,
+        target: template.asset,
+        result: template.severity === 'critical' ? 'CRITICAL_DISPATCH' : 'TRIGGERED',
+        details: `${template.title} (${template.subsystem}) - Telemetry Anomaly Detected`,
+      },
+      ...prev,
+    ]);
+
+    // Play subtle audio alert notification
+    try {
+      alarmAudio.playOnce().catch(() => {});
+    } catch {
+      // Ignore
+    }
+  }, [formatMissionTime]);
+
+  // 5-minute (300s) alert countdown and auto-dispatch timer
+  useEffect(() => {
+    const alertTimer = setInterval(() => {
+      setAlertScanCountdownSeconds((sec) => {
+        if (sec <= 1) {
+          dispatchLiveAlert();
+          return 300;
+        }
+        return sec - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(alertTimer);
+  }, [dispatchLiveAlert]);
 
   // Fetch all initial data from REST API
   const refreshAll = useCallback(async () => {
@@ -697,6 +877,8 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
         liveTelemetry,
         historicalTelemetry,
         alerts,
+        alertScanCountdownSeconds,
+        dispatchLiveAlert,
         anomalies,
         orbitalObjects,
         conjunctions,

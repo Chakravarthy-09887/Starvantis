@@ -159,7 +159,7 @@ def test_all():
             pong = websocket.receive_json()
             assert pong["type"] == "PONG"
 
-        print("10. Testing AERO-AI Flight Director Copilot & Telecommands...")
+        print("10. Testing JARVIS Flight Director Copilot & Telecommands...")
         copilot_query = client.post("/api/v1/copilot/query", json={
             "prompt": "Simulate evasive collision avoidance burn for Sentinel-6A",
             "satellite_id": "SENTINEL-6A",

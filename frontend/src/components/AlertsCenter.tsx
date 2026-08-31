@@ -26,7 +26,7 @@ import { alarmAudio } from '../lib/alarmAudio';
 export default function AlertsCenter() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { alerts, ackAlert, wsConnected, formatMissionTime, currentClock, timezone } = useMission();
+  const { alerts, alertScanCountdownSeconds, dispatchLiveAlert, ackAlert, wsConnected, formatMissionTime, currentClock, timezone } = useMission();
 
   const [activeFilter, setActiveFilter] = useState<'all' | 'critical' | 'high' | 'medium' | 'low' | 'unack'>('all');
   const [expandedAlerts, setExpandedAlerts] = useState<Record<string, boolean>>({});
@@ -34,6 +34,13 @@ export default function AlertsCenter() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isBeeping, setIsBeeping] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Format countdown mm:ss
+  const formatCountdown = (totalSec: number) => {
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   // Subscribe to global alarm audio state
   useEffect(() => {
@@ -109,6 +116,13 @@ export default function AlertsCenter() {
     setTimeout(() => setSuccessToast(null), 4000);
   };
 
+  const handleTriggerManualDispatch = () => {
+    dispatchLiveAlert();
+    playAckChime();
+    setSuccessToast('New telemetry-triggered space alert successfully dispatched to active queue');
+    setTimeout(() => setSuccessToast(null), 4000);
+  };
+
   const filteredAlerts = alerts.filter((alert) => {
     if (activeFilter === 'all') return true;
     if (activeFilter === 'unack') return !alert.acknowledged;
@@ -123,7 +137,7 @@ export default function AlertsCenter() {
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         {/* Section Header */}
         <motion.div
-          className="text-center mb-10"
+          className="text-center mb-8"
           initial={{ opacity: 0, y: 25, filter: 'blur(10px)' }}
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
@@ -131,14 +145,14 @@ export default function AlertsCenter() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-alert-critical/20 bg-alert-critical/5 mb-3.5 shadow-[0_0_15px_rgba(255,59,59,0.15)]">
             <AlertOctagon size={13} className="text-alert-critical animate-pulse" />
             <span className="font-space text-[10px] tracking-[0.3em] text-alert-critical uppercase font-semibold">
-              Mission Control Alert Dispatch
+              Mission Control Alert Dispatch // 5-Min Live Loop
             </span>
           </div>
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
             ACTIVE MISSION ALERTS
           </h2>
           <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-2xl mx-auto leading-relaxed">
-            Prioritized multi-vector space alerts triggered by thermodynamic drift, optical noise, and SGP4 orbital collision forecasts.
+            Prioritized multi-vector space alerts automatically monitored and refreshed on a 5-minute synchronized telemetry polling loop.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-alert-critical/50 to-transparent mx-auto mt-4"
@@ -146,6 +160,58 @@ export default function AlertsCenter() {
             animate={isInView ? { scaleX: 1, opacity: 1 } : {}}
             transition={{ duration: 0.8, delay: 0.25 }}
           />
+        </motion.div>
+
+        {/* LIVE 5-MINUTE DISPATCH BANNER & COUNTDOWN HUD */}
+        <motion.div
+          className="mb-8 p-4 sm:p-5 rounded-3xl glass-panel border border-cyan-glow/30 shadow-[0_0_40px_rgba(4,18,34,0.8)] relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4"
+          initial={{ opacity: 0, y: 15 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, delay: 0.15 }}
+        >
+          {/* Left: Live Status & Pulse */}
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-cyan-glow/10 border border-cyan-glow/30 flex items-center justify-center text-cyan-glow shrink-0">
+              <Radio size={22} className="animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-space text-xs sm:text-sm font-bold tracking-wider text-star-white uppercase">
+                  LIVE TELEMETRY ALERT ENGINE
+                </span>
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                  5-MIN REFRESH CYCLE ACTIVE
+                </span>
+              </div>
+              <span className="font-inter text-[11px] text-muted-gray block mt-0.5">
+                Continuously evaluates thermal gradients, orbital conjunctions, and EPS bus voltages across all 12 fleet spacecraft.
+              </span>
+            </div>
+          </div>
+
+          {/* Right: Countdown Timer & Manual Trigger */}
+          <div className="flex items-center gap-3 shrink-0 flex-wrap justify-end">
+            <div className="px-4 py-2 rounded-2xl bg-black/60 border border-cyan-glow/30 text-right">
+              <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">
+                NEXT FLEET ALERT SCAN IN:
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-lg sm:text-xl font-bold text-cyan-glow tracking-wider">
+                  {formatCountdown(alertScanCountdownSeconds)}
+                </span>
+                <span className="w-2 h-2 rounded-full bg-cyan-glow animate-ping" />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleTriggerManualDispatch}
+              className="px-4 py-2.5 rounded-2xl bg-cyan-glow/20 hover:bg-cyan-glow/30 border border-cyan-glow/50 text-star-white font-space text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(99,199,255,0.25)] hover:scale-105"
+            >
+              <RotateCcw size={14} className="text-cyan-glow" />
+              <span>DISPATCH LIVE ALERT NOW</span>
+            </button>
+          </div>
         </motion.div>
 
         {/* Real-time Notification Banner */}
@@ -323,6 +389,12 @@ export default function AlertsCenter() {
                           <span className="px-2 py-0.5 rounded-md bg-cyan-glow/10 border border-cyan-glow/30 font-space text-[11px] text-cyan-glow font-bold">
                             {alert.asset}
                           </span>
+                          {parseInt(alert.id.replace('ALT-', '')) >= 905 && !alert.acknowledged && (
+                            <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-400/60 font-space text-[10px] text-emerald-300 font-bold flex items-center gap-1 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                              LIVE DISPATCH
+                            </span>
+                          )}
                           <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 font-inter text-[11px] text-star-white/80">
                             {alert.subsystem}
                           </span>

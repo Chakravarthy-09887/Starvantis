@@ -18,7 +18,6 @@ export default function MissionRiskCenter() {
   const targetScore = activeSat.riskBreakdown.overallScore;
 
   useEffect(() => {
-    let start = 0;
     const duration = 1200;
     const startTime = performance.now();
 

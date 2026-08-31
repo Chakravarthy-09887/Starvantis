@@ -7,9 +7,9 @@ from app.core.database import Base
 class Telemetry(Base):
     __tablename__ = "telemetry_records"
 
-    # Composite primary key (id, timestamp) for TimescaleDB Hypertable compatibility
+    # Primary key
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    timestamp = Column(DateTime, primary_key=True, default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True, nullable=False)
     satellite_id = Column(String(32), ForeignKey("satellites.id"), index=True, nullable=False)
     
     # Power & Thermal

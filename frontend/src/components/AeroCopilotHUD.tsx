@@ -458,7 +458,7 @@ export default function AeroCopilotHUD() {
                         <ChevronDown size={12} className="text-cyan-glow" />
                       </div>
                       <span className="font-mono text-[8px] text-cyan-glow/80 uppercase tracking-wider">
-                        {currentSat.agency} // {currentSat.orbitType}
+                        {`${currentSat.agency} // ${currentSat.orbitType}`}
                       </span>
                     </div>
                   </div>

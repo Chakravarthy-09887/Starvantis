@@ -79,7 +79,7 @@ export default function ConjunctionSection() {
     setDeltaVy(0.12);
     setDeltaVz(0.08);
     setManeuverUplinked(false);
-  }, [selectedSatelliteId]);
+  }, [selectedSatelliteId, primaryConj.recommended_delta_v_ms, primaryConj.burn_direction]);
 
   // Simulation playback loop
   useEffect(() => {

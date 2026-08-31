@@ -126,7 +126,7 @@ export default function SpaceWeatherCenter() {
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
   // Fetch live space weather
-  const fetchWeather = async () => {
+  const fetchWeather = React.useCallback(async () => {
     try {
       const data = await api.getSpaceWeather();
       if (!simCmeActive) {
@@ -135,17 +135,17 @@ export default function SpaceWeatherCenter() {
     } catch {
       // Keep active state
     }
-  };
+  }, [simCmeActive]);
 
   // Fetch spacecraft-specific radiation dosage
-  const fetchRadDose = async (satId: string) => {
+  const fetchRadDose = React.useCallback(async (satId: string) => {
     try {
       const data = await api.getSpacecraftRadiation(satId);
       setRadData(data);
     } catch {
       // Keep active
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchWeather();
@@ -155,7 +155,7 @@ export default function SpaceWeatherCenter() {
       fetchRadDose(selectedSatelliteId);
     }, 15000);
     return () => clearInterval(interval);
-  }, [selectedSatelliteId, simCmeActive]);
+  }, [selectedSatelliteId, fetchWeather, fetchRadDose]);
 
   // Toggle CME Storm Simulation Mode
   const toggleCmeSim = () => {
@@ -789,7 +789,7 @@ export default function SpaceWeatherCenter() {
                     VAN ALLEN RADIATION BELTS &amp; MAGNETOSPHERE CROSS-SECTION
                   </h3>
                   <p className="font-inter text-xs text-muted-gray">
-                    Earth's geomagnetic dipole trap: Inner Proton Belt (1k–6k km), Slot Region (6k–12k km), and Outer Relativistic Electron Belt (13k–40k km).
+                    Earth&apos;s geomagnetic dipole trap: Inner Proton Belt (1k–6k km), Slot Region (6k–12k km), and Outer Relativistic Electron Belt (13k–40k km).
                   </p>
                 </div>
               </div>
@@ -899,7 +899,7 @@ export default function SpaceWeatherCenter() {
                       <line x1="0" y1="-8" x2="0" y2="-45" stroke="#fbbf24" strokeWidth="1.5" />
                       <rect x="-80" y="-72" width="160" height="26" rx="6" fill="#090d16" stroke="#fbbf24" strokeWidth="1" />
                       <text x="0" y="-55" fill="#fbbf24" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                        {activeSat.name} // {currentAlt.toLocaleString()} km
+                        {`${activeSat.name} // ${currentAlt.toLocaleString()} km`}
                       </text>
                     </g>
                   );

@@ -26,7 +26,7 @@ class CyberThreatLog(BaseModel):
 
 
 class GNSSConstellationStatus(BaseModel):
-    name: str  # GPS, Galileo, GLONASS, NavIC
+    name: str  # GPS, Galileo, GLONASS, NavIC, StarTracker-POD
     tracked_sats: int
     health_status: str  # NOMINAL, MARGINAL, SPOOFING_SUSPECTED
     pseudorange_residual_ns: float
@@ -97,7 +97,7 @@ class KeyRotationResponse(BaseModel):
 
 class AttackSimulationRequest(BaseModel):
     satellite_id: str
-    attack_type: str  # GNSS_SPOOFING, REPLAY_ATTACK, MALICIOUS_TELECOMMAND, DOS_JAMMING, CRYPTO_KEY_EXPIRY
+    attack_type: str  # GNSS_SPOOFING, REPLAY_ATTACK, MALICIOUS_TELECOMMAND, DOS_JAMMING
 
 
 class AttackSimulationResponse(BaseModel):
@@ -111,102 +111,218 @@ class AttackSimulationResponse(BaseModel):
     quarantined_log: CyberThreatLog
 
 
-MOCK_THREAT_LOGS: List[CyberThreatLog] = [
-    CyberThreatLog(
-        id="CYBER-LOG-9041",
-        timestamp_iso=datetime.now(timezone.utc).isoformat(),
-        source_rf_carrier="2240.5 MHz (Ground Uplink Shadow)",
-        attack_vector="UNVERIFIED_TELECOMMAND_INJECTION",
-        severity="HIGH",
-        mitigation_action="HMAC-SHA256 signature invalid. Frame dropped and isolated in CCSDS SDLS quarantine buffer.",
-        quarantined=True,
-    ),
-    CyberThreatLog(
-        id="CYBER-LOG-9038",
-        timestamp_iso=datetime.now(timezone.utc).isoformat(),
-        source_rf_carrier="1575.42 MHz (L1 GPS Band)",
-        attack_vector="SPOOFED_GNSS_SIGNAL",
-        severity="MEDIUM",
-        mitigation_action="RAIM detected 42ns pseudorange step. Switched autonomous navigation to Star Tracker + IMU Kalman propagation.",
-        quarantined=True,
-    ),
-    CyberThreatLog(
-        id="CYBER-LOG-9025",
-        timestamp_iso=datetime.now(timezone.utc).isoformat(),
-        source_rf_carrier="8450.0 MHz (X-Band Carrier)",
-        attack_vector="REPLAY_ATTACK_DETECTED",
-        severity="CRITICAL",
-        mitigation_action="Stale Frame Counter (FC=104922 < Current=104950). Replay attack neutralized.",
-        quarantined=True,
-    ),
-]
+# SATELLITE-SPECIFIC CYBER PROFILES MATRIX
+SATELLITE_CYBER_PROFILES: Dict[str, Dict[str, Any]] = {
+    "SENTINEL-6A": {
+        "crypto_mode": "AES-GCM-256 (CCSDS 355.0-B-1 Compliant)",
+        "crypto_suite": "HMAC-SHA256 + ECDSA P-384 Flight Hardware Root of Trust",
+        "hsm": "FIPS 140-3 LEVEL 4 TAMPER-RESISTANT HSM ACTIVE",
+        "carrier": "2240.5 MHz (S-Band Earth Observation)",
+        "base_fc": 104982,
+        "trust_index": 99.8,
+        "raim": "NOMINAL_RAIM_LOCK (12 GPS + 10 Galileo Sats)",
+        "gnss": [
+            ("GPS (Navstar)", 12, "NOMINAL", 0.04, 44.8),
+            ("Galileo (EU)", 10, "NOMINAL", 0.03, 45.2),
+            ("GLONASS (RU)", 8, "NOMINAL", 0.06, 43.9),
+            ("DORIS POD", 4, "NOMINAL", 0.02, 47.1),
+        ],
+        "threat_logs": [
+            ("CYB-S6A-9041", "2240.5 MHz S-Band", "UNVERIFIED_TELECOMMAND_INJECTION", "HIGH", "HMAC-SHA256 signature invalid. Frame dropped and logged in CCSDS SDLS firewall."),
+            ("CYB-S6A-9038", "1575.42 MHz GPS L1", "SPOOFED_GNSS_SIGNAL", "MEDIUM", "RAIM detected 42ns pseudorange step. Switched autonomous navigation to Star Tracker + IMU Kalman propagation."),
+            ("CYB-S6A-9025", "8450.0 MHz X-Band", "REPLAY_ATTACK_DETECTED", "CRITICAL", "Stale Frame Counter (FC=104922 < Current=104950). Replay attack neutralized."),
+        ],
+    },
+    "CHANDRAYAAN-3": {
+        "crypto_mode": "Deep-Space CCSDS SDLS + LDPC Authentication",
+        "crypto_suite": "AES-256-CTR + HMAC-SHA512 Byalalu DSN Enclave",
+        "hsm": "LEON3-FT RADIATION-HARDENED LUNAR CRYPTO ENGINE",
+        "carrier": "8450.0 MHz (X-Band Deep Space Carrier)",
+        "base_fc": 482190,
+        "trust_index": 99.9,
+        "raim": "LUNAR NAV-ESTIMATOR // Star Tracker + Optical Lander Hazard Detection",
+        "gnss": [
+            ("NavIC Ground (ISRO)", 7, "NOMINAL", 0.03, 46.2),
+            ("DSN Deep Space Link", 3, "NOMINAL", 0.01, 48.0),
+            ("Lunar Star Tracker 1", 16, "NOMINAL", 0.005, 49.5),
+            ("Optical Lander Hazard", 2, "NOMINAL", 0.002, 50.0),
+        ],
+        "threat_logs": [
+            ("CYB-CH3-8104", "8450.0 MHz X-Band", "UNVERIFIED_TELECOMMAND_INJECTION", "CRITICAL", "Unauthorized orbital burn vector injection rejected by Lunar Descent guidance computer."),
+            ("CYB-CH3-7992", "2040.0 MHz S-Band", "DOS_JAMMING", "HIGH", "High RF noise floor detected during lunar far-side pass. Switched to DSSS spread spectrum notch filter."),
+        ],
+    },
+    "ADITYA-L1": {
+        "crypto_mode": "Sun-Earth L1 Halo Orbit Zero-Trust Cryptographic Firewall",
+        "crypto_suite": "ECDSA P-521 + AES-GCM-256 Solar Storm Resistant Vault",
+        "hsm": "RAD750 DUAL-CORE CRYPTO ENCLAVE (1.5M KM LAGRANGE LINK)",
+        "carrier": "2095.0 MHz (L1 Halo Orbit Telemetry)",
+        "base_fc": 612400,
+        "trust_index": 99.7,
+        "raim": "L1 LAGRANGE HALO EPHEMERIS // High-Precision Sun Sensor Matrix",
+        "gnss": [
+            ("DSN Goldstone/Madrid", 2, "NOMINAL", 0.02, 47.8),
+            ("Sun Sensor Array", 4, "NOMINAL", 0.001, 51.2),
+            ("Star Tracker A/B", 2, "NOMINAL", 0.004, 49.0),
+            ("Payload SUIT/VELC", 2, "NOMINAL", 0.001, 52.0),
+        ],
+        "threat_logs": [
+            ("CYB-L1-4091", "2095.0 MHz S-Band", "REPLAY_ATTACK_DETECTED", "HIGH", "Out-of-order CME telemetry replay packet detected and dropped by L1 Halo sequence counter."),
+            ("CYB-L1-3882", "8420.0 MHz X-Band", "UNVERIFIED_TELECOMMAND_INJECTION", "CRITICAL", "Corrupted solar coronagraph telecommand dropped at HSM barrier."),
+        ],
+    },
+    "GAGANYAAN-G1": {
+        "crypto_mode": "Human-Rated Triple-Modular Redundant (TMR) Cryptographic Shield",
+        "crypto_suite": "Quantum-Resilient Kyber-1024 + AES-256 Flight Armor",
+        "hsm": "HUMAN-RATED ZERO-TRUST BIOMETRIC & ECLSS ROOT-OF-TRUST",
+        "carrier": "2245.0 MHz (Crewed Orbital Module S-Band)",
+        "base_fc": 891240,
+        "trust_index": 100.0,
+        "raim": "CREWED POD TRIPLE-REDUNDANT NAV // NavIC + GPS + Dual Star Trackers",
+        "gnss": [
+            ("NavIC (ISRO)", 7, "NOMINAL", 0.02, 47.5),
+            ("GPS (Navstar)", 12, "NOMINAL", 0.03, 46.0),
+            ("Galileo (EU)", 10, "NOMINAL", 0.025, 46.8),
+            ("Crew ECLSS Avionics", 3, "NOMINAL", 0.001, 53.0),
+        ],
+        "threat_logs": [
+            ("CYB-GAG-1001", "2245.0 MHz S-Band", "UNAUTHORIZED_UPLINK", "CRITICAL", "Unauthenticated ground command targeting Crew ECLSS valve locked out by TMR safety barrier."),
+            ("CYB-GAG-0994", "1575.42 MHz GPS L1", "SPOOFED_GNSS_SIGNAL", "HIGH", "Re-entry trajectory spoofing attempt blocked by autonomous NavIC/INS cross-correlation."),
+        ],
+    },
+    "JWST": {
+        "crypto_mode": "Deep Space L2 Cryptographic Secure Tunnel (NASA/ESA/CSA)",
+        "crypto_suite": "AES-256-GCM + SHA-512 Cryogenic Hardware Security Co-Processor",
+        "hsm": "L2 SUN-EARTH LAGRANGE CRYPTO ENGINE // 6.7K INSTRUMENT LINK",
+        "carrier": "25.9 GHz (Ka-Band Deep Space Science Downlink)",
+        "base_fc": 349120,
+        "trust_index": 99.9,
+        "raim": "L2 LAGRANGE DEEP SKY EPHEMERIS // Fine Guidance Sensor Tracking",
+        "gnss": [
+            ("DSN 70m Complex", 3, "NOMINAL", 0.015, 48.5),
+            ("Fine Guidance Sensor", 2, "NOMINAL", 0.001, 54.0),
+            ("Cryo NIRCam Subsystem", 1, "NOMINAL", 0.002, 52.0),
+            ("Wavefront Sensing POD", 1, "NOMINAL", 0.001, 55.0),
+        ],
+        "threat_logs": [
+            ("CYB-JWST-5012", "2090.0 MHz S-Band", "UNVERIFIED_TELECOMMAND_INJECTION", "CRITICAL", "MIRI cryocooler loop setpoint telecommand without valid JPL root signature blocked."),
+        ],
+    },
+    "NISAR": {
+        "crypto_mode": "NASA-ISRO Dual Synthetic Aperture Radar Secure Data Protocol",
+        "crypto_suite": "AES-256 + SweepSAR High-Throughput 3.2 Gbps Crypto Core",
+        "hsm": "DUAL NASA/ISRO HSM ROOT-OF-TRUST VAULT",
+        "carrier": "3200.0 MHz S-Band & 1250.0 MHz L-Band SweepSAR",
+        "base_fc": 219480,
+        "trust_index": 99.8,
+        "raim": "HIGH-PRECISION ORBIT DETERMINATION (HPOD) // Dual L/S-Band",
+        "gnss": [
+            ("GPS Dual-Frequency", 12, "NOMINAL", 0.02, 46.5),
+            ("NavIC Precision", 7, "NOMINAL", 0.025, 47.0),
+            ("Galileo E5a/E5b", 8, "NOMINAL", 0.03, 45.8),
+            ("SAR Radar Interferometry", 2, "NOMINAL", 0.005, 50.0),
+        ],
+        "threat_logs": [
+            ("CYB-NIS-2041", "1250.0 MHz L-Band", "DOS_JAMMING", "HIGH", "Ground interference source on SweepSAR payload downlink isolated with digital beamforming null."),
+        ],
+    },
+    "STARLINK-4112": {
+        "crypto_mode": "Quantum Key Distribution (QKD) & Inter-Satellite Laser Link Security",
+        "crypto_suite": "ChaCha20-Poly1305 + WireGuard Mesh Cryptography",
+        "hsm": "CUSTOM ASIC EMBEDDED ZERO-TRUST CRYPTO ENCLAVE",
+        "carrier": "1550 nm (Optical Laser Inter-Satellite Crosslink)",
+        "base_fc": 1849200,
+        "trust_index": 99.6,
+        "raim": "MULTI-SATELLITE MESH PEER-TO-PEER RAIM // Starlink Constellation",
+        "gnss": [
+            ("Laser Peer Crosslinks", 4, "NOMINAL", 0.005, 52.0),
+            ("GPS Constellation", 12, "NOMINAL", 0.035, 45.5),
+            ("Galileo Nav", 8, "NOMINAL", 0.04, 44.8),
+            ("Gateway Ku/Ka Link", 2, "NOMINAL", 0.01, 48.0),
+        ],
+        "threat_logs": [
+            ("CYB-STL-9912", "1550 nm Laser Crosslink", "REPLAY_ATTACK_DETECTED", "MEDIUM", "Inter-satellite routing mesh dropped duplicated frame header with stale packet timestamp."),
+        ],
+    },
+}
+
+
+def get_profile_for_sat(sat_id: str) -> Dict[str, Any]:
+    for key, prof in SATELLITE_CYBER_PROFILES.items():
+        if key in sat_id.upper() or sat_id.upper() in key:
+            return prof
+    return SATELLITE_CYBER_PROFILES["SENTINEL-6A"]
 
 
 @router.get("/status/{satellite_id}", response_model=SpacecraftCyberThreatStatus)
 def get_spacecraft_cyber_status(satellite_id: str, db: Session = Depends(get_db)):
-    """Retrieve comprehensive cybersecurity threat posture, CCSDS SDLS cryptographic lock, and GNSS anti-spoofing diagnostics."""
+    """Retrieve comprehensive satellite-specific cybersecurity posture, live changing metrics, and hardware security diagnostics."""
     sat = db.query(Satellite).filter(Satellite.id.ilike(f"%{satellite_id}%")).first()
     sat_name = sat.name if sat else satellite_id
+    prof = get_profile_for_sat(satellite_id)
 
     now = datetime.now(timezone.utc)
-    t = now.timestamp() / 60.0
+    sec = now.timestamp()
+    t = sec / 60.0
 
-    constellations = [
-        GNSSConstellationStatus(
-            name="GPS (Navstar)",
-            tracked_sats=12,
-            health_status="NOMINAL",
-            pseudorange_residual_ns=round(0.04 + math.sin(t * 0.1) * 0.02, 3),
-            c_n0_dbhz=round(44.8 + math.cos(t * 0.15) * 1.0, 1),
-        ),
-        GNSSConstellationStatus(
-            name="Galileo (EU)",
-            tracked_sats=9,
-            health_status="NOMINAL",
-            pseudorange_residual_ns=round(0.03 + math.cos(t * 0.12) * 0.015, 3),
-            c_n0_dbhz=round(45.2 + math.sin(t * 0.18) * 0.9, 1),
-        ),
-        GNSSConstellationStatus(
-            name="GLONASS (RU)",
-            tracked_sats=8,
-            health_status="NOMINAL",
-            pseudorange_residual_ns=round(0.06 + math.sin(t * 0.08) * 0.03, 3),
-            c_n0_dbhz=round(43.9 + math.cos(t * 0.1) * 1.1, 1),
-        ),
-        GNSSConstellationStatus(
-            name="NavIC (ISRO)",
-            tracked_sats=7,
-            health_status="NOMINAL",
-            pseudorange_residual_ns=round(0.035 + math.sin(t * 0.14) * 0.018, 3),
-            c_n0_dbhz=round(46.0 + math.sin(t * 0.2) * 0.8, 1),
-        ),
-    ]
+    # Live dynamic metrics with micro-fluctuations
+    jitter = math.sin(sec * 1.5) * 0.01
+    c_n0_jitter = math.cos(sec * 0.8) * 0.6
+    live_fc = prof["base_fc"] + int(sec * 2) % 10000
+
+    constellations: List[GNSSConstellationStatus] = []
+    for name, count, health, res, cn0 in prof["gnss"]:
+        constellations.append(
+            GNSSConstellationStatus(
+                name=name,
+                tracked_sats=count,
+                health_status=health,
+                pseudorange_residual_ns=round(max(0.001, res + jitter), 4),
+                c_n0_dbhz=round(cn0 + c_n0_jitter, 1),
+            )
+        )
 
     pipeline = PacketPipelineStats(
-        demodulated_fps=120,
+        demodulated_fps=120 + int(math.sin(sec * 2.0) * 4),
         frame_counter_valid_pct=99.98,
-        hmac_authenticated_pct=99.92,
+        hmac_authenticated_pct=99.94,
         zero_trust_quarantined_fps=0,
         obc_queue_status="NOMINAL_EXECUTION",
     )
+
+    threat_logs_list: List[CyberThreatLog] = []
+    for log_id, carrier, vector, sev, mit in prof["threat_logs"]:
+        threat_logs_list.append(
+            CyberThreatLog(
+                id=log_id,
+                timestamp_iso=now.isoformat(),
+                source_rf_carrier=carrier,
+                attack_vector=vector,
+                severity=sev,
+                mitigation_action=mit,
+                quarantined=True,
+            )
+        )
+
+    epoch_hash = hashlib.sha256(f"{satellite_id}:{now.strftime('%Y-%m-%d-%H')}".encode()).hexdigest()[:8].upper()
 
     return SpacecraftCyberThreatStatus(
         satellite_id=satellite_id,
         satellite_name=sat_name,
         overall_threat_level="SECURE",
-        trust_index_pct=99.8,
-        ccsds_sdls_crypto_mode="AES-GCM-256 (CCSDS 355.0-B-1 Compliant)",
-        key_rotation_status="KEYS_VALID // Next Epoch Rotation in 14h 22m",
-        key_epoch_id="EPOCH-2026-08-31-09B",
+        trust_index_pct=prof["trust_index"],
+        ccsds_sdls_crypto_mode=prof["crypto_mode"],
+        key_rotation_status=f"KEYS_VALID // Next Epoch Rotation in 14h 22m",
+        key_epoch_id=f"EPOCH-2026-{epoch_hash}",
         key_entropy_bits=256,
-        hsm_enclave_status="FIPS 140-3 LEVEL 4 TAMPER-RESISTANT HSM ACTIVE",
-        gnss_raim_status="NOMINAL_RAIM_LOCK (36 Satellites Multi-Constellation)",
-        gps_pseudorange_residual_ns=round(0.04 + math.sin(t * 0.1) * 0.02, 3),
-        carrier_to_noise_c_n0_dbhz=round(44.5 + math.cos(t * 0.2) * 1.2, 1),
-        frame_sequence_counter=104982 + int(t * 4) % 1000,
-        active_crypto_suite="HMAC-SHA256 + ECDSA P-384 Flight Hardware Root of Trust",
-        quarantined_packets_24h=len(MOCK_THREAT_LOGS),
-        threat_logs=MOCK_THREAT_LOGS,
+        hsm_enclave_status=prof["hsm"],
+        gnss_raim_status=prof["raim"],
+        gps_pseudorange_residual_ns=round(0.04 + jitter, 4),
+        carrier_to_noise_c_n0_dbhz=round(44.5 + c_n0_jitter, 1),
+        frame_sequence_counter=live_fc,
+        active_crypto_suite=prof["crypto_suite"],
+        quarantined_packets_24h=len(threat_logs_list),
+        threat_logs=threat_logs_list,
         gnss_constellations=constellations,
         packet_pipeline=pipeline,
     )
@@ -234,16 +350,17 @@ def rotate_cryptographic_keys(req: KeyRotationRequest):
 def simulate_cyber_attack(req: AttackSimulationRequest):
     """Simulate real-world aerospace cyber attack vectors and evaluate autonomous onboard firewall defenses."""
     now_iso = datetime.now(timezone.utc).isoformat()
-    log_id = f"CYB-ATTK-{random.randint(1000, 9999)}"
+    log_id = f"CYB-ATTK-{req.satellite_id[:4]}-{random.randint(1000, 9999)}"
+    prof = get_profile_for_sat(req.satellite_id)
 
     if req.attack_type == "GNSS_SPOOFING":
         log = CyberThreatLog(
             id=log_id,
             timestamp_iso=now_iso,
-            source_rf_carrier="1575.42 MHz (L1 GNSS)",
+            source_rf_carrier="1575.42 MHz (L1 GNSS Carrier)",
             attack_vector="SPOOFED_GNSS_SIGNAL",
             severity="HIGH",
-            mitigation_action="RAIM detected sudden +84ns pseudorange jump. Satellite switched to autonomous Star Tracker + IMU Kalman navigation.",
+            mitigation_action=f"RAIM detected sudden +84ns pseudorange jump on {req.satellite_id}. Autonomous navigation switched to Star Tracker + IMU Kalman propagation.",
             quarantined=True,
         )
         return AttackSimulationResponse(
@@ -251,8 +368,8 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
             attack_type=req.attack_type,
             satellite_id=req.satellite_id,
             threat_severity="HIGH",
-            detected_anomaly="False Doppler velocity and step discontinuity detected in GPS carrier tracking loop.",
-            autonomous_mitigation="Autonomous RAIM discarded spoofed GPS signals. Spacecraft switched attitude determination to Star Trackers + Fiber Optic Gyros.",
+            detected_anomaly=f"False Doppler velocity and step discontinuity detected in {req.satellite_id} GPS carrier tracking loop.",
+            autonomous_mitigation=f"Autonomous RAIM discarded spoofed GPS signals on {req.satellite_id}. Spacecraft switched attitude determination to Star Trackers + Fiber Optic Gyros.",
             flight_computer_action="GNSS Ephemeris isolated. Ephemeris integrity index restored to 100%.",
             quarantined_log=log,
         )
@@ -260,10 +377,10 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
         log = CyberThreatLog(
             id=log_id,
             timestamp_iso=now_iso,
-            source_rf_carrier="8450.0 MHz (X-Band Carrier)",
+            source_rf_carrier=prof["carrier"],
             attack_vector="REPLAY_ATTACK_DETECTED",
             severity="CRITICAL",
-            mitigation_action="Stale Frame Sequence Counter (FC=104800 vs Required >=104982). Frame rejected instantly.",
+            mitigation_action=f"Stale Frame Sequence Counter (FC={prof['base_fc'] - 200} vs Required >={prof['base_fc']}). Frame rejected instantly.",
             quarantined=True,
         )
         return AttackSimulationResponse(
@@ -271,7 +388,7 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
             attack_type=req.attack_type,
             satellite_id=req.satellite_id,
             threat_severity="CRITICAL",
-            detected_anomaly="Stale authenticated telecommand frame counter detected (previously executed packet).",
+            detected_anomaly=f"Stale authenticated telecommand frame counter detected against {req.satellite_id} (previously executed packet replay attempt).",
             autonomous_mitigation="CCSDS SDLS Anti-Replay Sliding Window rejected duplicate command sequence.",
             flight_computer_action="Duplicate frame dropped. Source RF carrier frequency flagged in ground uplink monitor.",
             quarantined_log=log,
@@ -280,10 +397,10 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
         log = CyberThreatLog(
             id=log_id,
             timestamp_iso=now_iso,
-            source_rf_carrier="2240.5 MHz (S-Band Uplink)",
+            source_rf_carrier=prof["carrier"],
             attack_vector="DOS_JAMMING",
             severity="HIGH",
-            mitigation_action="Broadband RF noise detected. Activated Direct Sequence Spread Spectrum (DSSS) anti-jamming filter.",
+            mitigation_action=f"Broadband RF noise detected on {req.satellite_id} uplink receiver. Activated Direct Sequence Spread Spectrum (DSSS) anti-jamming filter.",
             quarantined=True,
         )
         return AttackSimulationResponse(
@@ -291,7 +408,7 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
             attack_type=req.attack_type,
             satellite_id=req.satellite_id,
             threat_severity="HIGH",
-            detected_anomaly="High noise floor (+18 dB RF rise) detected on nominal S-band uplink receiver channel.",
+            detected_anomaly=f"High noise floor (+18 dB RF rise) detected on {req.satellite_id} nominal uplink receiver channel.",
             autonomous_mitigation="Switched receiver to adaptive frequency notch filter and high-gain phased array nulling.",
             flight_computer_action="Uplink carrier SNR restored from 2.1 dB to 24.8 dB.",
             quarantined_log=log,
@@ -301,10 +418,10 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
         log = CyberThreatLog(
             id=log_id,
             timestamp_iso=now_iso,
-            source_rf_carrier="2240.5 MHz (Ground Carrier)",
+            source_rf_carrier=prof["carrier"],
             attack_vector="UNVERIFIED_TELECOMMAND_INJECTION",
             severity="CRITICAL",
-            mitigation_action="HMAC-SHA256 signature verification failed. Forged thruster fire sequence quarantined.",
+            mitigation_action=f"HMAC-SHA256 signature verification failed on {req.satellite_id}. Forged propulsion fire sequence quarantined.",
             quarantined=True,
         )
         return AttackSimulationResponse(
@@ -312,8 +429,8 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
             attack_type=req.attack_type,
             satellite_id=req.satellite_id,
             threat_severity="CRITICAL",
-            detected_anomaly="Unauthorized telecommand payload with tampered cryptographic authentication tag.",
-            autonomous_mitigation="On-Board Computer (OBC) rejected frame execution. Payload isolated to tamper memory log.",
+            detected_anomaly=f"Unauthorized telecommand payload directed at {req.satellite_id} with tampered cryptographic authentication tag.",
+            autonomous_mitigation=f"On-Board Computer (OBC) on {req.satellite_id} rejected frame execution. Payload isolated to tamper memory log.",
             flight_computer_action="OBC execution buffer protected. Zero command side-effects.",
             quarantined_log=log,
         )
@@ -322,7 +439,7 @@ def simulate_cyber_attack(req: AttackSimulationRequest):
 @router.post("/verify-packet", response_model=PacketVerificationResponse)
 def verify_uplink_packet(req: PacketVerificationRequest):
     """Cryptographically verify incoming telecommand against flight computer hardware Root-of-Trust."""
-    secret = b"STARVANTIS_MISSION_ROOT_SECRET_KEY_2026"
+    secret = f"STARVANTIS_MISSION_ROOT_SECRET_KEY_2026_{req.satellite_id}".encode()
     data = f"{req.satellite_id}:{req.command_name}:{req.raw_payload_hex}".encode()
     expected_hmac = hmac.new(secret, data, hashlib.sha256).hexdigest()
 
@@ -336,7 +453,7 @@ def verify_uplink_packet(req: PacketVerificationRequest):
             is_authentic=True,
             computed_hmac=computed_sig[:24] + "...",
             trust_score=99.9,
-            action_taken="Command authenticated by On-Board Computer (OBC) and scheduled for execution in flight sequence buffer.",
+            action_taken=f"Command authenticated by {req.satellite_id} On-Board Computer (OBC) and scheduled for execution in flight sequence buffer.",
         )
     else:
         return PacketVerificationResponse(
@@ -345,5 +462,5 @@ def verify_uplink_packet(req: PacketVerificationRequest):
             is_authentic=False,
             computed_hmac=expected_hmac[:24] + "...",
             trust_score=0.0,
-            action_taken="SIGNATURE_MISMATCH: Cryptographic hash failed. Frame instantly quarantined to secure audit log.",
+            action_taken=f"SIGNATURE_MISMATCH on {req.satellite_id}: Cryptographic hash failed. Frame instantly quarantined to secure audit log.",
         )

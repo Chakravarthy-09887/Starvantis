@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import {
   ShieldAlert,
   ShieldCheck,
@@ -21,10 +21,11 @@ import {
   Cpu,
   Search,
   Filter,
-  Eye,
-  Sliders,
   Play,
   RotateCcw,
+  Sparkles,
+  Wifi,
+  Sliders,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
@@ -35,6 +36,7 @@ import {
   PacketVerificationResult,
   KeyRotationResult,
   AttackSimulationResult,
+  GNSSConstellationStatus,
 } from '../lib/api';
 
 export default function CyberDefenseMatrix() {
@@ -47,22 +49,27 @@ export default function CyberDefenseMatrix() {
   const [testResult, setTestResult] = useState<PacketVerificationResult | null>(null);
   const [rotatingKeys, setRotatingKeys] = useState(false);
   const [rotationResult, setRotationResult] = useState<KeyRotationResult | null>(null);
-  const [simulatingAttack, setSimulatingAttack] = useState(false);
-  const [attackResult, setAttackResult] = useState<AttackSimulationResult | null>(null);
   const [selectedAttackType, setSelectedAttackType] = useState<string>('GNSS_SPOOFING');
+
+  // Interactive Live Simulation Engine States
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [simStep, setSimStep] = useState<number>(0);
+  const [simMessage, setSimMessage] = useState<string>('');
+  const [attackResult, setAttackResult] = useState<AttackSimulationResult | null>(null);
+
+  // Live Jitter and Streaming Tick
+  const [liveSec, setLiveSec] = useState<number>(0);
+  const [liveThroughput, setLiveThroughput] = useState<number>(120);
 
   // Logs Filtering & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<string>('ALL');
-  const [localLogs, setLocalLogs] = useState<CyberThreatLog[]>([]);
-
-  // Pipeline animation tick
-  const [pipelineStep, setPipelineStep] = useState(0);
+  const [threatLogs, setThreatLogs] = useState<CyberThreatLog[]>([]);
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
-  // Fetch cybersecurity status
+  // 1. Fetch satellite-specific cybersecurity posture on mount and satellite switch
   useEffect(() => {
     let isMounted = true;
     const fetchStatus = async () => {
@@ -70,49 +77,60 @@ export default function CyberDefenseMatrix() {
         const data = await api.getCyberDefenseStatus(selectedSatelliteId);
         if (isMounted) {
           setCyberStatus(data);
-          if (localLogs.length === 0 && data.threat_logs) {
-            setLocalLogs(data.threat_logs);
-          }
+          setThreatLogs(data.threat_logs || []);
+          setTestResult(null);
+          setAttackResult(null);
+          setRotationResult(null);
         }
       } catch {
-        // Fallback to initial state
+        // Fallback
       }
     };
     fetchStatus();
-    const interval = setInterval(fetchStatus, 8000);
+    const interval = setInterval(fetchStatus, 10000);
     return () => {
       isMounted = false;
       clearInterval(interval);
     };
-  }, [selectedSatelliteId, localLogs.length]);
+  }, [selectedSatelliteId]);
 
-  // Animated pipeline loop
+  // 2. Real-time Live Ticking loop for micro-fluctuations and frame counter progression
   useEffect(() => {
-    const pInterval = setInterval(() => {
-      setPipelineStep((prev) => (prev + 1) % 5);
-    }, 1200);
-    return () => clearInterval(pInterval);
+    const tickTimer = setInterval(() => {
+      setLiveSec((s) => s + 1);
+      setLiveThroughput(118 + Math.floor(Math.random() * 7));
+    }, 1000);
+    return () => clearInterval(tickTimer);
   }, []);
 
-  // Run cryptographic verification simulation
-  const handleVerifyPacket = async (type: 'AUTHENTIC' | 'MALICIOUS_FORGERY') => {
-    setTestingPacket(true);
-    try {
-      const sig = type === 'AUTHENTIC' ? 'AUTO_GENERATE' : '0xDEADBEEF4928A49C82B1';
-      const res = await api.verifyUplinkPacket({
-        satellite_id: selectedSatelliteId,
-        command_name: 'CMD_THRUSTER_FIRING_VECTOR',
-        raw_payload_hex: '0x434D445F4255524E5F564543544F52',
-        signature_hmac: sig,
-        operator_key_id: 'OP-KEY-VAULT-2026-A',
-      });
-      setTestResult(res);
-    } catch {
-      // Keep state
-    } finally {
-      setTestingPacket(false);
+  // Compute live fluctuating parameters per satellite
+  const liveFrameCounter = useMemo(() => {
+    const base = cyberStatus?.frame_sequence_counter || 104982;
+    return base + liveSec * 2;
+  }, [cyberStatus?.frame_sequence_counter, liveSec]);
+
+  const livePseudorange = useMemo(() => {
+    if (isSimulating && selectedAttackType === 'GNSS_SPOOFING') {
+      return (0.084 + Math.sin(liveSec * 3.0) * 0.01).toFixed(4);
     }
-  };
+    const base = cyberStatus?.gps_pseudorange_residual_ns || 0.04;
+    return (base + Math.sin(liveSec * 1.5) * 0.003).toFixed(4);
+  }, [cyberStatus?.gps_pseudorange_residual_ns, liveSec, isSimulating, selectedAttackType]);
+
+  const liveCN0 = useMemo(() => {
+    if (isSimulating && selectedAttackType === 'DOS_JAMMING') {
+      return (14.2 + Math.cos(liveSec * 2.0) * 2.0).toFixed(1);
+    }
+    const base = cyberStatus?.carrier_to_noise_c_n0_dbhz || 44.5;
+    return (base + Math.cos(liveSec * 0.8) * 0.4).toFixed(1);
+  }, [cyberStatus?.carrier_to_noise_c_n0_dbhz, liveSec, isSimulating, selectedAttackType]);
+
+  const liveTrustIndex = useMemo(() => {
+    if (isSimulating) {
+      return (92.4 + Math.sin(liveSec * 2) * 3).toFixed(1);
+    }
+    return (cyberStatus?.trust_index_pct || 99.8).toFixed(1);
+  }, [cyberStatus?.trust_index_pct, isSimulating, liveSec]);
 
   // Trigger on-orbit session key rotation
   const handleRotateKeys = async () => {
@@ -137,28 +155,74 @@ export default function CyberDefenseMatrix() {
     }
   };
 
-  // Simulate complex space cyber-attack
+  // Run Real-Time Multi-Step Cyber Attack Simulation
   const handleSimulateAttack = async () => {
-    setSimulatingAttack(true);
-    try {
-      const res = await api.simulateCyberAttack({
-        satellite_id: selectedSatelliteId,
-        attack_type: selectedAttackType,
-      });
-      setAttackResult(res);
-      if (res.quarantined_log) {
-        setLocalLogs((prev) => [res.quarantined_log, ...prev]);
+    if (isSimulating) return;
+    setIsSimulating(true);
+    setSimStep(1);
+    setSimMessage('STAGE 1: Ingesting RF Carrier and evaluating frame parity...');
+
+    // Step 1 -> Step 2
+    setTimeout(() => {
+      setSimStep(2);
+      setSimMessage('STAGE 2: Evaluating Frame Sequence Counter and anti-replay sliding window...');
+    }, 1000);
+
+    // Step 2 -> Step 3
+    setTimeout(() => {
+      setSimStep(3);
+      setSimMessage('STAGE 3: Cryptographic HMAC-SHA256 Root-of-Trust verification...');
+    }, 2000);
+
+    // Step 3 -> Step 4 & API Execution
+    setTimeout(async () => {
+      setSimStep(4);
+      setSimMessage('STAGE 4: Zero-Trust Firewall anomaly trigger & autonomous mitigation...');
+      try {
+        const res = await api.simulateCyberAttack({
+          satellite_id: selectedSatelliteId,
+          attack_type: selectedAttackType,
+        });
+        setAttackResult(res);
+        if (res.quarantined_log) {
+          setThreatLogs((prev) => [res.quarantined_log, ...prev]);
+        }
+      } catch {
+        // Keep state
       }
+    }, 3000);
+
+    // Step 4 -> Complete
+    setTimeout(() => {
+      setSimStep(5);
+      setSimMessage('STAGE 5: Threat neutralized. OBC protected, telemetry isolated to quarantine log.');
+      setIsSimulating(false);
+    }, 4500);
+  };
+
+  // Run cryptographic verification simulation for custom packet
+  const handleVerifyPacket = async (type: 'AUTHENTIC' | 'MALICIOUS_FORGERY') => {
+    setTestingPacket(true);
+    try {
+      const sig = type === 'AUTHENTIC' ? 'AUTO_GENERATE' : '0xDEADBEEF4928A49C82B1';
+      const res = await api.verifyUplinkPacket({
+        satellite_id: selectedSatelliteId,
+        command_name: 'CMD_THRUSTER_FIRING_VECTOR',
+        raw_payload_hex: '0x434D445F4255524E5F564543544F52',
+        signature_hmac: sig,
+        operator_key_id: 'OP-KEY-VAULT-2026-A',
+      });
+      setTestResult(res);
     } catch {
       // Keep state
     } finally {
-      setSimulatingAttack(false);
+      setTestingPacket(false);
     }
   };
 
   // Filtered threat logs
   const filteredLogs = useMemo(() => {
-    return localLogs.filter((log) => {
+    return threatLogs.filter((log) => {
       const matchesSearch =
         log.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         log.attack_vector.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -168,14 +232,14 @@ export default function CyberDefenseMatrix() {
         selectedSeverity === 'ALL' || log.severity.toUpperCase() === selectedSeverity.toUpperCase();
       return matchesSearch && matchesSeverity;
     });
-  }, [localLogs, searchQuery, selectedSeverity]);
+  }, [threatLogs, searchQuery, selectedSeverity]);
 
   const attackScenarios = [
     {
       id: 'GNSS_SPOOFING',
       name: 'GNSS / GPS Spoofing',
       icon: Radio,
-      desc: 'Inject fake L1/L2 GPS RF pseudoranges to induce navigation trajectory drift.',
+      desc: 'Inject fake L1/L2 GPS RF pseudorange steps (+84ns) to induce navigation trajectory drift.',
       defense: 'RAIM autonomous Doppler & Star Tracker Kalman failover',
       badge: 'HIGH RISK',
       color: 'text-amber-400 border-amber-400/30 bg-amber-500/10',
@@ -202,7 +266,7 @@ export default function CyberDefenseMatrix() {
       id: 'DOS_JAMMING',
       name: 'Uplink Carrier Jamming',
       icon: Zap,
-      desc: 'Flood S-band receiver with high-power broadband RF noise floor.',
+      desc: 'Flood receiver channel with high-power broadband RF noise floor (+18 dB).',
       defense: 'Direct Sequence Spread Spectrum (DSSS) Adaptive Notch Filtering',
       badge: 'HIGH RISK',
       color: 'text-amber-400 border-amber-400/30 bg-amber-500/10',
@@ -210,11 +274,11 @@ export default function CyberDefenseMatrix() {
   ];
 
   const pipelineStages = [
-    { id: 0, label: 'RF DEMOD', sub: '2.2 GHz S-Band', status: 'LOCKED' },
-    { id: 1, label: 'FRAME COUNTER', sub: `FC=${cyberStatus?.frame_sequence_counter || 104982}`, status: 'SYNCED' },
-    { id: 2, label: 'HMAC-SHA256', sub: 'HSM Enclave', status: 'VERIFIED' },
-    { id: 3, label: 'ZERO-TRUST FIREWALL', sub: 'Rule Matrix', status: 'CLEARED' },
-    { id: 4, label: 'OBC FLIGHT QUEUE', sub: 'Safe Sequence', status: 'EXECUTING' },
+    { id: 1, label: 'RF DEMOD', sub: '2.2 GHz S-Band' },
+    { id: 2, label: 'FRAME COUNTER', sub: `FC=${liveFrameCounter}` },
+    { id: 3, label: 'HMAC-SHA256', sub: 'HSM Enclave' },
+    { id: 4, label: 'ZERO-TRUST FIREWALL', sub: 'Rule Matrix' },
+    { id: 5, label: 'OBC FLIGHT QUEUE', sub: 'Execution Buffer' },
   ];
 
   return (
@@ -227,8 +291,8 @@ export default function CyberDefenseMatrix() {
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-red-400/30 bg-red-500/10 mb-3 shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-            <ShieldAlert size={13} className="text-red-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-red-400/30 bg-red-500/10 mb-3 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
+            <ShieldAlert size={14} className="text-red-400 animate-pulse" />
             <span className="font-space text-[10px] md:text-xs tracking-[0.25em] text-red-400 uppercase font-bold">
               ZERO-TRUST ON-BOARD CRYPTOGRAPHIC FIREWALL &amp; GNSS ANTI-SPOOFING
             </span>
@@ -237,7 +301,7 @@ export default function CyberDefenseMatrix() {
             SPACECRAFT CYBER-DEFENSE
           </h2>
           <p className="font-inter text-xs sm:text-sm text-muted-gray mt-2.5 max-w-2xl mx-auto leading-relaxed">
-            CCSDS SDLS AES-256 cryptographic security, hardware root-of-trust key vault, autonomous multi-constellation GNSS RAIM integrity monitoring, and real-time threat quarantine.
+            Real-time CCSDS SDLS cryptographic verification, on-orbit key rotation, GNSS RAIM multi-constellation anti-spoofing, and interactive aerospace threat simulation.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-red-400/60 to-transparent mx-auto mt-4"
@@ -246,8 +310,8 @@ export default function CyberDefenseMatrix() {
             transition={{ duration: 0.8, delay: 0.25 }}
           />
 
-          {/* SATELLITE SWITCHER TABS - Responsive Scroll/Wrap */}
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-2 max-w-4xl mx-auto">
+          {/* SATELLITE SWITCHER TABS - Unique spacecraft per button */}
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
             {FLEET_SATELLITES.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId;
               return (
@@ -257,69 +321,99 @@ export default function CyberDefenseMatrix() {
                   onClick={() => setSelectedSatelliteId(sat.id)}
                   className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border text-xs font-space tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
                     isSelected
-                      ? 'bg-red-500/20 border-red-400 text-star-white shadow-[0_0_20px_rgba(239,68,68,0.35)] scale-105 font-bold'
+                      ? 'bg-red-500/25 border-red-400 text-star-white shadow-[0_0_25px_rgba(239,68,68,0.4)] scale-105 font-bold ring-1 ring-red-400'
                       : 'bg-space-navy/60 border-glass-border text-muted-gray hover:text-star-white hover:border-red-400/40'
                   }`}
                 >
                   <Satellite size={13} className={isSelected ? 'text-red-400' : 'text-muted-gray'} />
-                  <span>{sat.name}</span>
+                  <span>{sat.name.split(' ')[0]}</span>
                 </button>
               );
             })}
           </div>
         </motion.div>
 
-        {/* 5-STAGE PACKET INSPECTION PIPELINE VISUALIZER */}
+        {/* 5-STAGE PACKET INSPECTION PIPELINE VISUALIZER (Interactive & Live) */}
         <motion.div
-          className="mb-8 p-4 sm:p-5 rounded-3xl glass-panel border border-red-500/30 shadow-[0_0_40px_rgba(239,68,68,0.1)] relative overflow-hidden"
+          className={`mb-8 p-4 sm:p-5 rounded-3xl glass-panel border transition-all duration-500 relative overflow-hidden ${
+            isSimulating
+              ? 'border-amber-400/60 shadow-[0_0_50px_rgba(245,158,11,0.25)] bg-black/80'
+              : 'border-red-500/30 shadow-[0_0_40px_rgba(239,68,68,0.1)]'
+          }`}
           initial={{ opacity: 0, y: 20 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.8, delay: 0.15 }}
         >
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-glass-border/60 pb-3 mb-4">
             <div className="flex items-center gap-2.5">
-              <Activity size={16} className="text-red-400 animate-pulse" />
+              <Activity size={16} className={`animate-pulse ${isSimulating ? 'text-amber-400' : 'text-red-400'}`} />
               <span className="font-space text-xs sm:text-sm font-bold tracking-wider text-star-white uppercase">
-                CCSDS FLIGHT PACKET INSPECTION PIPELINE // {activeSat.name}
+                CCSDS PACKET INSPECTION PIPELINE // {activeSat.name}
               </span>
             </div>
             <div className="flex items-center gap-3 text-[10px] font-mono text-muted-gray">
-              <span className="flex items-center gap-1 text-emerald-400">
+              <span className="flex items-center gap-1.5 text-emerald-400">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                120 FRAMES/SEC THROUGHPUT
+                {liveThroughput} FRAMES/SEC THROUGHPUT
               </span>
-              <span className="hidden sm:inline text-cyan-glow">0 DROPPED VALID PACKETS</span>
+              <span className="hidden sm:inline text-cyan-glow">
+                {isSimulating ? 'EVALUATING INTRUSION...' : 'OBC PROTECTED'}
+              </span>
             </div>
           </div>
 
+          {/* Real-Time Simulation Status Banner */}
+          {isSimulating && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-4 p-2.5 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-between text-xs font-space text-amber-300"
+            >
+              <div className="flex items-center gap-2">
+                <RefreshCw size={14} className="animate-spin text-amber-400" />
+                <span className="font-bold">{simMessage}</span>
+              </div>
+              <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-amber-400 text-black font-bold">
+                STAGE 0{simStep} / 05
+              </span>
+            </motion.div>
+          )}
+
           {/* Pipeline Stage Blocks */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 relative">
-            {pipelineStages.map((stage, idx) => {
-              const isActive = pipelineStep === idx;
+            {pipelineStages.map((stage) => {
+              const isActiveInSim = isSimulating && simStep === stage.id;
+              const isPassedInSim = isSimulating && simStep > stage.id;
               return (
                 <div
                   key={stage.id}
                   className={`p-3 rounded-2xl border transition-all duration-300 relative overflow-hidden ${
-                    isActive
-                      ? 'bg-red-500/20 border-red-400 shadow-[0_0_20px_rgba(239,68,68,0.3)] scale-[1.02]'
+                    isActiveInSim
+                      ? 'bg-amber-500/25 border-amber-400 shadow-[0_0_25px_rgba(245,158,11,0.4)] scale-[1.03] ring-1 ring-amber-400'
+                      : isPassedInSim
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
                       : 'bg-black/50 border-white/10'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-mono text-[9px] text-muted-gray uppercase">STAGE 0{idx + 1}</span>
+                    <span className="font-mono text-[9px] text-muted-gray uppercase">STAGE 0{stage.id}</span>
                     <span
                       className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                        isActive ? 'bg-red-400 text-black' : 'bg-white/10 text-star-white/70'
+                        isActiveInSim
+                          ? 'bg-amber-400 text-black animate-pulse'
+                          : isPassedInSim
+                          ? 'bg-emerald-400/20 text-emerald-300 border border-emerald-400/40'
+                          : 'bg-white/10 text-star-white/70'
                       }`}
                     >
-                      {stage.status}
+                      {isActiveInSim ? 'EVALUATING' : isPassedInSim ? 'CLEARED' : 'ARMED'}
                     </span>
                   </div>
                   <span className="font-space text-xs font-bold text-star-white block truncate">{stage.label}</span>
                   <span className="font-inter text-[10px] text-red-400/90 block truncate">{stage.sub}</span>
-                  {isActive && (
+                  {isActiveInSim && (
                     <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-red-500 via-amber-400 to-red-500"
+                      className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 via-red-500 to-amber-400 animate-pulse"
                       layoutId="pipelineGlow"
                     />
                   )}
@@ -345,7 +439,7 @@ export default function CyberDefenseMatrix() {
                   <Lock size={20} className="text-red-400 animate-pulse shrink-0" />
                   <div>
                     <span className="font-space text-xs sm:text-sm tracking-wider text-star-white uppercase block font-bold">
-                      HARDWARE ROOT-OF-TRUST &amp; KEY VAULT
+                      HARDWARE ROOT-OF-TRUST &amp; KEY VAULT // {activeSat.name.split(' ')[0]}
                     </span>
                     <span className="font-space text-[10px] sm:text-[11px] text-red-400/90 font-mono">
                       {cyberStatus?.hsm_enclave_status || 'FIPS 140-3 LEVEL 4 TAMPER-RESISTANT HSM ACTIVE'}
@@ -356,7 +450,7 @@ export default function CyberDefenseMatrix() {
                 <button
                   type="button"
                   onClick={handleRotateKeys}
-                  disabled={rotatingKeys}
+                  disabled={rotatingKeys || isSimulating}
                   className="px-3.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 border border-red-400/50 text-red-300 font-space text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0 self-start sm:self-auto"
                 >
                   <RefreshCw size={13} className={rotatingKeys ? 'animate-spin' : ''} />
@@ -364,20 +458,26 @@ export default function CyberDefenseMatrix() {
                 </button>
               </div>
 
-              {/* Security Metrics Grid */}
+              {/* Security Metrics Grid (Live Fluctuating) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 <div className="p-3 rounded-2xl bg-black/50 border border-white/10 space-y-1">
                   <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">ENCRYPTION:</span>
-                  <span className="font-mono text-xs font-bold text-red-400 block truncate">AES-GCM-256</span>
-                  <span className="text-[8px] font-inter text-star-white/60 block">CCSDS 355.0-B-1</span>
+                  <span className="font-mono text-xs font-bold text-red-400 block truncate">
+                    {cyberStatus?.ccsds_sdls_crypto_mode?.split(' ')[0] || 'AES-GCM-256'}
+                  </span>
+                  <span className="text-[8px] font-inter text-star-white/60 block truncate">
+                    {activeSat.agency} Secure
+                  </span>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-black/50 border border-white/10 space-y-1">
                   <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">FRAME COUNTER:</span>
                   <span className="font-mono text-xs font-bold text-cyan-glow block truncate">
-                    {cyberStatus?.frame_sequence_counter || 104982}
+                    {liveFrameCounter}
                   </span>
-                  <span className="text-[8px] font-inter text-emerald-400 block">Anti-Replay Lock</span>
+                  <span className="text-[8px] font-inter text-emerald-400 block flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Stream
+                  </span>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-black/50 border border-white/10 space-y-1">
@@ -391,7 +491,7 @@ export default function CyberDefenseMatrix() {
                 <div className="p-3 rounded-2xl bg-black/50 border border-white/10 space-y-1">
                   <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">TRUST INDEX:</span>
                   <span className="font-mono text-xs font-bold text-emerald-400 block truncate">
-                    {cyberStatus?.trust_index_pct || 99.8}%
+                    {liveTrustIndex}%
                   </span>
                   <span className="text-[8px] font-inter text-emerald-400 block">Zero Compromise</span>
                 </div>
@@ -429,43 +529,43 @@ export default function CyberDefenseMatrix() {
                   <span>RECEIVER AUTONOMOUS INTEGRITY MONITORING (RAIM)</span>
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 self-start sm:self-auto">
-                  NOMINAL RAIM LOCK (36 SATS)
+                  {cyberStatus?.gnss_raim_status?.split('//')[0] || 'NOMINAL RAIM LOCK'}
                 </span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-space">
                 <div className="p-3 rounded-2xl bg-black/50 border border-white/10 flex justify-between items-center">
                   <span className="text-muted-gray text-[11px]">Pseudorange Residual:</span>
-                  <span className="font-mono text-emerald-400 font-bold">
-                    {cyberStatus?.gps_pseudorange_residual_ns || 0.04} ns
+                  <span className={`font-mono font-bold ${isSimulating && selectedAttackType === 'GNSS_SPOOFING' ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                    {livePseudorange} ns
                   </span>
                 </div>
                 <div className="p-3 rounded-2xl bg-black/50 border border-white/10 flex justify-between items-center">
                   <span className="text-muted-gray text-[11px]">Carrier-to-Noise (C/N₀):</span>
-                  <span className="font-mono text-cyan-glow font-bold">
-                    {cyberStatus?.carrier_to_noise_c_n0_dbhz || 44.5} dB-Hz
+                  <span className={`font-mono font-bold ${isSimulating && selectedAttackType === 'DOS_JAMMING' ? 'text-amber-400 animate-pulse' : 'text-cyan-glow'}`}>
+                    {liveCN0} dB-Hz
                   </span>
                 </div>
               </div>
 
-              {/* Multi-Constellation Health Matrix */}
+              {/* Satellite-Specific Constellation Health Matrix */}
               <div className="space-y-2">
                 <span className="text-[10px] font-space font-bold uppercase tracking-wider text-muted-gray block">
-                  TRACKED GNSS CONSTELLATION HEALTH
+                  TRACKED CONSTELLATION NODES // {activeSat.name}
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {(
                     cyberStatus?.gnss_constellations || [
                       { name: 'GPS (Navstar)', tracked_sats: 12, health_status: 'NOMINAL', pseudorange_residual_ns: 0.04, c_n0_dbhz: 44.8 },
-                      { name: 'Galileo (EU)', tracked_sats: 9, health_status: 'NOMINAL', pseudorange_residual_ns: 0.03, c_n0_dbhz: 45.2 },
-                      { name: 'GLONASS (RU)', tracked_sats: 8, health_status: 'NOMINAL', pseudorange_residual_ns: 0.06, c_n0_dbhz: 43.9 },
+                      { name: 'Galileo (EU)', tracked_sats: 10, health_status: 'NOMINAL', pseudorange_residual_ns: 0.03, c_n0_dbhz: 45.2 },
                       { name: 'NavIC (ISRO)', tracked_sats: 7, health_status: 'NOMINAL', pseudorange_residual_ns: 0.035, c_n0_dbhz: 46.0 },
+                      { name: 'Star Tracker POD', tracked_sats: 4, health_status: 'NOMINAL', pseudorange_residual_ns: 0.005, c_n0_dbhz: 50.0 },
                     ]
                   ).map((c) => (
                     <div key={c.name} className="p-2.5 rounded-xl bg-black/40 border border-white/5 space-y-1">
                       <span className="font-space text-[10px] font-bold text-star-white block truncate">{c.name}</span>
                       <div className="flex items-center justify-between text-[9px] font-mono">
-                        <span className="text-muted-gray">{c.tracked_sats} Sats</span>
+                        <span className="text-muted-gray">{c.tracked_sats} Nodes</span>
                         <span className="text-emerald-400 font-bold">{c.health_status}</span>
                       </div>
                     </div>
@@ -474,7 +574,7 @@ export default function CyberDefenseMatrix() {
               </div>
             </div>
 
-            {/* LIVE SPACE CYBER-ATTACK SIMULATOR */}
+            {/* LIVE SPACE CYBER-ATTACK SIMULATOR (Interactive) */}
             <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/30 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-glass-border pb-3">
                 <span className="font-space text-xs sm:text-sm font-bold text-amber-400 uppercase flex items-center gap-2">
@@ -493,10 +593,10 @@ export default function CyberDefenseMatrix() {
                       role="button"
                       tabIndex={0}
                       key={sc.id}
-                      onClick={() => setSelectedAttackType(sc.id)}
+                      onClick={() => !isSimulating && setSelectedAttackType(sc.id)}
                       className={`p-3 rounded-2xl border transition-all cursor-pointer space-y-1 text-left ${
                         isSelected
-                          ? 'bg-amber-500/15 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                          ? 'bg-amber-500/15 border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)] ring-1 ring-amber-400'
                           : 'bg-black/40 border-white/10 hover:border-white/20'
                       }`}
                     >
@@ -519,11 +619,15 @@ export default function CyberDefenseMatrix() {
               <button
                 type="button"
                 onClick={handleSimulateAttack}
-                disabled={simulatingAttack}
-                className="w-full py-3 rounded-2xl bg-gradient-to-r from-amber-500/20 via-red-500/20 to-amber-500/20 hover:from-amber-500/30 hover:to-red-500/30 border border-amber-400/50 text-amber-300 font-space text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                disabled={isSimulating}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-500/25 via-red-500/25 to-amber-500/25 hover:from-amber-500/35 hover:to-red-500/35 border border-amber-400/60 text-amber-300 font-space text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
               >
-                <Play size={14} className={simulatingAttack ? 'animate-spin' : ''} />
-                <span>{simulatingAttack ? 'INJECTING SCENARIO...' : `SIMULATE ${selectedAttackType} ATTACK`}</span>
+                <Play size={15} className={isSimulating ? 'animate-spin' : ''} />
+                <span>
+                  {isSimulating
+                    ? `SIMULATING ${selectedAttackType} ATTACK ON ${activeSat.name.split(' ')[0]}...`
+                    : `SIMULATE ${selectedAttackType} ATTACK ON ${activeSat.name.split(' ')[0]}`}
+                </span>
               </button>
 
               {/* Attack Simulation Result Box */}
@@ -533,14 +637,16 @@ export default function CyberDefenseMatrix() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="p-4 rounded-2xl bg-[#090306] border border-amber-400/40 text-xs font-space space-y-2"
+                    className="p-4 rounded-2xl bg-[#090306] border border-amber-400/50 text-xs font-space space-y-2 shadow-[0_0_25px_rgba(245,158,11,0.15)]"
                   >
                     <div className="flex items-center justify-between text-amber-400 font-bold border-b border-white/10 pb-2">
                       <span className="flex items-center gap-1.5">
-                        <CheckCircle2 size={15} className="text-emerald-400" />
-                        <span>ATTACK NEUTRALIZED &amp; ISOLATED</span>
+                        <CheckCircle2 size={16} className="text-emerald-400" />
+                        <span>ATTACK NEUTRALIZED &amp; ISOLATED // {attackResult.satellite_id}</span>
                       </span>
-                      <span className="font-mono text-[10px] text-emerald-400">{attackResult.status}</span>
+                      <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                        {attackResult.status}
+                      </span>
                     </div>
 
                     <div className="space-y-1 text-[11px] font-inter text-star-white/90">
@@ -581,7 +687,7 @@ export default function CyberDefenseMatrix() {
               </div>
 
               <p className="text-xs font-inter text-star-white/80 mb-4 leading-relaxed">
-                Inject test telecommand frames into the flight computer cryptographic firewall to verify HMAC-SHA256 signature enforcement and forged packet isolation.
+                Inject test telecommand frames into the flight computer cryptographic firewall to verify HMAC-SHA256 signature enforcement and forged packet isolation for {activeSat.name}.
               </p>
 
               {/* Action Buttons */}
@@ -589,7 +695,7 @@ export default function CyberDefenseMatrix() {
                 <button
                   type="button"
                   onClick={() => handleVerifyPacket('AUTHENTIC')}
-                  disabled={testingPacket}
+                  disabled={testingPacket || isSimulating}
                   className="px-3.5 py-3 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-space text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer disabled:opacity-50"
                 >
                   <CheckCircle2 size={16} />
@@ -600,7 +706,7 @@ export default function CyberDefenseMatrix() {
                 <button
                   type="button"
                   onClick={() => handleVerifyPacket('MALICIOUS_FORGERY')}
-                  disabled={testingPacket}
+                  disabled={testingPacket || isSimulating}
                   className="px-3.5 py-3 rounded-2xl bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 text-red-300 font-space text-xs font-bold transition-all flex flex-col items-center gap-1 cursor-pointer disabled:opacity-50"
                 >
                   <AlertTriangle size={16} />
@@ -614,7 +720,7 @@ export default function CyberDefenseMatrix() {
                 <div className="flex items-center justify-between text-[10px] text-muted-gray border-b border-white/5 pb-1.5">
                   <span className="flex items-center gap-1.5">
                     <Terminal size={11} className="text-red-400" />
-                    <span>CCSDS OBC EXECUTION BUFFER</span>
+                    <span>CCSDS OBC EXECUTION BUFFER // {activeSat.name.split(' ')[0]}</span>
                   </span>
                   <span>{testingPacket ? 'VERIFYING...' : 'IDLE'}</span>
                 </div>
@@ -650,12 +756,12 @@ export default function CyberDefenseMatrix() {
               </div>
             </motion.div>
 
-            {/* Quarantined Cyber Threat Incident Log with Search & Filters */}
+            {/* Quarantined Threat Incident Log with Search & Filters */}
             <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-glass-border space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-glass-border pb-3">
                 <span className="font-space text-xs sm:text-sm tracking-wider uppercase font-bold text-star-white flex items-center gap-2">
                   <Terminal size={14} className="text-red-400" />
-                  <span>FIREWALL INTERCEPT &amp; QUARANTINE LOG</span>
+                  <span>FIREWALL QUARANTINE LOG // {activeSat.name.split(' ')[0]}</span>
                 </span>
                 <span className="text-[10px] font-mono text-red-400 font-bold">
                   {filteredLogs.length} THREATS LOGGED
@@ -670,7 +776,7 @@ export default function CyberDefenseMatrix() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search logs by attack vector, carrier, ID..."
+                    placeholder="Search threats by vector, carrier, ID..."
                     className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs font-inter text-star-white placeholder:text-muted-gray/60 focus:outline-none focus:border-red-400/50"
                   />
                 </div>
@@ -695,9 +801,9 @@ export default function CyberDefenseMatrix() {
 
               {/* Log List */}
               <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                {filteredLogs.map((log) => (
+                {filteredLogs.map((log, idx) => (
                   <div
-                    key={log.id}
+                    key={log.id + idx}
                     className="p-3 rounded-2xl bg-black/50 border border-white/10 space-y-1.5 hover:border-red-400/40 transition-colors"
                   >
                     <div className="flex items-center justify-between text-xs font-space flex-wrap gap-2">

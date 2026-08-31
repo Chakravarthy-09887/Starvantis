@@ -1,30 +1,20 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
 import {
   Radio,
-  Wifi,
   Globe2,
   Compass,
   Zap,
   Activity,
   CheckCircle2,
-  AlertTriangle,
-  Clock,
-  HelpCircle,
   Satellite,
-  Layers,
-  ArrowRight,
-  TrendingUp,
-  RefreshCw,
+  Clock,
   Sliders,
   Maximize2,
-  Navigation,
-  Eye,
+  Signal,
   Cpu,
-  Target,
-  BarChart2,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
@@ -51,7 +41,7 @@ const DEFAULT_STATIONS: GroundStationDefinition[] = [
 export default function GroundStationNetwork() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { selectedSatelliteId, setSelectedSatelliteId, formatMissionTime } = useMission();
+  const { selectedSatelliteId, setSelectedSatelliteId } = useMission();
 
   const [viewMode, setViewMode] = useState<'GLOBAL_MAP' | 'POLAR_SKY' | 'DSN_ARRAY'>('GLOBAL_MAP');
   const [stations, setStations] = useState<GroundStationDefinition[]>(DEFAULT_STATIONS);
@@ -66,12 +56,10 @@ export default function GroundStationNetwork() {
   const [manualAzimuth, setManualAzimuth] = useState(142.6);
   const [manualElevation, setManualElevation] = useState(48.2);
   const [steerResult, setSteerResult] = useState<AntennaSteerResponse | null>(null);
-  const [steeringLoading, setSteeringLoading] = useState(false);
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
-  // Fetch ground stations, DSN status, links & pass predictions
   useEffect(() => {
     let isMounted = true;
     const fetchGroundData = async () => {
@@ -100,7 +88,6 @@ export default function GroundStationNetwork() {
     };
   }, [selectedSatelliteId]);
 
-  // Radio carrier pulse
   useEffect(() => {
     const pInterval = setInterval(() => {
       setBeamTick((t) => (t + 1) % 360);
@@ -130,9 +117,8 @@ export default function GroundStationNetwork() {
 
   const selectedStation = stations.find((s) => s.id === selectedStationId) || stations[0];
 
-  // Map coordinate conversion (600x360 SVG)
   const getMapCoords = (lat: number, lng: number) => ({
-    x: ((lng + 180) / 360) * 600,
+    x: ((lng + 180) / 360) * 700,
     y: ((90 - lat) / 180) * 360,
   });
 
@@ -141,11 +127,9 @@ export default function GroundStationNetwork() {
   const satPos = getMapCoords(satLat, satLng);
   const stPos = getMapCoords(selectedStation.latitude, selectedStation.longitude);
 
-  // Manual antenna steer execution
   const handleSteerDish = async (az: number, el: number) => {
     setManualAzimuth(az);
     setManualElevation(el);
-    setSteeringLoading(true);
     try {
       const res = await api.steerAntenna({
         station_id: selectedStationId,
@@ -156,8 +140,6 @@ export default function GroundStationNetwork() {
       setSteerResult(res);
     } catch {
       // Keep state
-    } finally {
-      setSteeringLoading(false);
     }
   };
 
@@ -171,8 +153,8 @@ export default function GroundStationNetwork() {
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-glow/30 bg-cyan-glow/10 mb-3 shadow-[0_0_15px_rgba(99,199,255,0.2)]">
-            <Radio size={13} className="text-cyan-glow animate-pulse" />
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-cyan-glow/30 bg-cyan-glow/10 mb-3 shadow-[0_0_20px_rgba(99,199,255,0.2)]">
+            <Radio size={14} className="text-cyan-glow animate-pulse" />
             <span className="font-space text-[10px] md:text-xs tracking-[0.25em] text-cyan-glow uppercase font-bold">
               GLOBAL TT&amp;C UPLINK / DOWNLINK &amp; DEEP SPACE NETWORK (DSN)
             </span>
@@ -190,8 +172,8 @@ export default function GroundStationNetwork() {
             transition={{ duration: 0.8, delay: 0.25 }}
           />
 
-          {/* SATELLITE SWITCHER TABS */}
-          <div className="mt-7 flex flex-wrap items-center justify-center gap-2 max-w-4xl mx-auto">
+          {/* SATELLITE SELECTOR PILLS */}
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
             {FLEET_SATELLITES.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId;
               return (
@@ -201,22 +183,22 @@ export default function GroundStationNetwork() {
                   onClick={() => setSelectedSatelliteId(sat.id)}
                   className={`px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl border text-xs font-space tracking-wider transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${
                     isSelected
-                      ? 'bg-cyan-glow/20 border-cyan-glow text-star-white shadow-[0_0_20px_rgba(99,199,255,0.35)] scale-105 font-bold'
+                      ? 'bg-cyan-glow/20 border-cyan-glow text-star-white shadow-[0_0_20px_rgba(99,199,255,0.35)] scale-105 font-bold ring-1 ring-cyan-glow'
                       : 'bg-space-navy/60 border-glass-border text-muted-gray hover:text-star-white hover:border-cyan-glow/40'
                   }`}
                 >
                   <Satellite size={13} className={isSelected ? 'text-cyan-glow' : 'text-muted-gray'} />
-                  <span>{sat.name}</span>
+                  <span>{sat.name.split(' ')[0]}</span>
                 </button>
               );
             })}
           </div>
 
-          {/* MULTI-MODE VISUALIZATION TOGGLE */}
+          {/* MULTI-MODE SWITCHER */}
           <div className="mt-5 inline-flex items-center p-1.5 rounded-2xl bg-black/60 border border-white/10 gap-1.5">
             {[
               { id: 'GLOBAL_MAP', label: 'WORLD TRACKING MAP', icon: Globe2 },
-              { id: 'POLAR_SKY', label: '360° POLAR SKY PLOT', icon: Compass },
+              { id: 'POLAR_SKY', label: '360° POLAR SKY DOME', icon: Compass },
               { id: 'DSN_ARRAY', label: 'DSN 70M ARRAY MATRIX', icon: Radio },
             ].map((mode) => {
               const Icon = mode.icon;
@@ -255,7 +237,7 @@ export default function GroundStationNetwork() {
                 <Globe2 size={18} className="text-cyan-glow animate-pulse shrink-0" />
                 <div>
                   <span className="font-space text-xs sm:text-sm tracking-wider text-star-white uppercase block font-bold">
-                    {viewMode === 'GLOBAL_MAP' && 'GLOBAL TRACKING NETWORK &amp; GROUND FOOTPRINTS'}
+                    {viewMode === 'GLOBAL_MAP' && 'GLOBAL TRACKING NETWORK & GROUND FOOTPRINTS'}
                     {viewMode === 'POLAR_SKY' && `360° SKY DOME POLAR PLOT // ${selectedStation.name}`}
                     {viewMode === 'DSN_ARRAY' && 'NASA / ESA / ISRO DEEP SPACE NETWORK COMPLEX'}
                   </span>
@@ -274,7 +256,7 @@ export default function GroundStationNetwork() {
             {/* VISUALIZER SWITCHER CONTENT */}
             {viewMode === 'GLOBAL_MAP' && (
               <div className="relative aspect-[16/9] w-full bg-[#020612] rounded-2xl overflow-hidden border border-glass-border/50">
-                <svg viewBox="0 0 600 360" className="w-full h-full">
+                <svg viewBox="0 0 700 360" className="w-full h-full">
                   <defs>
                     <linearGradient id="rfBeamGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.8" />
@@ -283,12 +265,11 @@ export default function GroundStationNetwork() {
                     </linearGradient>
 
                     <radialGradient id="antennaCoverage" cx="50%" cy="50%" r="50%">
-                      <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.3" />
-                      <stop offset="70%" stopColor="#00d4ff" stopOpacity="0.08" />
+                      <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.25" />
+                      <stop offset="70%" stopColor="#00d4ff" stopOpacity="0.06" />
                       <stop offset="100%" stopColor="#00d4ff" stopOpacity="0.0" />
                     </radialGradient>
 
-                    {/* Day/Night Shadow Pattern */}
                     <linearGradient id="dayNightTerminator" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="#000000" stopOpacity="0.5" />
                       <stop offset="50%" stopColor="#000000" stopOpacity="0.0" />
@@ -300,51 +281,50 @@ export default function GroundStationNetwork() {
                   {[-60, -30, 0, 30, 60].map((lat) => {
                     const y = ((90 - lat) / 180) * 360;
                     return (
-                      <line key={lat} x1="0" y1={y} x2="600" y2={y} stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
+                      <line key={lat} x1="0" y1={y} x2="700" y2={y} stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
                     );
                   })}
 
                   {[-120, -60, 0, 60, 120].map((lng) => {
-                    const x = ((lng + 180) / 360) * 600;
+                    const x = ((lng + 180) / 360) * 700;
                     return (
                       <line key={lng} x1={x} y1="0" x2={x} y2="360" stroke="rgba(255,255,255,0.06)" strokeDasharray="3,3" />
                     );
                   })}
 
-                  {/* Day / Night Solar Terminator Shadow Overlay */}
-                  <rect x="0" y="0" width="600" height="360" fill="url(#dayNightTerminator)" pointerEvents="none" />
+                  <rect x="0" y="0" width="700" height="360" fill="url(#dayNightTerminator)" pointerEvents="none" />
 
                   {/* Continents Silhouettes */}
-                  <g fill="rgba(255, 255, 255, 0.05)" stroke="rgba(0, 212, 255, 0.15)" strokeWidth="0.8">
-                    <path d="M 80 80 Q 140 60 170 90 Q 150 140 120 160 Q 90 140 80 80 Z" />
-                    <path d="M 170 170 Q 210 190 200 280 Q 170 310 160 250 Q 150 200 170 170 Z" />
-                    <path d="M 280 80 Q 340 70 350 110 Q 370 160 360 270 Q 320 290 300 240 Q 270 150 280 80 Z" />
-                    <path d="M 370 70 Q 480 60 520 120 Q 490 200 420 180 Q 400 140 370 70 Z" />
-                    <path d="M 460 230 Q 520 220 530 270 Q 480 290 460 230 Z" />
+                  <g fill="rgba(255, 255, 255, 0.04)" stroke="rgba(0, 212, 255, 0.12)" strokeWidth="0.8">
+                    <path d="M 90 80 Q 160 60 200 90 Q 170 140 140 160 Q 100 140 90 80 Z" />
+                    <path d="M 200 170 Q 240 190 230 280 Q 200 310 190 250 Q 170 200 200 170 Z" />
+                    <path d="M 320 80 Q 390 70 410 110 Q 430 160 420 270 Q 370 290 350 240 Q 310 150 320 80 Z" />
+                    <path d="M 430 70 Q 560 60 610 120 Q 570 200 490 180 Q 470 140 430 70 Z" />
+                    <path d="M 540 230 Q 610 220 620 270 Q 560 290 540 230 Z" />
                   </g>
 
-                  {/* Satellite Ground Track Sine Wave */}
+                  {/* Ground Track Sine Wave */}
                   <path
-                    d="M 0 190 Q 150 40, 300 190 T 600 190"
+                    d="M 0 190 Q 175 40, 350 190 T 700 190"
                     fill="none"
                     stroke="rgba(251, 191, 36, 0.35)"
                     strokeWidth="1.2"
                     strokeDasharray="4,3"
                   />
 
-                  {/* Selected Antenna Visibility Horizon Cone */}
+                  {/* Selected Antenna Coverage Cone */}
                   <ellipse
                     cx={stPos.x}
                     cy={stPos.y}
-                    rx="68"
-                    ry="48"
+                    rx="75"
+                    ry="50"
                     fill="url(#antennaCoverage)"
                     stroke="rgba(0, 212, 255, 0.35)"
                     strokeWidth="1.2"
                     strokeDasharray="4,4"
                   />
 
-                  {/* Active Tracking Uplink / Downlink RF Beam */}
+                  {/* RF Carrier Beam */}
                   <line
                     x1={stPos.x}
                     y1={stPos.y}
@@ -356,7 +336,7 @@ export default function GroundStationNetwork() {
                     strokeDashoffset={-beamTick * 1.5}
                   />
 
-                  {/* All Ground Station Nodes */}
+                  {/* Ground Station Nodes (Clean, Non-overlapping UI) */}
                   {stations.map((st) => {
                     const pos = getMapCoords(st.latitude, st.longitude);
                     const isSel = st.id === selectedStationId;
@@ -365,7 +345,7 @@ export default function GroundStationNetwork() {
                         key={st.id}
                         transform={`translate(${pos.x}, ${pos.y})`}
                         onClick={() => setSelectedStationId(st.id)}
-                        className="cursor-pointer"
+                        className="cursor-pointer group"
                       >
                         <circle
                           r={isSel ? 9 : 5}
@@ -377,76 +357,111 @@ export default function GroundStationNetwork() {
                           fill="none"
                           stroke={isSel ? '#10b981' : '#00d4ff'}
                           strokeWidth="1.2"
-                          opacity={isSel ? 0.8 : 0.4}
+                          opacity={isSel ? 0.8 : 0.3}
                         />
-                        <text
-                          x="12"
-                          y="4"
-                          fill={isSel ? '#10b981' : 'rgba(232, 237, 242, 0.7)'}
-                          fontSize="9"
-                          fontFamily="'Space Grotesk', sans-serif"
-                          fontWeight={isSel ? 'bold' : 'normal'}
-                        >
-                          {st.name.split(' ')[0]} ({st.dish_diameter_m}m)
-                        </text>
+
+                        {/* Station Callout HUD Badge on hover or select */}
+                        {isSel && (
+                          <g transform="translate(14, -18)">
+                            <rect
+                              x="0"
+                              y="0"
+                              width="130"
+                              height="30"
+                              rx="6"
+                              fill="rgba(4, 18, 34, 0.92)"
+                              stroke="#10b981"
+                              strokeWidth="1"
+                            />
+                            <text
+                              x="8"
+                              y="13"
+                              fill="#10b981"
+                              fontSize="9"
+                              fontFamily="'Space Grotesk', sans-serif"
+                              fontWeight="bold"
+                            >
+                              {st.name}
+                            </text>
+                            <text
+                              x="8"
+                              y="24"
+                              fill="rgba(232, 237, 242, 0.8)"
+                              fontSize="8"
+                              fontFamily="'Inter', sans-serif"
+                            >
+                              {st.dish_diameter_m}m Aperture // {st.agency}
+                            </text>
+                          </g>
+                        )}
                       </g>
                     );
                   })}
 
-                  {/* Active Spacecraft Marker */}
+                  {/* Satellite Marker with HUD Callout */}
                   <g transform={`translate(${satPos.x}, ${satPos.y})`}>
-                    <circle r="7" fill="#fbbf24" className="animate-pulse" />
-                    <circle r="18" fill="none" stroke="#fbbf24" strokeWidth="1.8" opacity="0.9" />
-                    <text
-                      x="14"
-                      y="-8"
-                      fill="#fbbf24"
-                      fontSize="11"
-                      fontFamily="'Space Grotesk', sans-serif"
-                      fontWeight="bold"
-                    >
-                      {activeSat.name}
-                    </text>
-                    <text
-                      x="14"
-                      y="6"
-                      fill="rgba(232, 237, 242, 0.8)"
-                      fontSize="9"
-                      fontFamily="'Inter', sans-serif"
-                    >
-                      Slant: {activeLink.slant_range_km} km | Az: {activeLink.azimuth_deg}°
-                    </text>
+                    <circle r="8" fill="#fbbf24" className="animate-pulse" />
+                    <circle r="20" fill="none" stroke="#fbbf24" strokeWidth="1.8" opacity="0.9" />
+                    <g transform="translate(14, -22)">
+                      <rect
+                        x="0"
+                        y="0"
+                        width="145"
+                        height="32"
+                        rx="6"
+                        fill="rgba(4, 18, 34, 0.92)"
+                        stroke="#fbbf24"
+                        strokeWidth="1"
+                      />
+                      <text
+                        x="8"
+                        y="13"
+                        fill="#fbbf24"
+                        fontSize="10"
+                        fontFamily="'Space Grotesk', sans-serif"
+                        fontWeight="bold"
+                      >
+                        {activeSat.name.split(' ')[0]} [ORBIT]
+                      </text>
+                      <text
+                        x="8"
+                        y="25"
+                        fill="rgba(232, 237, 242, 0.85)"
+                        fontSize="8"
+                        fontFamily="'Inter', sans-serif"
+                      >
+                        Slant: {activeLink.slant_range_km} km | Az: {activeLink.azimuth_deg}°
+                      </text>
+                    </g>
                   </g>
                 </svg>
 
-                {/* Station Quick Selector Overlay Pills */}
+                {/* Station Quick Selector Pills at Bottom */}
                 <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
                   {stations.map((st) => (
                     <button
                       type="button"
                       key={st.id}
                       onClick={() => setSelectedStationId(st.id)}
-                      className={`px-2.5 py-1 rounded-lg text-[9px] font-space tracking-wider border cursor-pointer shrink-0 transition-all ${
+                      className={`px-3 py-1.5 rounded-xl text-[10px] font-space tracking-wider border cursor-pointer shrink-0 transition-all ${
                         st.id === selectedStationId
-                          ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-                          : 'bg-black/60 border-white/10 text-star-white/60 hover:text-star-white hover:border-cyan-glow/40'
+                          ? 'bg-emerald-500/25 border-emerald-400 text-emerald-300 font-bold shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                          : 'bg-black/70 border-white/10 text-star-white/70 hover:text-star-white hover:border-cyan-glow/40'
                       }`}
                     >
-                      {st.name.split(' ')[0]} ({st.agency})
+                      {st.name.split(' ')[0]} ({st.dish_diameter_m}m)
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* 360° POLAR SKY PLOT VIEW */}
+            {/* 360° POLAR SKY DOME PLOT (Clean and Readable) */}
             {viewMode === 'POLAR_SKY' && (
-              <div className="relative aspect-[16/9] w-full bg-[#030816] rounded-2xl overflow-hidden border border-glass-border/50 p-4 flex flex-col md:flex-row items-center justify-around gap-4">
-                {/* 360 Polar Radar Plot */}
+              <div className="relative aspect-[16/9] w-full bg-[#030816] rounded-2xl overflow-hidden border border-glass-border/50 p-4 flex flex-col md:flex-row items-center justify-around gap-6">
                 <div className="relative w-[260px] h-[260px] shrink-0">
                   <svg viewBox="-130 -130 260 260" className="w-full h-full">
-                    {/* Concentric Elevation Rings (0, 30, 60, 90 deg) */}
-                    {[120, 80, 40].map((r, i) => (
+                    {[120, 80, 40].map((r) => (
                       <circle
                         key={r}
                         r={r}
@@ -457,16 +472,26 @@ export default function GroundStationNetwork() {
                       />
                     ))}
 
-                    {/* Cardinal Axes (N, E, S, W) */}
                     <line x1="0" y1="-125" x2="0" y2="125" stroke="rgba(0, 212, 255, 0.25)" strokeWidth="1" />
                     <line x1="-125" y1="0" x2="125" y2="0" stroke="rgba(0, 212, 255, 0.25)" strokeWidth="1" />
 
-                    {/* Axis Labels */}
-                    <text x="0" y="-115" fill="#00d4ff" fontSize="9" fontWeight="bold" textAnchor="middle">0° N</text>
-                    <text x="115" y="4" fill="#00d4ff" fontSize="9" fontWeight="bold" textAnchor="end">90° E</text>
-                    <text x="0" y="122" fill="#00d4ff" fontSize="9" fontWeight="bold" textAnchor="middle">180° S</text>
-                    <text x="-115" y="4" fill="#00d4ff" fontSize="9" fontWeight="bold" textAnchor="start">270° W</text>
-                    <text x="0" y="4" fill="rgba(255,255,255,0.4)" fontSize="8" textAnchor="middle">ZENITH</text>
+                    {/* Cardinal Labels with Background Badges for Perfect Readability */}
+                    <g transform="translate(0, -118)">
+                      <rect x="-14" y="-8" width="28" height="14" rx="3" fill="#020612" stroke="#00d4ff" strokeWidth="0.8" />
+                      <text x="0" y="3" fill="#00d4ff" fontSize="8" fontWeight="bold" textAnchor="middle">0° N</text>
+                    </g>
+                    <g transform="translate(112, 0)">
+                      <rect x="-14" y="-7" width="28" height="14" rx="3" fill="#020612" stroke="#00d4ff" strokeWidth="0.8" />
+                      <text x="0" y="4" fill="#00d4ff" fontSize="8" fontWeight="bold" textAnchor="middle">90° E</text>
+                    </g>
+                    <g transform="translate(0, 118)">
+                      <rect x="-14" y="-7" width="28" height="14" rx="3" fill="#020612" stroke="#00d4ff" strokeWidth="0.8" />
+                      <text x="0" y="4" fill="#00d4ff" fontSize="8" fontWeight="bold" textAnchor="middle">180° S</text>
+                    </g>
+                    <g transform="translate(-112, 0)">
+                      <rect x="-14" y="-7" width="28" height="14" rx="3" fill="#020612" stroke="#00d4ff" strokeWidth="0.8" />
+                      <text x="0" y="4" fill="#00d4ff" fontSize="8" fontWeight="bold" textAnchor="middle">270° W</text>
+                    </g>
 
                     {/* Satellite Point Calculation in Polar Space */}
                     {(() => {
@@ -477,13 +502,18 @@ export default function GroundStationNetwork() {
 
                       return (
                         <g>
-                          {/* Dish Beam Sector */}
                           <line x1="0" y1="0" x2={px} y2={py} stroke="#10b981" strokeWidth="2" strokeDasharray="4,2" />
                           <circle cx={px} cy={py} r="8" fill="#fbbf24" className="animate-pulse" />
                           <circle cx={px} cy={py} r="16" fill="none" stroke="#fbbf24" strokeWidth="1.5" opacity="0.8" />
-                          <text x={px + 12} y={py} fill="#fbbf24" fontSize="10" fontWeight="bold" fontFamily="'Space Grotesk', sans-serif">
-                            {activeSat.name}
-                          </text>
+                          <g transform={`translate(${px + 12}, ${py - 12})`}>
+                            <rect x="0" y="0" width="85" height="24" rx="4" fill="#041222" stroke="#fbbf24" strokeWidth="0.8" />
+                            <text x="6" y="11" fill="#fbbf24" fontSize="9" fontWeight="bold" fontFamily="'Space Grotesk', sans-serif">
+                              {activeSat.name.split(' ')[0]}
+                            </text>
+                            <text x="6" y="20" fill="rgba(255,255,255,0.7)" fontSize="7" fontFamily="'Inter', sans-serif">
+                              El: {activeLink.elevation_deg}°
+                            </text>
+                          </g>
                         </g>
                       );
                     })()}
@@ -492,7 +522,7 @@ export default function GroundStationNetwork() {
 
                 {/* Polar Details Box */}
                 <div className="space-y-3 max-w-xs text-xs font-space">
-                  <div className="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1">
+                  <div className="p-3.5 rounded-2xl bg-black/60 border border-white/10 space-y-1">
                     <span className="text-[10px] text-muted-gray uppercase block font-semibold">HORIZON GEOMETRY:</span>
                     <span className="font-mono text-cyan-glow text-sm font-bold block">
                       Azimuth: {activeLink.azimuth_deg}° // Elevation: {activeLink.elevation_deg}°
@@ -502,7 +532,7 @@ export default function GroundStationNetwork() {
                     </span>
                   </div>
 
-                  <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
+                  <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
                     <span className="text-[10px] text-emerald-400 uppercase block font-bold">DISH SLEW MOTORS:</span>
                     <span className="text-[11px] text-star-white block">
                       Azimuth Slew Rate: <strong className="font-mono text-emerald-300">2.4°/sec</strong>
@@ -559,7 +589,7 @@ export default function GroundStationNetwork() {
 
           {/* Right Column (RF Link Budget & Manual Steer Control) */}
           <div className="lg:col-span-4 space-y-5">
-            {/* RF Link Budget & Doppler S-Curve */}
+            {/* RF Link Budget */}
             <motion.div
               className="glass-panel rounded-3xl p-5 sm:p-6 border border-cyan-glow/30 box-glow relative overflow-hidden"
               initial={{ opacity: 0, x: 30 }}
@@ -577,7 +607,6 @@ export default function GroundStationNetwork() {
 
               {/* RF Parameters Grid */}
               <div className="space-y-3 font-space text-xs">
-                {/* Elevation & Azimuth */}
                 <div className="glass-panel p-3.5 rounded-xl border border-glass-border/60 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Compass size={18} className="text-cyan-glow" />
@@ -593,7 +622,6 @@ export default function GroundStationNetwork() {
                   <span className="text-[10px] font-space text-emerald-400 font-bold">AUTO-TRACK</span>
                 </div>
 
-                {/* Doppler Shift */}
                 <div className="glass-panel p-3.5 rounded-xl border border-glass-border/60 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Activity size={18} className="text-purple-400" />
@@ -611,7 +639,6 @@ export default function GroundStationNetwork() {
                   </span>
                 </div>
 
-                {/* Signal Strength & SNR */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="p-3 rounded-xl bg-black/40 border border-white/10">
                     <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">
@@ -631,7 +658,6 @@ export default function GroundStationNetwork() {
                   </div>
                 </div>
 
-                {/* Bit Error Rate & Max Data Rate */}
                 <div className="p-3 rounded-xl bg-space-navy/50 border border-white/10 space-y-1">
                   <div className="flex justify-between text-[11px]">
                     <span className="text-star-white/60">Bit Error Rate (BER):</span>
@@ -665,7 +691,6 @@ export default function GroundStationNetwork() {
                 </button>
               </div>
 
-              {/* Sliders */}
               <div className="space-y-3 text-xs font-space">
                 <div>
                   <div className="flex justify-between mb-1">
@@ -720,7 +745,7 @@ export default function GroundStationNetwork() {
               </div>
             </div>
 
-            {/* 24-HOUR PASS PREDICTION SCHEDULE */}
+            {/* 24-HOUR PASS PREDICTIONS */}
             <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-glass-border space-y-3">
               <div className="flex items-center justify-between border-b border-glass-border pb-3">
                 <span className="font-space text-xs tracking-wider uppercase font-bold text-star-white flex items-center gap-2">

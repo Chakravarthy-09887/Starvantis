@@ -31,6 +31,7 @@ const PRIMARY_QUICK_LINKS = [
   { label: 'Space Weather', href: '#space-weather' },
   { label: 'Orbital Risk', href: '#orbital' },
   { label: 'Deep Space', href: '#deep-space' },
+  { label: 'Cosmic 3D', href: '#cosmic-explorer' },
   { label: 'Ground Stations', href: '#ground-stations' },
   { label: 'Cyber Defense', href: '#cyber-defense' },
 ];
@@ -56,8 +57,9 @@ const CATEGORIZED_NAV = [
     ],
   },
   {
-    category: 'DEEP-SPACE & GROUND NETWORK',
+    category: 'DEEP-SPACE, COSMOLOGY & GROUND NETWORK',
     items: [
+      { label: 'Cosmic 3D & Black Hole', href: '#cosmic-explorer', icon: Globe, desc: '3D Solar System Orrery, Interstellar Gargantua & Facts' },
       { label: 'Deep-Space Explorer', href: '#deep-space', icon: Sparkles, desc: 'Aditya-L1 (L1 Halo), Chandrayaan-3 & JWST (L2)' },
       { label: 'Lunar EDL Simulation', href: '#landing-descent', icon: Orbit, desc: 'Rough braking & failure-proof hazard avoidance' },
       { label: 'Planetary Reconnaissance', href: '#surface-analysis', icon: Compass, desc: 'Shiv Shakti Point & Lunar South Pole radar' },

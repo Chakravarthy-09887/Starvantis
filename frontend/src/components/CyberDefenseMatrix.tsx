@@ -13,19 +13,13 @@ import {
   Terminal,
   Activity,
   Zap,
-  HelpCircle,
   Satellite,
-  Layers,
-  ArrowRight,
   RefreshCw,
-  Cpu,
   Search,
-  Filter,
   Play,
   RotateCcw,
   Sparkles,
-  Wifi,
-  Sliders,
+  X,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
@@ -36,13 +30,12 @@ import {
   PacketVerificationResult,
   KeyRotationResult,
   AttackSimulationResult,
-  GNSSConstellationStatus,
 } from '../lib/api';
 
 export default function CyberDefenseMatrix() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { selectedSatelliteId, setSelectedSatelliteId, formatMissionTime } = useMission();
+  const { selectedSatelliteId, setSelectedSatelliteId } = useMission();
 
   const [cyberStatus, setCyberStatus] = useState<SpacecraftCyberThreatStatus | null>(null);
   const [testingPacket, setTestingPacket] = useState(false);
@@ -57,6 +50,13 @@ export default function CyberDefenseMatrix() {
   const [simMessage, setSimMessage] = useState<string>('');
   const [attackResult, setAttackResult] = useState<AttackSimulationResult | null>(null);
 
+  // Instant Packet Acknowledgement Modal
+  const [ackModal, setAckModal] = useState<{
+    open: boolean;
+    type: 'AUTHENTIC' | 'FORGED';
+    result: PacketVerificationResult | null;
+  }>({ open: false, type: 'AUTHENTIC', result: null });
+
   // Live Jitter and Streaming Tick
   const [liveSec, setLiveSec] = useState<number>(0);
   const [liveThroughput, setLiveThroughput] = useState<number>(120);
@@ -69,7 +69,6 @@ export default function CyberDefenseMatrix() {
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
-  // 1. Fetch satellite-specific cybersecurity posture on mount and satellite switch
   useEffect(() => {
     let isMounted = true;
     const fetchStatus = async () => {
@@ -94,7 +93,6 @@ export default function CyberDefenseMatrix() {
     };
   }, [selectedSatelliteId]);
 
-  // 2. Real-time Live Ticking loop for micro-fluctuations and frame counter progression
   useEffect(() => {
     const tickTimer = setInterval(() => {
       setLiveSec((s) => s + 1);
@@ -103,7 +101,6 @@ export default function CyberDefenseMatrix() {
     return () => clearInterval(tickTimer);
   }, []);
 
-  // Compute live fluctuating parameters per satellite
   const liveFrameCounter = useMemo(() => {
     const base = cyberStatus?.frame_sequence_counter || 104982;
     return base + liveSec * 2;
@@ -132,7 +129,6 @@ export default function CyberDefenseMatrix() {
     return (cyberStatus?.trust_index_pct || 99.8).toFixed(1);
   }, [cyberStatus?.trust_index_pct, isSimulating, liveSec]);
 
-  // Trigger on-orbit session key rotation
   const handleRotateKeys = async () => {
     setRotatingKeys(true);
     try {
@@ -155,26 +151,22 @@ export default function CyberDefenseMatrix() {
     }
   };
 
-  // Run Real-Time Multi-Step Cyber Attack Simulation
   const handleSimulateAttack = async () => {
     if (isSimulating) return;
     setIsSimulating(true);
     setSimStep(1);
     setSimMessage('STAGE 1: Ingesting RF Carrier and evaluating frame parity...');
 
-    // Step 1 -> Step 2
     setTimeout(() => {
       setSimStep(2);
       setSimMessage('STAGE 2: Evaluating Frame Sequence Counter and anti-replay sliding window...');
-    }, 1000);
+    }, 900);
 
-    // Step 2 -> Step 3
     setTimeout(() => {
       setSimStep(3);
       setSimMessage('STAGE 3: Cryptographic HMAC-SHA256 Root-of-Trust verification...');
-    }, 2000);
+    }, 1800);
 
-    // Step 3 -> Step 4 & API Execution
     setTimeout(async () => {
       setSimStep(4);
       setSimMessage('STAGE 4: Zero-Trust Firewall anomaly trigger & autonomous mitigation...');
@@ -190,17 +182,15 @@ export default function CyberDefenseMatrix() {
       } catch {
         // Keep state
       }
-    }, 3000);
+    }, 2700);
 
-    // Step 4 -> Complete
     setTimeout(() => {
       setSimStep(5);
       setSimMessage('STAGE 5: Threat neutralized. OBC protected, telemetry isolated to quarantine log.');
       setIsSimulating(false);
-    }, 4500);
+    }, 4000);
   };
 
-  // Run cryptographic verification simulation for custom packet
   const handleVerifyPacket = async (type: 'AUTHENTIC' | 'MALICIOUS_FORGERY') => {
     setTestingPacket(true);
     try {
@@ -213,6 +203,12 @@ export default function CyberDefenseMatrix() {
         operator_key_id: 'OP-KEY-VAULT-2026-A',
       });
       setTestResult(res);
+      // Open instant visual acknowledgement modal
+      setAckModal({
+        open: true,
+        type: type === 'AUTHENTIC' ? 'AUTHENTIC' : 'FORGED',
+        result: res,
+      });
     } catch {
       // Keep state
     } finally {
@@ -220,7 +216,6 @@ export default function CyberDefenseMatrix() {
     }
   };
 
-  // Filtered threat logs
   const filteredLogs = useMemo(() => {
     return threatLogs.filter((log) => {
       const matchesSearch =
@@ -240,7 +235,6 @@ export default function CyberDefenseMatrix() {
       name: 'GNSS / GPS Spoofing',
       icon: Radio,
       desc: 'Inject fake L1/L2 GPS RF pseudorange steps (+84ns) to induce navigation trajectory drift.',
-      defense: 'RAIM autonomous Doppler & Star Tracker Kalman failover',
       badge: 'HIGH RISK',
       color: 'text-amber-400 border-amber-400/30 bg-amber-500/10',
     },
@@ -249,7 +243,6 @@ export default function CyberDefenseMatrix() {
       name: 'Replay Command Attack',
       icon: RotateCcw,
       desc: 'Re-broadcast captured valid telemetry frames to force duplicate execution.',
-      defense: 'CCSDS SDLS Anti-Replay Sliding Window & Stale FC Rejection',
       badge: 'CRITICAL',
       color: 'text-red-400 border-red-400/30 bg-red-500/10',
     },
@@ -258,7 +251,6 @@ export default function CyberDefenseMatrix() {
       name: 'Forged Telecommand',
       icon: Terminal,
       desc: 'Inject unauthorized propulsion fire vectors with forged signature bytes.',
-      defense: 'NIST FIPS 140-3 Level 4 Hardware HSM HMAC-SHA256 barrier',
       badge: 'CRITICAL',
       color: 'text-red-400 border-red-400/30 bg-red-500/10',
     },
@@ -267,7 +259,6 @@ export default function CyberDefenseMatrix() {
       name: 'Uplink Carrier Jamming',
       icon: Zap,
       desc: 'Flood receiver channel with high-power broadband RF noise floor (+18 dB).',
-      defense: 'Direct Sequence Spread Spectrum (DSSS) Adaptive Notch Filtering',
       badge: 'HIGH RISK',
       color: 'text-amber-400 border-amber-400/30 bg-amber-500/10',
     },
@@ -283,6 +274,88 @@ export default function CyberDefenseMatrix() {
 
   return (
     <section id="cyber-defense" className="section-spacing relative overflow-hidden py-16 md:py-24" ref={containerRef}>
+      {/* INSTANT PACKET ACKNOWLEDGEMENT MODAL */}
+      <AnimatePresence>
+        {ackModal.open && ackModal.result && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className={`max-w-lg w-full rounded-3xl p-6 border shadow-2xl relative ${
+                ackModal.type === 'AUTHENTIC'
+                  ? 'bg-[#041912] border-emerald-500/60 shadow-[0_0_60px_rgba(16,185,129,0.35)]'
+                  : 'bg-[#1e070a] border-red-500/60 shadow-[0_0_60px_rgba(239,68,68,0.35)]'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => setAckModal({ open: false, type: 'AUTHENTIC', result: null })}
+                className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-star-white cursor-pointer transition-colors"
+              >
+                <X size={16} />
+              </button>
+
+              <div className="flex items-center gap-3 mb-4">
+                {ackModal.type === 'AUTHENTIC' ? (
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500 flex items-center justify-center text-emerald-400">
+                    <CheckCircle2 size={28} />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-2xl bg-red-500/20 border border-red-500 flex items-center justify-center text-red-400">
+                    <AlertTriangle size={28} />
+                  </div>
+                )}
+                <div>
+                  <span className="font-space text-[10px] tracking-widest text-muted-gray uppercase block font-bold">
+                    CRYPTOGRAPHIC TELECOMMAND ACKNOWLEDGEMENT
+                  </span>
+                  <h3 className={`font-space text-lg font-bold ${ackModal.type === 'AUTHENTIC' ? 'text-emerald-300' : 'text-red-400'}`}>
+                    {ackModal.type === 'AUTHENTIC' ? 'PACKET AUTHENTICATED & SCHEDULED' : 'FORGED PACKET INTERCEPTED & QUARANTINED'}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="space-y-3 font-space text-xs border-y border-white/10 py-4 my-4">
+                <div className="flex justify-between">
+                  <span className="text-muted-gray">Target Spacecraft:</span>
+                  <span className="font-bold text-star-white">{activeSat.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-gray">Verification Status:</span>
+                  <span className={`font-bold font-mono ${ackModal.type === 'AUTHENTIC' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {ackModal.result.status}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-gray">HMAC-SHA256 Token:</span>
+                  <span className="font-mono text-cyan-glow">{ackModal.result.computed_hmac}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-gray">OBC Trust Rating:</span>
+                  <span className="font-mono font-bold text-amber-400">{ackModal.result.trust_score}%</span>
+                </div>
+                <div className="p-3 rounded-xl bg-black/50 border border-white/10 font-inter text-[11px] text-star-white/90">
+                  <strong>OBC Action:</strong> {ackModal.result.action_taken}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAckModal({ open: false, type: 'AUTHENTIC', result: null })}
+                className={`w-full py-2.5 rounded-xl font-space text-xs font-bold transition-all cursor-pointer ${
+                  ackModal.type === 'AUTHENTIC'
+                    ? 'bg-emerald-500 text-black hover:bg-emerald-400'
+                    : 'bg-red-500 text-white hover:bg-red-600'
+                }`}
+              >
+                DISMISS ACKNOWLEDGEMENT
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       <div className="max-w-7xl mx-auto px-4 md:px-6 w-full">
         {/* Section Heading */}
         <motion.div
@@ -310,7 +383,7 @@ export default function CyberDefenseMatrix() {
             transition={{ duration: 0.8, delay: 0.25 }}
           />
 
-          {/* SATELLITE SWITCHER TABS - Unique spacecraft per button */}
+          {/* SATELLITE SWITCHER TABS */}
           <div className="mt-7 flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
             {FLEET_SATELLITES.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId;
@@ -333,7 +406,7 @@ export default function CyberDefenseMatrix() {
           </div>
         </motion.div>
 
-        {/* 5-STAGE PACKET INSPECTION PIPELINE VISUALIZER (Interactive & Live) */}
+        {/* 5-STAGE PACKET INSPECTION PIPELINE VISUALIZER */}
         <motion.div
           className={`mb-8 p-4 sm:p-5 rounded-3xl glass-panel border transition-all duration-500 relative overflow-hidden ${
             isSimulating
@@ -362,7 +435,6 @@ export default function CyberDefenseMatrix() {
             </div>
           </div>
 
-          {/* Real-Time Simulation Status Banner */}
           {isSimulating && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -379,7 +451,6 @@ export default function CyberDefenseMatrix() {
             </motion.div>
           )}
 
-          {/* Pipeline Stage Blocks */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 relative">
             {pipelineStages.map((stage) => {
               const isActiveInSim = isSimulating && simStep === stage.id;
@@ -411,12 +482,6 @@ export default function CyberDefenseMatrix() {
                   </div>
                   <span className="font-space text-xs font-bold text-star-white block truncate">{stage.label}</span>
                   <span className="font-inter text-[10px] text-red-400/90 block truncate">{stage.sub}</span>
-                  {isActiveInSim && (
-                    <motion.div
-                      className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 via-red-500 to-amber-400 animate-pulse"
-                      layoutId="pipelineGlow"
-                    />
-                  )}
                 </div>
               );
             })}
@@ -425,9 +490,8 @@ export default function CyberDefenseMatrix() {
 
         {/* MAIN 2-COLUMN DASHBOARD */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-          {/* Left Column (Architecture, GNSS RAIM Radar & Threat Simulator) */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Cryptographic Key Vault & HSM Security Status */}
+            {/* Key Vault & HSM */}
             <motion.div
               className="glass-panel rounded-3xl p-5 sm:p-6 border border-red-500/30 relative overflow-hidden shadow-[0_0_60px_rgba(239,68,68,0.15)]"
               initial={{ opacity: 0, x: -30 }}
@@ -458,7 +522,6 @@ export default function CyberDefenseMatrix() {
                 </button>
               </div>
 
-              {/* Security Metrics Grid (Live Fluctuating) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
                 <div className="p-3 rounded-2xl bg-black/50 border border-white/10 space-y-1">
                   <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">ENCRYPTION:</span>
@@ -497,7 +560,6 @@ export default function CyberDefenseMatrix() {
                 </div>
               </div>
 
-              {/* Key Rotation Result Alert */}
               <AnimatePresence>
                 {rotationResult && (
                   <motion.div
@@ -521,7 +583,7 @@ export default function CyberDefenseMatrix() {
               </AnimatePresence>
             </motion.div>
 
-            {/* GNSS Multi-Constellation RAIM Anti-Spoofing Radar */}
+            {/* GNSS Multi-Constellation RAIM Radar */}
             <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-glass-border space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-glass-border pb-3">
                 <span className="font-space text-xs sm:text-sm font-bold text-star-white uppercase flex items-center gap-2">
@@ -548,7 +610,6 @@ export default function CyberDefenseMatrix() {
                 </div>
               </div>
 
-              {/* Satellite-Specific Constellation Health Matrix */}
               <div className="space-y-2">
                 <span className="text-[10px] font-space font-bold uppercase tracking-wider text-muted-gray block">
                   TRACKED CONSTELLATION NODES // {activeSat.name}
@@ -574,7 +635,7 @@ export default function CyberDefenseMatrix() {
               </div>
             </div>
 
-            {/* LIVE SPACE CYBER-ATTACK SIMULATOR (Interactive) */}
+            {/* ON-ORBIT CYBER-ATTACK THREAT SIMULATOR */}
             <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-amber-500/30 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-glass-border pb-3">
                 <span className="font-space text-xs sm:text-sm font-bold text-amber-400 uppercase flex items-center gap-2">
@@ -615,7 +676,6 @@ export default function CyberDefenseMatrix() {
                 })}
               </div>
 
-              {/* Trigger Attack Button */}
               <button
                 type="button"
                 onClick={handleSimulateAttack}
@@ -630,7 +690,6 @@ export default function CyberDefenseMatrix() {
                 </span>
               </button>
 
-              {/* Attack Simulation Result Box */}
               <AnimatePresence>
                 {attackResult && (
                   <motion.div
@@ -668,9 +727,8 @@ export default function CyberDefenseMatrix() {
             </div>
           </div>
 
-          {/* Right Column (Crypto Firewall Terminal & Searchable Threat Log) */}
+          {/* Right Column (Crypto Firewall Terminal & Quarantine Threat Log) */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Interactive Telecommand Crypto Verification Console */}
             <motion.div
               className="glass-panel rounded-3xl p-5 sm:p-6 border border-red-400/30 box-glow relative overflow-hidden"
               initial={{ opacity: 0, x: 30 }}
@@ -715,7 +773,7 @@ export default function CyberDefenseMatrix() {
                 </button>
               </div>
 
-              {/* Verification Output Terminal */}
+              {/* Terminal View */}
               <div className="p-4 rounded-2xl bg-[#050106] border border-white/10 font-mono text-xs space-y-2">
                 <div className="flex items-center justify-between text-[10px] text-muted-gray border-b border-white/5 pb-1.5">
                   <span className="flex items-center gap-1.5">
@@ -756,7 +814,7 @@ export default function CyberDefenseMatrix() {
               </div>
             </motion.div>
 
-            {/* Quarantined Threat Incident Log with Search & Filters */}
+            {/* Quarantine Threat Log with Search & Filter */}
             <div className="glass-panel rounded-3xl p-5 sm:p-6 border border-glass-border space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-glass-border pb-3">
                 <span className="font-space text-xs sm:text-sm tracking-wider uppercase font-bold text-star-white flex items-center gap-2">
@@ -768,7 +826,6 @@ export default function CyberDefenseMatrix() {
                 </span>
               </div>
 
-              {/* Search & Severity Filter Bar */}
               <div className="space-y-2">
                 <div className="relative">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-gray" />
@@ -799,7 +856,6 @@ export default function CyberDefenseMatrix() {
                 </div>
               </div>
 
-              {/* Log List */}
               <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                 {filteredLogs.map((log, idx) => (
                   <div

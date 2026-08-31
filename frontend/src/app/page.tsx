@@ -20,6 +20,7 @@ import ConjunctionSection from '../components/ConjunctionSection';
 import MissionRiskCenter from '../components/MissionRiskCenter';
 import AlertsCenter from '../components/AlertsCenter';
 import DeepSpaceExplorer from '../components/DeepSpaceExplorer';
+import CosmicCosmologyCenter from '../components/CosmicCosmologyCenter';
 import LandingDescentSimulation from '../components/LandingDescentSimulation';
 import SurfaceLandingAnalysis from '../components/SurfaceLandingAnalysis';
 import Administration from '../components/Administration';
@@ -99,6 +100,10 @@ export default function Home() {
 
       {/* 14. Deep-Space & Lagrange Point Specialized Displays (Aditya-L1, Chandrayaan-3, JWST) */}
       <DeepSpaceExplorer />
+      <OrbitLines label="COSMIC 3D ORRERY, GARGANTUA BLACK HOLE &amp; ASTROPHYSICS" />
+
+      {/* 15. Realistic 3D Solar System Orrery, Interstellar Black Hole & Astrophysical Facts */}
+      <CosmicCosmologyCenter />
       <OrbitLines label="CHANDRAYAAN EDL SIMULATION &amp; HARDENING" />
 
       {/* 15. Chandrayaan Lunar EDL Trajectory & Failure-Proof Engineering */}

@@ -36,7 +36,7 @@ export default function SpacecraftCursor() {
   useEffect(() => {
     if (!isClient || typeof window === 'undefined') return;
 
-    // Disable only on strict touch-only devices without pointer
+    // Only run on fine-pointer devices (desktop mice / trackpads)
     const isTouch = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
     if (isTouch) return;
 
@@ -53,7 +53,7 @@ export default function SpacecraftCursor() {
       width = canvas.width = window.innerWidth;
       height = canvas.height = window.innerHeight;
     };
-    window.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize, { passive: true });
 
     const mouse = { x: width / 2, y: height / 2, active: false };
     const ship = {
@@ -74,30 +74,22 @@ export default function SpacecraftCursor() {
     const particles: ExhaustParticle[] = [];
     const ripples: ClickRipple[] = [];
 
-    // Evaluate spacecraft nature based on hovered DOM element
-    const evaluateMode = (target: HTMLElement | null): SpacecraftMode => {
-      if (!target) return 'cruise';
+    // Lightweight target evaluator directly from event without forced reflow
+    const evaluateTarget = (target: EventTarget | null): SpacecraftMode => {
+      if (!target || !(target instanceof HTMLElement)) return 'cruise';
 
-      // 1. Interactive Button / Link / Input Lock
-      const isInteractive = !!target.closest('button, a, input, textarea, select, [role="button"], .cursor-pointer');
-      if (isInteractive) return 'interactive';
-
-      // 2. Critical Alert & Conjunction Threat Section
-      const isThreat = !!target.closest(
-        '#alerts, #orbital, [data-threat="true"], .border-alert-critical, .bg-alert-critical, .text-alert-critical'
-      );
-      if (isThreat) return 'threat';
-
-      // 3. AI Anomaly & Telemetry Digital Twin Mode
-      const isScience = !!target.closest(
-        '#anomaly-center, #satellite-inspector, #digital-twin, #telemetry, #risk, #admin'
-      );
-      if (isScience) return 'science';
-
-      // 4. Planetary Surface & EDL Landing Mode
-      const isLanding = !!target.closest('#landing, #edl, #surface, #topography');
-      if (isLanding) return 'landing';
-
+      if (target.closest('button, a, input, textarea, select, [role="button"], .cursor-pointer')) {
+        return 'interactive';
+      }
+      if (target.closest('#cyber-defense, #alerts, [data-threat="true"]')) {
+        return 'threat';
+      }
+      if (target.closest('#anomaly-center, #satellite-inspector, #telemetry, #cosmic-explorer')) {
+        return 'science';
+      }
+      if (target.closest('#landing, #edl, #surface, #topography')) {
+        return 'landing';
+      }
       return 'cruise';
     };
 
@@ -105,9 +97,7 @@ export default function SpacecraftCursor() {
       mouse.x = e.clientX;
       mouse.y = e.clientY;
       mouse.active = true;
-
-      const target = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-      currentMode = evaluateMode(target || (e.target as HTMLElement | null));
+      currentMode = evaluateTarget(e.target);
     };
 
     const handleMouseDown = (e: MouseEvent) => {
@@ -115,7 +105,6 @@ export default function SpacecraftCursor() {
       mouse.x = e.clientX;
       mouse.y = e.clientY;
 
-      // Spawn kinetic quantum warp ripple wave on click
       const rippleColor =
         currentMode === 'threat'
           ? '#ff3b3b'
@@ -125,14 +114,16 @@ export default function SpacecraftCursor() {
           ? '#f59e0b'
           : '#00d4ff';
 
-      ripples.push({
-        x: mouse.x,
-        y: mouse.y,
-        radius: 6,
-        maxRadius: 56,
-        alpha: 0.9,
-        color: rippleColor,
-      });
+      if (ripples.length < 6) {
+        ripples.push({
+          x: mouse.x,
+          y: mouse.y,
+          radius: 6,
+          maxRadius: 48,
+          alpha: 0.85,
+          color: rippleColor,
+        });
+      }
     };
 
     const handleMouseUp = () => {
@@ -148,55 +139,49 @@ export default function SpacecraftCursor() {
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
-    window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('mouseleave', handleMouseLeave);
-    document.addEventListener('mouseenter', handleMouseEnter);
+    window.addEventListener('mousedown', handleMouseDown, { passive: true });
+    window.addEventListener('mouseup', handleMouseUp, { passive: true });
+    document.addEventListener('mouseleave', handleMouseLeave, { passive: true });
+    document.addEventListener('mouseenter', handleMouseEnter, { passive: true });
 
-    // Color Palette per Mode
     const MODE_THEMES = {
       cruise: {
         primary: '#00d4ff',
         secondary: '#63c7ff',
-        glow: 'rgba(0, 212, 255, 0.55)',
+        glow: 'rgba(0, 212, 255, 0.45)',
         engine: '#00f0ff',
-        hullTop: '#ffffff',
         hullBase: '#0b1928',
         core: '#ffffff',
       },
       threat: {
         primary: '#ff3b3b',
         secondary: '#ff7373',
-        glow: 'rgba(255, 59, 59, 0.65)',
+        glow: 'rgba(255, 59, 59, 0.55)',
         engine: '#ff2200',
-        hullTop: '#ffffff',
         hullBase: '#25080b',
         core: '#fff0f0',
       },
       interactive: {
         primary: '#38bdf8',
         secondary: '#a5f3fc',
-        glow: 'rgba(56, 189, 248, 0.7)',
+        glow: 'rgba(56, 189, 248, 0.6)',
         engine: '#67e8f9',
-        hullTop: '#ffffff',
         hullBase: '#0c2236',
         core: '#ffffff',
       },
       science: {
         primary: '#10b981',
         secondary: '#34d399',
-        glow: 'rgba(16, 185, 129, 0.6)',
+        glow: 'rgba(16, 185, 129, 0.5)',
         engine: '#059669',
-        hullTop: '#ffffff',
         hullBase: '#052219',
         core: '#ecfdf5',
       },
       landing: {
         primary: '#f59e0b',
         secondary: '#fbbf24',
-        glow: 'rgba(245, 158, 11, 0.65)',
+        glow: 'rgba(245, 158, 11, 0.55)',
         engine: '#ea580c',
-        hullTop: '#ffffff',
         hullBase: '#271705',
         core: '#fffbeb',
       },
@@ -214,66 +199,57 @@ export default function SpacecraftCursor() {
         return;
       }
 
-      // Smooth position easing (Damped follow)
+      // Fast, responsive position tracking with zero lag
       const dx = mouse.x - ship.x;
       const dy = mouse.y - ship.y;
 
-      ship.vx += dx * 0.22;
-      ship.vy += dy * 0.22;
-      ship.vx *= 0.64;
-      ship.vy *= 0.64;
+      ship.vx = dx * 0.45;
+      ship.vy = dy * 0.45;
 
       ship.x += ship.vx;
       ship.y += ship.vy;
       ship.speed = Math.hypot(ship.vx, ship.vy);
 
-      // Dynamic flight orientation angle
-      if (ship.speed > 0.3) {
+      if (ship.speed > 0.4) {
         ship.targetAngle = Math.atan2(ship.vy, ship.vx) + Math.PI / 2;
       } else {
-        // Idle orbital attitude bobbing
-        ship.targetAngle = -Math.PI / 2 + Math.sin(time * 0.9) * 0.08;
+        ship.targetAngle = -Math.PI / 2 + Math.sin(time * 0.9) * 0.06;
       }
 
-      // Shortest angle interpolation
       let angleDiff = ship.targetAngle - ship.angle;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-      ship.angle += angleDiff * 0.24;
+      ship.angle += angleDiff * 0.35;
 
-      // TRANSLUCENCY EFFECT:
-      // When clicking / mouse down in contents, ship becomes translucent (0.32 opacity) so contents beneath are fully readable!
-      const targetOpacity = isMouseDown ? 0.32 : 0.98;
-      ship.opacity += (targetOpacity - ship.opacity) * 0.28;
+      const targetOpacity = isMouseDown ? 0.35 : 0.95;
+      ship.opacity += (targetOpacity - ship.opacity) * 0.3;
 
-      // Scale on hover & click
-      const targetScale = isMouseDown ? 0.88 : currentMode === 'interactive' ? 1.25 : 1.0;
-      ship.scale += (targetScale - ship.scale) * 0.22;
+      const targetScale = isMouseDown ? 0.88 : currentMode === 'interactive' ? 1.18 : 1.0;
+      ship.scale += (targetScale - ship.scale) * 0.25;
 
       const theme = MODE_THEMES[currentMode];
 
-      // 1. ION THRUSTER PARTICLES
-      const engineOffsetX = Math.sin(ship.angle) * 14;
-      const engineOffsetY = -Math.cos(ship.angle) * 14;
+      // Spawn thruster particles (capped to 25 to prevent memory churn)
+      if (particles.length < 22) {
+        const engineOffsetX = Math.sin(ship.angle) * 12;
+        const engineOffsetY = -Math.cos(ship.angle) * 12;
+        const spread = (Math.random() - 0.5) * 0.4;
+        const pSpeed = Math.random() * (ship.speed * 0.3 + 2.0) + 1.2;
 
-      const spawnCount = ship.speed > 2 ? 3 : 1;
-      for (let i = 0; i < spawnCount; i++) {
-        const spread = (Math.random() - 0.5) * 0.5;
-        const pSpeed = Math.random() * (ship.speed * 0.4 + 2.8) + 1.5;
         particles.push({
-          x: ship.x + engineOffsetX + (Math.random() - 0.5) * 3,
-          y: ship.y + engineOffsetY + (Math.random() - 0.5) * 3,
+          x: ship.x + engineOffsetX,
+          y: ship.y + engineOffsetY,
           vx: Math.sin(ship.angle + Math.PI + spread) * pSpeed,
           vy: -Math.cos(ship.angle + Math.PI + spread) * pSpeed,
-          size: Math.random() * 3.0 + 1.2,
-          alpha: (isMouseDown ? 0.25 : 0.85) * (Math.random() * 0.4 + 0.6),
-          maxLife: Math.random() * 14 + 8,
+          size: Math.random() * 2.5 + 1.0,
+          alpha: (isMouseDown ? 0.2 : 0.8) * (Math.random() * 0.4 + 0.6),
+          maxLife: 10,
           life: 0,
           color: Math.random() < 0.4 ? theme.engine : theme.primary,
         });
       }
 
-      // 2. RENDER EXHAUST PARTICLES
+      // Render Exhaust Particles
       for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.vx;
@@ -282,7 +258,6 @@ export default function SpacecraftCursor() {
 
         const lifeRatio = p.life / p.maxLife;
         const currentAlpha = p.alpha * (1 - lifeRatio);
-        const currentSize = p.size * (1 - lifeRatio * 0.6);
 
         if (lifeRatio >= 1 || currentAlpha <= 0.01) {
           particles.splice(i, 1);
@@ -291,19 +266,17 @@ export default function SpacecraftCursor() {
 
         ctx.save();
         ctx.beginPath();
-        ctx.arc(p.x, p.y, currentSize, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.size * (1 - lifeRatio * 0.5), 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.globalAlpha = currentAlpha;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = p.color;
         ctx.fill();
         ctx.restore();
       }
 
-      // 3. RENDER QUANTUM WARP RIPPLES
+      // Render Ripples
       for (let i = ripples.length - 1; i >= 0; i--) {
         const rip = ripples[i];
-        rip.radius += 3.2;
+        rip.radius += 2.8;
         rip.alpha *= 0.90;
 
         if (rip.alpha <= 0.02 || rip.radius >= rip.maxRadius) {
@@ -315,192 +288,79 @@ export default function SpacecraftCursor() {
         ctx.beginPath();
         ctx.arc(rip.x, rip.y, rip.radius, 0, Math.PI * 2);
         ctx.strokeStyle = rip.color;
-        ctx.lineWidth = 1.8;
+        ctx.lineWidth = 1.6;
         ctx.globalAlpha = rip.alpha;
-        ctx.shadowBlur = 14;
-        ctx.shadowColor = rip.color;
         ctx.stroke();
-
-        // Inner concentric high-energy pulse
-        if (rip.radius > 10) {
-          ctx.beginPath();
-          ctx.arc(rip.x, rip.y, rip.radius * 0.6, 0, Math.PI * 2);
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.2;
-          ctx.globalAlpha = rip.alpha * 0.8;
-          ctx.stroke();
-        }
         ctx.restore();
       }
 
-      // 4. RENDER SPACECRAFT HULL (ALWAYS ON TOP OF CONTENT)
+      // Render Spacecraft Hull
       ctx.save();
       ctx.translate(ship.x, ship.y);
       ctx.rotate(ship.angle);
       ctx.scale(ship.scale, ship.scale);
       ctx.globalAlpha = ship.opacity;
 
-      // A. Ambient Neon Engine Aura Glow
-      const glowGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, 28);
-      glowGrad.addColorStop(0, theme.glow);
-      glowGrad.addColorStop(0.7, theme.glow);
-      glowGrad.addColorStop(1, 'transparent');
-      ctx.fillStyle = glowGrad;
+      // Fuselage
       ctx.beginPath();
-      ctx.arc(0, 0, 28, 0, Math.PI * 2);
-      ctx.fill();
-
-      // B. Spacecraft Hull Vector Paths (Aerodynamic Delta Interceptor)
-      ctx.shadowBlur = isMouseDown ? 6 : 16;
-      ctx.shadowColor = theme.primary;
-
-      // 1. Delta-Wing Fuselage
-      ctx.beginPath();
-      ctx.moveTo(0, -19); // Nose cone
-      ctx.lineTo(12, 11);  // Right wingtip
-      ctx.lineTo(7, 13);   // Right inner nacelle
-      ctx.lineTo(3.5, 9);  // Right thruster bay
-      ctx.lineTo(0, 12);   // Center engine nozzle
-      ctx.lineTo(-3.5, 9); // Left thruster bay
-      ctx.lineTo(-7, 13);  // Left inner nacelle
-      ctx.lineTo(-12, 11); // Left wingtip
+      ctx.moveTo(0, -18);
+      ctx.lineTo(11, 10);
+      ctx.lineTo(6, 12);
+      ctx.lineTo(3, 8);
+      ctx.lineTo(0, 11);
+      ctx.lineTo(-3, 8);
+      ctx.lineTo(-6, 12);
+      ctx.lineTo(-11, 10);
       ctx.closePath();
 
-      // Hull Fill (Translucent with solid neon edge when clicking)
-      const hullGrad = ctx.createLinearGradient(0, -19, 0, 13);
-      if (isMouseDown) {
-        hullGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-        hullGrad.addColorStop(0.4, theme.secondary + '40');
-        hullGrad.addColorStop(1, 'rgba(8, 23, 38, 0.35)');
-      } else {
-        hullGrad.addColorStop(0, '#ffffff');
-        hullGrad.addColorStop(0.35, theme.secondary);
-        hullGrad.addColorStop(0.85, theme.hullBase);
-        hullGrad.addColorStop(1, '#050a10');
-      }
+      const hullGrad = ctx.createLinearGradient(0, -18, 0, 12);
+      hullGrad.addColorStop(0, '#ffffff');
+      hullGrad.addColorStop(0.4, theme.secondary);
+      hullGrad.addColorStop(1, theme.hullBase);
       ctx.fillStyle = hullGrad;
       ctx.fill();
-
-      // Sharp High-Contrast Border
-      ctx.lineWidth = isMouseDown ? 1.6 : 1.4;
       ctx.strokeStyle = theme.primary;
+      ctx.lineWidth = 1.3;
       ctx.stroke();
 
-      // 2. Cockpit / Sensor Dome
+      // Cockpit Core
       ctx.beginPath();
-      ctx.ellipse(0, -5, 2.8, 6.0, 0, 0, Math.PI * 2);
-      ctx.fillStyle = isMouseDown ? 'rgba(255, 255, 255, 0.5)' : theme.core;
+      ctx.ellipse(0, -4, 2.4, 5.0, 0, 0, Math.PI * 2);
+      ctx.fillStyle = theme.core;
       ctx.fill();
       ctx.strokeStyle = theme.primary;
-      ctx.lineWidth = 1.0;
+      ctx.lineWidth = 0.9;
       ctx.stroke();
 
-      // 3. Solar Panel / Wing Thermal Armor Panels
+      // Thruster Flame
+      const flameLength = 7 + ship.speed * 1.5;
       ctx.beginPath();
-      ctx.moveTo(4.5, -2);
-      ctx.lineTo(9, 8);
-      ctx.lineTo(5.5, 9);
+      ctx.moveTo(-2.5, 9);
+      ctx.lineTo(0, 9 + flameLength);
+      ctx.lineTo(2.5, 9);
       ctx.closePath();
-      ctx.fillStyle = theme.primary + (isMouseDown ? '25' : '65');
+      ctx.fillStyle = theme.engine;
       ctx.fill();
 
-      ctx.beginPath();
-      ctx.moveTo(-4.5, -2);
-      ctx.lineTo(-9, 8);
-      ctx.lineTo(-5.5, 9);
-      ctx.closePath();
-      ctx.fillStyle = theme.primary + (isMouseDown ? '25' : '65');
-      ctx.fill();
-
-      // 4. Wingtip Navigational Strobe Beacons
-      const strobeAlpha = Math.sin(time * 7) * 0.5 + 0.5;
-      ctx.beginPath();
-      ctx.arc(12, 11, 1.4, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(0, 255, 180, ${strobeAlpha})`;
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(-12, 11, 1.4, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255, 60, 60, ${strobeAlpha})`;
-      ctx.fill();
-
-      // 5. Thruster Flame Plume
-      const flameLength = (isMouseDown ? 5 : 9) + ship.speed * 2.4 + Math.sin(time * 20) * 3;
-      const flameGrad = ctx.createLinearGradient(0, 9, 0, 9 + flameLength);
-      flameGrad.addColorStop(0, '#ffffff');
-      flameGrad.addColorStop(0.3, theme.engine);
-      flameGrad.addColorStop(1, 'transparent');
-
-      ctx.beginPath();
-      ctx.moveTo(-3, 10);
-      ctx.lineTo(0, 10 + flameLength);
-      ctx.lineTo(3, 10);
-      ctx.closePath();
-      ctx.fillStyle = flameGrad;
-      ctx.fill();
-
-      // C. Mode-Specific Overlays:
-      // Mode 1: Interactive Target Lock HUD Brackets
+      // Interactive Mode Reticle
       if (currentMode === 'interactive') {
-        const bracketSize = 24 + Math.sin(time * 4) * 2;
-        ctx.lineWidth = 1.4;
+        const bs = 20;
         ctx.strokeStyle = theme.primary;
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = theme.primary;
-
-        // Top-Left bracket
-        ctx.beginPath();
-        ctx.moveTo(-bracketSize, -bracketSize + 7);
-        ctx.lineTo(-bracketSize, -bracketSize);
-        ctx.lineTo(-bracketSize + 7, -bracketSize);
-        ctx.stroke();
-
-        // Top-Right bracket
-        ctx.beginPath();
-        ctx.moveTo(bracketSize - 7, -bracketSize);
-        ctx.lineTo(bracketSize, -bracketSize);
-        ctx.lineTo(bracketSize, -bracketSize + 7);
-        ctx.stroke();
-
-        // Bottom-Left bracket
-        ctx.beginPath();
-        ctx.moveTo(-bracketSize, bracketSize - 7);
-        ctx.lineTo(-bracketSize, bracketSize);
-        ctx.lineTo(-bracketSize + 7, bracketSize);
-        ctx.stroke();
-
-        // Bottom-Right bracket
-        ctx.beginPath();
-        ctx.moveTo(bracketSize - 7, bracketSize);
-        ctx.lineTo(bracketSize, bracketSize);
-        ctx.lineTo(bracketSize, bracketSize - 7);
-        ctx.stroke();
-
-        // Center Target Crosshair Pips
-        ctx.beginPath();
-        ctx.arc(0, -19, 2.2, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-      }
-
-      // Mode 2: Threat Tactical Vector Shield
-      if (currentMode === 'threat') {
-        ctx.strokeStyle = `rgba(255, 59, 59, ${0.5 + Math.sin(time * 8) * 0.35})`;
         ctx.lineWidth = 1.2;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(0, 0, 26, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
 
-      // Mode 3: Science Sensor Radar Arc Sweep
-      if (currentMode === 'science') {
-        const sweepAngle = (time * 3.5) % (Math.PI * 0.8) - Math.PI * 0.4;
-        ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
-        ctx.lineWidth = 1.4;
         ctx.beginPath();
-        ctx.arc(0, -19, 18, sweepAngle - 0.35, sweepAngle + 0.35);
+        ctx.moveTo(-bs, -bs + 5);
+        ctx.lineTo(-bs, -bs);
+        ctx.lineTo(-bs + 5, -bs);
+        ctx.moveTo(bs - 5, -bs);
+        ctx.lineTo(bs, -bs);
+        ctx.lineTo(bs, -bs + 5);
+        ctx.moveTo(-bs, bs - 5);
+        ctx.lineTo(-bs, bs);
+        ctx.lineTo(-bs + 5, bs);
+        ctx.moveTo(bs - 5, bs);
+        ctx.lineTo(bs, bs);
+        ctx.lineTo(bs, bs - 5);
         ctx.stroke();
       }
 
@@ -529,7 +389,7 @@ export default function SpacecraftCursor() {
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none w-screen h-screen"
       style={{
-        zIndex: 2147483647, // Maximum 32-bit integer z-index in all modern browsers
+        zIndex: 2147483647,
         position: 'fixed',
         top: 0,
         left: 0,

@@ -216,6 +216,24 @@ const DYNAMIC_ALERT_POOL: DynamicAlertTemplate[] = [
   },
   {
     severity: 'high',
+    title: 'JWST MIRI Closed-Cycle Cryocooler Temperature Delta',
+    subsystem: 'CRYOGENICS / MIRI Instrument',
+    asset: 'JWST [L2 OBSERVATORY]',
+    description: 'Cold head temperature rose from 6.40 K to 6.82 K (+0.42 K drift). Helium loop compressor duty cycle at 88%.',
+    mitigation: 'Increase Pulse-Tube valve frequency to 61.5 Hz and purge bypass accumulator.',
+    confidence: 95,
+  },
+  {
+    severity: 'critical',
+    title: 'Pragyan Rover Solar Tilt Sun-Angle Misalignment',
+    subsystem: 'POWER / Lunar Surface Mobility',
+    asset: 'CHANDRAYAAN-3 [PRAGYAN]',
+    description: 'Low sun elevation (3.8° over lunar horizon) causing solar array output drop to 28W (nominal 50W).',
+    mitigation: 'Execute 14° clockwise yaw pivot maneuver to align high-efficiency solar panel with polar sun vector.',
+    confidence: 97,
+  },
+  {
+    severity: 'high',
     title: 'Reaction Wheel #3 Friction Torque Ripple Surge',
     subsystem: 'ADCS / Momentum Wheels',
     asset: 'CARTOSAT-3',
@@ -286,6 +304,33 @@ const DYNAMIC_ALERT_POOL: DynamicAlertTemplate[] = [
     mitigation: 'Shifted attitude determination Kalman filter to Gyro-Aided Mode.',
     confidence: 92,
   },
+  {
+    severity: 'medium',
+    title: 'Deep Space Network Ka-Band Doppler Track Shift',
+    subsystem: 'COMM / DSN Ground Station',
+    asset: 'CHANDRAYAAN-3 ⟷ ISTRAC-32M',
+    description: 'Lunar orbital Doppler residual drifted by +42 Hz due to unmodeled mascon gravitational perturbation.',
+    mitigation: 'Closed-loop PLL Doppler filter bandwidth adjusted to 500 Hz for automated carrier lock.',
+    confidence: 91,
+  },
+  {
+    severity: 'high',
+    title: 'JWST Primary Mirror Segment C3 Actuator Micro-Piston Drift',
+    subsystem: 'OPTICS / Wavefront Sensing',
+    asset: 'JWST [PRIMARY MIRROR]',
+    description: 'Segment C3 nanometer hex actuator drifted +18 nm out of phase following micro-meteoroid impulse.',
+    mitigation: 'Trigger automated coarse-phasing Hartmann mask recalibration routine.',
+    confidence: 96,
+  },
+  {
+    severity: 'low',
+    title: 'Synthetic Aperture Radar X-Band Pulse Droop',
+    subsystem: 'PAYLOAD / Radar Imaging',
+    asset: 'RISAT-2BR1',
+    description: 'Solid-state power amplifier (SSPA) peak output reduced by 0.3 dB at end of 40-second stripmap imaging swath.',
+    mitigation: 'Autonomous thermal cooling rest period extended by 5 seconds between acquisition passes.',
+    confidence: 95,
+  },
 ];
 
 const INITIAL_OPERATORS: OperatorItem[] = [
@@ -335,7 +380,7 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
   const [historicalTelemetry, setHistoricalTelemetry] = useState<TelemetryRecord[]>([]);
 
   const [alerts, setAlerts] = useState<AlertItem[]>(INITIAL_ALERTS);
-  const [alertScanCountdownSeconds, setAlertScanCountdownSeconds] = useState<number>(300); // 5-minute countdown (300s)
+  const [alertScanCountdownSeconds, setAlertScanCountdownSeconds] = useState<number>(30); // 30-second live countdown (30s)
   const alertIndexRef = useRef<number>(0);
   const alertIdCounterRef = useRef<number>(905);
 
@@ -479,7 +524,19 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
     };
 
     setAlerts((prev) => [newAlert, ...prev.slice(0, 24)]);
-    setAlertScanCountdownSeconds(300); // reset 5-minute timer
+    setAlertScanCountdownSeconds(30); // reset 30-second timer
+
+    // Also attempt background sync with backend alerts
+    api.getAlerts().then((serverAlerts) => {
+      if (serverAlerts && serverAlerts.length > 0) {
+        // Merge without losing latest local live alert
+        setAlerts((current) => {
+          const ids = new Set(current.map((a) => a.id));
+          const toAdd = serverAlerts.filter((sa) => !ids.has(sa.id));
+          return [...current, ...toAdd].slice(0, 25);
+        });
+      }
+    }).catch(() => {});
 
     // Log to mission audit trail
     setAuditLogs((prev) => [
@@ -503,13 +560,13 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
     }
   }, [formatMissionTime]);
 
-  // 5-minute (300s) alert countdown and auto-dispatch timer
+  // 30-second (30s) alert countdown and auto-dispatch timer
   useEffect(() => {
     const alertTimer = setInterval(() => {
       setAlertScanCountdownSeconds((sec) => {
         if (sec <= 1) {
           dispatchLiveAlert();
-          return 300;
+          return 30;
         }
         return sec - 1;
       });

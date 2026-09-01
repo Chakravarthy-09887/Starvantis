@@ -433,6 +433,7 @@ export default function CosmicCosmologyCenter() {
   // Facts Search & Category
   const [factSearch, setFactSearch] = useState<string>('');
   const [selectedFactCategory, setSelectedFactCategory] = useState<string>('ALL');
+  const [highlightedFactId, setHighlightedFactId] = useState<string | null>(null);
 
   const selectedBody = CELESTIAL_BODIES.find((b) => b.id === selectedBodyId) || CELESTIAL_BODIES[3];
 
@@ -1050,75 +1051,308 @@ export default function CosmicCosmologyCenter() {
     return (2.953 * bhMassSolar).toLocaleString();
   }, [bhMassSolar]);
 
+  const ALL_SPACE_FACTS = useMemo(() => [
+    {
+      id: 'FACT-TIME-DILATION',
+      category: 'RELATIVITY',
+      title: 'Gravitational Time Dilation & Black Holes',
+      metric: '1 hr = 7 yrs',
+      metricLabel: 'Miller’s Planet (r = 1.1 Rs near Gargantua)',
+      description: 'In Einstein’s General Relativity, deep gravitational potential wells slow down the progression of proper time. Near the event horizon of a supermassive Kerr black hole, time passes exponentially slower relative to distant observers.',
+      scientificReference: 'Einstein Field Equations: G_μν + Λg_μν = (8πG/c⁴) T_μν; Kip Thorne gravitational lensing model.',
+      breakdown: 'Proper time ratio: dτ = dt √(1 - 2GM/rc²). At r = 1.01 Rs, a single second represents days for an outside observer.',
+      color: '#f59e0b',
+    },
+    {
+      id: 'FACT-EINSTEIN-RINGS',
+      category: 'RELATIVITY',
+      title: 'Gravitational Lensing & Einstein Rings',
+      metric: 'θ_E ~ 30 arcsec',
+      metricLabel: 'Angular Einstein Radius for Massive Galaxy Clusters',
+      description: 'Massive galactic foreground clusters warp spacetime curvature, bending light from background quasars and galaxies into brilliant circular arcs and multi-image mirages.',
+      scientificReference: 'General Relativity null geodesic deflection: α = 4GM / (c² b); Hubble & JWST lensing surveys.',
+      breakdown: 'Einstein radius formula: θ_E = √((4GM/c²) · (D_ls / (D_l · D_s))). Acts as a natural cosmic magnifying glass.',
+      color: '#fbbf24',
+    },
+    {
+      id: 'FACT-FRAME-DRAGGING',
+      category: 'RELATIVITY',
+      title: 'Lense-Thirring Spacetime Frame Dragging',
+      metric: '39 milliarcsec/yr',
+      metricLabel: 'Earth Frame Dragging measured by Gravity Probe B',
+      description: 'Rotating massive bodies drag the very fabric of spacetime around with them like honey around a spinning spoon. Near rotating Kerr black holes, frame dragging forces all matter inside the ergosphere to co-rotate.',
+      scientificReference: 'Kerr metric frame dragging angular velocity: ω = 2GJr / (r⁴ + a²r² + 2GMa²r); Gravity Probe B (2011).',
+      breakdown: 'Inside the ergosphere (r_E = M + √(M² - a²cos²θ)), static observers cannot exist; everything must spin faster than light locally.',
+      color: '#a855f7',
+    },
+    {
+      id: 'FACT-GRAV-WAVES',
+      category: 'RELATIVITY',
+      title: 'Gravitational Waves & LIGO Spacetime Ripples',
+      metric: 'h ~ 10⁻²¹ strain',
+      metricLabel: 'Relative displacement (1/10,000th proton diameter)',
+      description: 'Cataclysmic collisions of binary black holes and neutron stars radiate pure gravitational quadrupole energy, rippling the spacetime metric across billions of light-years at the speed of light.',
+      scientificReference: 'LIGO/Virgo GW150914 & GW170817; Quadrupole formula: P = (c⁵/5G) (G M/r c²)⁵.',
+      breakdown: 'In GW150914, 3.0 solar masses (5.4 × 10⁴⁷ Joules) were converted into pure gravitational wave energy in 20 milliseconds.',
+      color: '#38bdf8',
+    },
+    {
+      id: 'FACT-CH3-SHIV-SHAKTI',
+      category: 'CHANDRAYAAN_LUNAR',
+      title: 'Shiv Shakti Point 60°C Regolith Thermal Delta',
+      metric: 'ΔT = 60.6 °C',
+      metricLabel: 'Surface (+50.4°C) to 10cm Subsurface (-10.2°C)',
+      description: 'ISRO’s ChaSTE probe on the Vikram lander recorded the first in-situ thermal profile of the lunar South Pole (69.373° S), discovering that ultra-porous lunar regolith acts as an extraordinary thermal insulator.',
+      scientificReference: 'ISRO Chandrayaan-3 ChaSTE (Chandra’s Surface Thermophysical Experiment) Telemetry (Aug 2023).',
+      breakdown: 'Regolith thermal conductivity K < 0.001 W/(m·K) in vacuum prevents solar heat from penetrating deeper than a few centimeters.',
+      color: '#f59e0b',
+    },
+    {
+      id: 'FACT-CH3-PERMANENT-ICE',
+      category: 'CHANDRAYAAN_LUNAR',
+      title: 'Lunar South Pole Permanently Shadowed Water Ice',
+      metric: '>600M Tons',
+      metricLabel: 'Estimated Water Ice trapped in Polar Craters (PSRs)',
+      description: 'Deep polar craters (such as Shackleton, Faustini, Shoemaker) receive zero sunlight for billions of years, remaining at cryogenic temperatures of 25K to 40K where water ice remains permanently frozen.',
+      scientificReference: 'ISRO Chandrayaan-1 Moon Mineralogy Mapper (M3), LRO Mini-RF radar, and Chandrayaan-3 Class/APXS.',
+      breakdown: 'Volatile sublimation rate is zero below 100K. Ice deposits represent vital in-situ rocket propellant (LH2/LOX) for deep space exploration.',
+      color: '#00d4ff',
+    },
+    {
+      id: 'FACT-CH3-REGOLITH-PERM',
+      category: 'CHANDRAYAAN_LUNAR',
+      title: 'Lunar Polar Regolith Dielectric Permittivity',
+      metric: 'ε_r = 2.7 ± 0.2',
+      metricLabel: 'Relative Dielectric Permittivity at 1.4 GHz',
+      description: 'Radar and microwave penetration studies by Chandrayaan-3 confirmed low electrical loss tangents in polar regolith, enabling deep ground-penetrating radar imaging of subsurface basaltic lava tubes and ice layers.',
+      scientificReference: 'ISRO Dual-Frequency Synthetic Aperture Radar (DFSAR) & Lander Sensors.',
+      breakdown: 'Loss tangent tan δ ≈ 0.004 allows microwave signals to penetrate up to 5 meters beneath the surface.',
+      color: '#10b981',
+    },
+    {
+      id: 'FACT-CH3-MOONQUAKES',
+      category: 'CHANDRAYAAN_LUNAR',
+      title: 'Deep Lunar Seismology & Moonquakes',
+      metric: 'M_L = 1.0 to 2.5',
+      metricLabel: 'ILSA Seismometer Micro-vibrations Logged',
+      description: 'ISRO’s ILSA instrument detected natural lunar seismic events along with Pragyan rover movements, demonstrating that the Moon is seismically active due to Earth tidal kneading and thermal stresses.',
+      scientificReference: 'ILSA (Instrument for Lunar Seismic Activity) MEMS accelerometer array on Vikram Lander.',
+      breakdown: 'Unlike Earth quakes that subside in minutes, moonquakes ring like a resonant bell for over an hour due to dry, highly fractured crust.',
+      color: '#ec4899',
+    },
+    {
+      id: 'FACT-JWST-EARLY-UNIVERSE',
+      category: 'JWST_DISCOVERIES',
+      title: 'JWST High-Redshift Early Primordial Galaxies',
+      metric: 'z = 14.32',
+      metricLabel: 'JADES-GS-z14-0 (290M yrs post-Big Bang)',
+      description: 'The James Webb Space Telescope discovered luminous, massive galaxies existing only 290–330 million years after the Big Bang, challenging traditional hierarchical galaxy assembly and dark matter halo growth models.',
+      scientificReference: 'JWST NIRCam / NIRSpec JADES Survey; Lyman-break spectroscopy; Carniani et al. (2024).',
+      breakdown: 'Features intense UV luminosity and substantial dust enrichment, indicating rapid early Population III star formation.',
+      color: '#10b981',
+    },
+    {
+      id: 'FACT-JWST-WASP-39B',
+      category: 'JWST_DISCOVERIES',
+      title: 'First CO₂ & Photochemistry on Alien Worlds',
+      metric: '4.3 µm Absorption',
+      metricLabel: 'WASP-39b Carbon Dioxide & Sulfur Dioxide Fingerprint',
+      description: 'JWST captured the first definitive molecular spectroscopic transmission profile of carbon dioxide and photochemical sulfur dioxide in an exoplanetary atmosphere 700 light-years away.',
+      scientificReference: 'JWST Transiting Exoplanet Early Release Science Team; Nature (2023).',
+      breakdown: 'NIRSpec PRISM high signal-to-noise transmission spectrum confirmed complex atmospheric cloud decks and photochemistry triggered by stellar UV.',
+      color: '#38bdf8',
+    },
+    {
+      id: 'FACT-JWST-SMACS-0723',
+      category: 'JWST_DISCOVERIES',
+      title: 'SMACS 0723 Ultra-Deep Gravitational Lens',
+      metric: '13.1 Billion Yrs',
+      metricLabel: 'Light Travel Time of Magnified Background Galaxies',
+      description: 'JWST’s first deep field image focused on galaxy cluster SMACS 0723, using its tremendous gravitational mass to magnify and bend the infrared light of thousands of distant primordial galaxies.',
+      scientificReference: 'JWST NIRCam 12.5-hour composite exposure; gravitational cluster mass M ~ 10¹⁵ M_sun.',
+      breakdown: 'Mid-infrared MIRI channels revealed chemical fingerprints of polycyclic aromatic hydrocarbons (PAHs) across cosmic time.',
+      color: '#ec4899',
+    },
+    {
+      id: 'FACT-JWST-SUNSHIELD-DELTA',
+      category: 'JWST_DISCOVERIES',
+      title: '5-Layer Kapton Passive Cryogenic Shielding',
+      metric: 'ΔT = 318 °C',
+      metricLabel: '+85°C Hot Sunward Side to -233°C (40 K) Cold Side',
+      description: 'JWST’s tennis-court-sized 5-layer aluminum/silicon coated Kapton sunshield dissipates 99.99% of solar heat through vacuum gaps, cooling the primary mirror array passively down to 40 Kelvin without active liquid coolant.',
+      scientificReference: 'NASA Goddard Space Flight Center JWST Passive Cryogenic Thermal Architecture.',
+      breakdown: 'Each layer is 0.025 to 0.05 mm thick. Active MIRI helium loop cools the mid-infrared sensor further down to 6.4 K.',
+      color: '#f59e0b',
+    },
+    {
+      id: 'FACT-NEUTRON-MAGNETAR',
+      category: 'COMPACT_OBJECTS',
+      title: 'Magnetars: Cosmic Magnetic Titans',
+      metric: '10¹¹ Tesla',
+      metricLabel: 'Magnetic Field Strength (10¹⁵ Gauss)',
+      description: 'Magnetars are ultra-dense neutron stars with magnetic fields strong enough to dissolve atomic electron orbitals into thin needles from 1,000 km away. Crust starquakes trigger massive gamma-ray giant flares that ionize Earth’s upper atmosphere.',
+      scientificReference: 'Soft Gamma Repeaters (SGR 1806-20 giant flare); Relativistic QED vacuum birefringence.',
+      breakdown: 'A single teaspoon of magnetar crust weighs over 1 billion tons. Its magnetic energy density exceeds 10²⁵ J/m³.',
+      color: '#ef4444',
+    },
+    {
+      id: 'FACT-KERR-PENROSE',
+      category: 'COMPACT_OBJECTS',
+      title: 'Penrose Process & Black Hole Superradiance',
+      metric: '29% Mass Energy',
+      metricLabel: 'Maximum Rotational Energy Extraction Limit',
+      description: 'In the ergosphere outside a rotating Kerr black hole horizon, particles can split such that negative energy states fall into the hole while positive energy particles escape with more energy than entered.',
+      scientificReference: 'Roger Penrose (1969); Christodoulou irreducible mass formula: M² = M_irr² + J² / (4 M_irr²).',
+      breakdown: 'Enables superradiant scattering and extraction of up to 29% of the black hole’s total rest-mass energy (E = 0.29 M c²).',
+      color: '#8b5cf6',
+    },
+    {
+      id: 'FACT-SGR-A-PHOTON-RING',
+      category: 'COMPACT_OBJECTS',
+      title: 'Sagittarius A* Event Horizon Shadow & Photon Ring',
+      metric: '52 µas Diameter',
+      metricLabel: 'Angular Shadow of Milky Way’s 4.15M M_sun Black Hole',
+      description: 'The Event Horizon Telescope (EHT) array resolved the glowing ring of plasma orbiting Sagittarius A* at 30% the speed of light, confirming General Relativity in the strong-field limit.',
+      scientificReference: 'Event Horizon Telescope Collaboration; Astrophysical Journal Letters (2022).',
+      breakdown: 'Photon sphere radius r_ph = 3GM/c² creates a critical impact parameter b_c = √27 GM/c², defining the shadow diameter.',
+      color: '#f97316',
+    },
+    {
+      id: 'FACT-HAWKING-RADIATION',
+      category: 'COMPACT_OBJECTS',
+      title: 'Hawking Radiation & Black Hole Evaporation',
+      metric: 'T_H ~ 10⁻⁸ K',
+      metricLabel: 'Hawking Temperature for a Solar-Mass Black Hole',
+      description: 'Quantum vacuum fluctuations near the event horizon cause virtual particle-antiparticle pairs to separate, allowing thermal radiation to escape while the black hole slowly loses mass and eventually evaporates.',
+      scientificReference: 'Stephen Hawking (1974); Black hole thermodynamic temperature: T_H = ℏ c³ / (8π G M k_B).',
+      breakdown: 'Evaporation timescale: t_evap = (5120 π G² M³) / (1.536 × 10³ ℏ c⁴) ≈ 2.1 × 10⁶⁷ years for 1 solar mass.',
+      color: '#06b6d4',
+    },
+    {
+      id: 'FACT-EXOPLANET-TRAPPIST',
+      category: 'EXOPLANETS',
+      title: 'TRAPPIST-1 Seven Earth-Sized Worlds',
+      metric: '3 In Habitable Zone',
+      metricLabel: 'TRAPPIST-1e, f, g (Liquid Water Candidates)',
+      description: 'An ultra-cool red dwarf star 40 light-years away hosting 7 resonant rocky planets. TRAPPIST-1e is considered one of the highest-priority exoplanets for atmospheric biosignature (water vapor, ozone, methane) spectroscopy.',
+      scientificReference: 'Spitzer / JWST Transmission Spectroscopy; Atmospheric escape & M-dwarf stellar flare dynamics.',
+      breakdown: 'Planets are locked in complex Laplace orbital resonances: while planet b completes 8 orbits, c completes 5, d completes 3, and e completes 2.',
+      color: '#38bdf8',
+    },
+    {
+      id: 'FACT-55-CANCRI-E',
+      category: 'EXOPLANETS',
+      title: '55 Cancri e Super-Earth Diamond Mantle',
+      metric: '8.6 Earth Masses',
+      metricLabel: 'Carbon-Rich Super-Earth orbiting in 18 Hours',
+      description: 'An ultra-dense carbon-rich lava world where core temperatures exceed 2,000°C and pressures surpass 1.5 million atmospheres, compressing graphite and carbon into a thick mantle of pure crystalline diamond.',
+      scientificReference: 'Spitzer / JWST Thermal Emission Spectroscopy; Madhusudhan et al. (2012).',
+      breakdown: 'Extreme proximity to host star (0.0154 AU) creates a permanent dayside lava ocean with a mineral vapor atmosphere.',
+      color: '#a78bfa',
+    },
+    {
+      id: 'FACT-HD189733B-GLASS',
+      category: 'EXOPLANETS',
+      title: 'HD 189733b Molten Silicate Glass Rain',
+      metric: '8,700 km/h',
+      metricLabel: 'Equatorial Wind Speeds (Mach 7 Sideways Rain)',
+      description: 'A cobalt-blue hot Jupiter where temperatures exceed 1,000°C. Silicate particles in the atmosphere condense into glass grains, blown sideways in violent supersonic jet streams of molten glass rain.',
+      scientificReference: 'Hubble Space Telescope STIS blue albedo spectroscopy; sodium and silicate dust signatures.',
+      breakdown: 'High daytime temperatures drive strong global pressure gradients, creating intense day-to-night thermal circulation.',
+      color: '#60a5fa',
+    },
+    {
+      id: 'FACT-K2-18B-HYCEAN',
+      category: 'EXOPLANETS',
+      title: 'K2-18b Hycean Ocean World Biosignature Candidate',
+      metric: '2.6x Earth Radius',
+      metricLabel: 'Hydrogen Atmosphere over Liquid Water Ocean',
+      description: 'JWST observations detected methane (CH₄) and carbon dioxide (CO₂) with an absence of ammonia in K2-18b, pointing to a habitable Hycean world with a vast liquid ocean beneath a hydrogen-rich atmosphere.',
+      scientificReference: 'JWST NIRISS and NIRSpec observations (Madhusudhan et al., 2023); potential DMS biosignature trace.',
+      breakdown: 'Tentative detection of dimethyl sulfide (DMS) — a biomarker exclusively emitted by marine phytoplankton on Earth.',
+      color: '#34d399',
+    },
+    {
+      id: 'FACT-OLYMPUS-MONS',
+      category: 'SOLAR_SYSTEM',
+      title: 'Olympus Mons: Solar System’s Largest Shield Volcano',
+      metric: '21.9 km Tall',
+      metricLabel: '2.5x Mount Everest with a 600 km Base on Mars',
+      description: 'A monstrous shield volcano on Mars so massive its summit pokes out into the Martian upper stratosphere. Because Mars lacks moving tectonic plates, magma plumes erupted over hundreds of millions of years at the same stationary spot.',
+      scientificReference: 'Mars Global Surveyor MOLA altimetry; Mars Express HRSC stereo imaging.',
+      breakdown: 'The caldera alone spans 80 km across and 3 km deep — large enough to swallow the entire city of London.',
+      color: '#f97316',
+    },
+    {
+      id: 'FACT-EUROPA-OCEAN',
+      category: 'SOLAR_SYSTEM',
+      title: 'Europa Subsurface Liquid Ocean & Tidal Heating',
+      metric: '100 km Deep',
+      metricLabel: '2x Volume of all Earth’s Oceans Combined',
+      description: 'Jupiter’s moon Europa conceals a global salty ocean beneath a 15–25 km ice shell, kept liquid by gravitational tidal flexion from Jupiter and neighboring Galilean moons.',
+      scientificReference: 'Galileo magnetometer induced magnetic dipole discovery; Europa Clipper mission baseline.',
+      breakdown: 'Hydrothermal vents on Europa’s rocky ocean floor may provide chemical gradients and energy to support extraterrestrial chemosynthetic life.',
+      color: '#38bdf8',
+    },
+    {
+      id: 'FACT-TITAN-LAKES',
+      category: 'SOLAR_SYSTEM',
+      title: 'Titan Liquid Methane Lakes & Nitrogen Atmosphere',
+      metric: '1.45 Bar Surface',
+      metricLabel: 'Dense Atmosphere with Methane Hydrological Cycle',
+      description: 'Saturn’s moon Titan is the only celestial body besides Earth with liquid rivers, lakes, and seas (Kraken Mare), filled with liquid methane and ethane falling from orange smog clouds.',
+      scientificReference: 'Cassini-Huygens RADAR and DISR descent probe measurements; Dragonfly mission target.',
+      breakdown: 'Surface temperature of 94 K (-179°C) allows methane to exist near its triple point, mirroring Earth’s water cycle.',
+      color: '#fbbf24',
+    },
+    {
+      id: 'FACT-ENCELADUS-GEYSERS',
+      category: 'SOLAR_SYSTEM',
+      title: 'Enceladus Cryovolcanic Hydrothermal Plumes',
+      metric: '400 kg/s Ejecta',
+      metricLabel: 'Supersonic Cryo-plumes feeding Saturn’s E-Ring',
+      description: 'Over 100 cryovolcanic geysers erupt from the "Tiger Stripe" fractures at Enceladus’ South Pole, blasting water vapor, ice grains, salts, and complex organic macromolecule chains directly into space.',
+      scientificReference: 'Cassini INMS (Ion and Neutral Mass Spectrometer) and CDA (Cosmic Dust Analyzer); Postberg et al. (2023).',
+      breakdown: 'Detection of molecular hydrogen (H2) and phosphorus confirms hydrothermal serpentinization reactions in the ocean floor.',
+      color: '#a855f7',
+    },
+    {
+      id: 'FACT-CMB-RELIC',
+      category: 'COSMOLOGY',
+      title: 'Cosmic Microwave Background (CMB)',
+      metric: '2.725 Kelvin',
+      metricLabel: 'Relic Big Bang Thermal Radiation',
+      description: 'The afterglow of the Big Bang emitted 380,000 years after creation during recombination when the universe cooled below 3,000K, allowing neutral hydrogen to form and photons to decouple and free-stream across space.',
+      scientificReference: 'Planck / WMAP satellites; Sachs-Wolfe effect; Baryon Acoustic Oscillations (BAO).',
+      breakdown: 'The CMB fills every cubic centimeter of space with ~411 photons, preserving tiny 10⁻⁵ temperature fluctuations that seeded all galaxies.',
+      color: '#00d4ff',
+    },
+    {
+      id: 'FACT-DARK-ENERGY',
+      category: 'COSMOLOGY',
+      title: 'Dark Energy & Accelerated Expansion',
+      metric: '68.3% & 26.8%',
+      metricLabel: 'Dark Energy & Dark Matter Cosmic Share',
+      description: 'Ordinary baryonic matter (stars, planets, interstellar gas, atoms) accounts for less than 4.9% of the universe. Dark Energy acts as a repulsive negative pressure driving accelerated metric expansion of space.',
+      scientificReference: 'Type Ia Supernovae standard candles (Perlmutter, Schmidt, Riess 1998 Nobel Prize); Planck Collaboration.',
+      breakdown: 'Cosmological Constant equation of state: w = p/ρ ≈ -1.03 ± 0.03, pointing towards eternal cosmic expansion and heat death.',
+      color: '#a855f7',
+    },
+    {
+      id: 'FACT-COSMIC-WEB',
+      category: 'COSMOLOGY',
+      title: 'The Cosmic Web & Dark Matter Halos',
+      metric: '100 Mpc Filaments',
+      metricLabel: 'Filamentary Scaffolding connecting Superclusters',
+      description: 'Gravity shapes dark matter and primordial gas into a colossal cosmic network of dense filaments and nodes surrounding gargantuan empty cosmic voids (some spanning 300 million light-years across).',
+      scientificReference: 'Millennium & IllustrisTNG cosmological simulations; SDSS Baryon Oscillation Spectroscopic Survey.',
+      breakdown: 'Warm-hot intergalactic medium (WHIM) along filaments accounts for the majority of previously "missing" cosmic baryons.',
+      color: '#ec4899',
+    },
+  ], []);
+
   const filteredFacts = useMemo(() => {
-    return [
-      {
-        id: 'FACT-TIME-DILATION',
-        category: 'RELATIVITY',
-        title: 'Gravitational Time Dilation & Black Holes',
-        metric: '1 hr = 7 yrs',
-        metricLabel: 'Miller’s Planet (r = 1.1 Rs near Gargantua)',
-        description: 'In Einstein’s General Relativity, deep gravitational potential wells slow down the progression of proper time. Near the event horizon of a supermassive Kerr black hole, time passes exponentially slower relative to distant observers.',
-        scientificReference: 'Einstein Field Equations: G_μν + Λg_μν = (8πG/c⁴) T_μν; Kip Thorne gravitational lensing model.',
-        breakdown: 'Proper time ratio: dτ = dt √(1 - 2GM/rc²). At r = 1.01 Rs, a single second represents days for an outside observer.',
-        color: '#f59e0b',
-      },
-      {
-        id: 'FACT-NEUTRON-MAGNETAR',
-        category: 'COMPACT_OBJECTS',
-        title: 'Magnetars: Cosmic Magnetic Titans',
-        metric: '10¹¹ Tesla',
-        metricLabel: 'Magnetic Field Strength (10¹⁵ Gauss)',
-        description: 'Magnetars are ultra-dense neutron stars with magnetic fields strong enough to dissolve atomic electron orbitals into thin needles from 1,000 km away. Crust starquakes trigger massive gamma-ray giant flares that ionize Earth’s upper atmosphere.',
-        scientificReference: 'Soft Gamma Repeaters (SGR 1806-20 giant flare); Relativistic QED vacuum birefringence.',
-        breakdown: 'A single teaspoon of magnetar crust weighs over 1 billion tons. Its magnetic energy density exceeds 10²⁵ J/m³.',
-        color: '#ef4444',
-      },
-      {
-        id: 'FACT-CMB-RELIC',
-        category: 'COSMOLOGY',
-        title: 'Cosmic Microwave Background (CMB)',
-        metric: '2.725 Kelvin',
-        metricLabel: 'Relic Big Bang Thermal Radiation',
-        description: 'The afterglow of the Big Bang emitted 380,000 years after creation during recombination when the universe cooled below 3,000K, allowing neutral hydrogen to form and photons to decouple and free-stream across space.',
-        scientificReference: 'Planck / WMAP satellites; Sachs-Wolfe effect; Baryon Acoustic Oscillations (BAO).',
-        breakdown: 'The CMB fills every cubic centimeter of space with ~411 photons, preserving tiny 10⁻⁵ temperature fluctuations that seeded all galaxies.',
-        color: '#00d4ff',
-      },
-      {
-        id: 'FACT-DARK-ENERGY',
-        category: 'COSMOLOGY',
-        title: 'Dark Energy & Accelerated Expansion',
-        metric: '68.3% & 26.8%',
-        metricLabel: 'Dark Energy & Dark Matter Cosmic Share',
-        description: 'Ordinary baryonic matter (stars, planets, interstellar gas, atoms) accounts for less than 4.9% of the universe. Dark Energy acts as a repulsive negative pressure driving accelerated metric expansion of space.',
-        scientificReference: 'Type Ia Supernovae standard candles (Perlmutter, Schmidt, Riess 1998 Nobel Prize); Planck Collaboration.',
-        breakdown: 'Cosmological Constant equation of state: w = p/ρ ≈ -1.03 ± 0.03, pointing towards eternal cosmic expansion and heat death.',
-        color: '#a855f7',
-      },
-      {
-        id: 'FACT-JWST-EARLY-UNIVERSE',
-        category: 'JWST_DISCOVERIES',
-        title: 'JWST High-Redshift Early Galaxies',
-        metric: 'z = 14.32',
-        metricLabel: 'JADES-GS-z14-0 (290M yrs post-Big Bang)',
-        description: 'The James Webb Space Telescope discovered luminous, massive galaxies existing only 290–330 million years after the Big Bang, challenging traditional hierarchical galaxy assembly and dark matter halo growth models.',
-        scientificReference: 'JWST NIRCam / NIRSpec JADES Survey; Lyman-break spectroscopy; Carniani et al. (2024).',
-        breakdown: 'Features intense UV luminosity and substantial dust enrichment, indicating rapid early Population III star formation.',
-        color: '#10b981',
-      },
-      {
-        id: 'FACT-EXOPLANET-TRAPPIST',
-        category: 'EXOPLANETS',
-        title: 'TRAPPIST-1 Seven Earth-Sized Worlds',
-        metric: '3 In Habitable Zone',
-        metricLabel: 'TRAPPIST-1e, f, g (Liquid Water Candidates)',
-        description: 'An ultra-cool red dwarf star 40 light-years away hosting 7 resonant rocky planets. TRAPPIST-1e is considered one of the highest-priority exoplanets for atmospheric biosignature (water vapor, ozone, methane) spectroscopy.',
-        scientificReference: 'Spitzer / JWST Transmission Spectroscopy; Atmospheric escape & M-dwarf stellar flare dynamics.',
-        breakdown: 'Planets are locked in complex Laplace orbital resonances: while planet b completes 8 orbits, c completes 5, d completes 3, and e completes 2.',
-        color: '#38bdf8',
-      },
-    ].filter((f) => {
+    return ALL_SPACE_FACTS.filter((f) => {
       const matchSearch =
         f.title.toLowerCase().includes(factSearch.toLowerCase()) ||
         f.description.toLowerCase().includes(factSearch.toLowerCase()) ||
@@ -1127,7 +1361,18 @@ export default function CosmicCosmologyCenter() {
       const matchCat = selectedFactCategory === 'ALL' || f.category === selectedFactCategory;
       return matchSearch && matchCat;
     });
-  }, [factSearch, selectedFactCategory]);
+  }, [ALL_SPACE_FACTS, factSearch, selectedFactCategory]);
+
+  const handleSurpriseMe = () => {
+    const randomFact = ALL_SPACE_FACTS[Math.floor(Math.random() * ALL_SPACE_FACTS.length)];
+    setSelectedFactCategory('ALL');
+    setFactSearch('');
+    setHighlightedFactId(randomFact.id);
+    setTimeout(() => {
+      const el = document.getElementById(randomFact.id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  };
 
   return (
     <section id="cosmic-explorer" className="section-spacing relative overflow-hidden py-16 md:py-24" ref={containerRef}>
@@ -1681,73 +1926,126 @@ export default function CosmicCosmologyCenter() {
         {/* ------------------------------------------------------------- */}
         {activeTab === 'ASTRO_FACTS' && (
           <div className="space-y-6">
-            <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-glass-border flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-glass-border flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-gray" />
                 <input
                   type="text"
                   value={factSearch}
                   onChange={(e) => setFactSearch(e.target.value)}
-                  placeholder="Search space facts (Relativity, Exoplanets, JWST, Dark Energy, Magnetars)..."
-                  className="w-full pl-9 pr-3 py-2 rounded-2xl bg-black/50 border border-white/10 text-xs font-inter text-star-white placeholder:text-muted-gray/60 focus:outline-none focus:border-purple-400/50"
+                  placeholder="Search 27 space facts (Relativity, Chandrayaan, JWST, Dark Energy, Magnetars, Exoplanets)..."
+                  className="w-full pl-9 pr-3 py-2.5 rounded-2xl bg-black/50 border border-white/10 text-xs font-inter text-star-white placeholder:text-muted-gray/60 focus:outline-none focus:border-purple-400/50"
                 />
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-                {['ALL', 'RELATIVITY', 'EXOPLANETS', 'COMPACT_OBJECTS', 'COSMOLOGY', 'JWST_DISCOVERIES'].map((cat) => (
-                  <button
-                    type="button"
-                    key={cat}
-                    onClick={() => setSelectedFactCategory(cat)}
-                    className={`px-3 py-1.5 rounded-xl text-[10px] font-space tracking-wider border cursor-pointer shrink-0 transition-all ${
-                      selectedFactCategory === cat
-                        ? 'bg-purple-500/20 border-purple-400 text-purple-300 font-bold'
-                        : 'bg-black/40 border-white/10 text-muted-gray hover:text-star-white'
-                    }`}
-                  >
-                    {cat.replace('_', ' ')}
-                  </button>
-                ))}
-              </div>
+              {/* Surprise Me / Random Fact Button */}
+              <button
+                type="button"
+                onClick={handleSurpriseMe}
+                className="px-4 py-2.5 rounded-2xl bg-purple-500/20 hover:bg-purple-500/30 border border-purple-400/50 text-star-white font-space text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(168,85,247,0.25)] hover:scale-105 shrink-0"
+              >
+                <Sparkles size={14} className="text-purple-400 animate-spin" style={{ animationDuration: '6s' }} />
+                <span>SURPRISE ME / RANDOM FACT</span>
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredFacts.map((fact) => (
-                <div
-                  key={fact.id}
-                  className="glass-panel rounded-3xl p-5 sm:p-6 border border-glass-border hover:border-purple-400/40 transition-all space-y-3 relative overflow-hidden flex flex-col justify-between"
-                >
-                  <div className="space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-mono px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold">
-                        {fact.category}
-                      </span>
-                      <span className="text-[10px] font-mono text-muted-gray">{fact.id}</span>
-                    </div>
-
-                    <h3 className="font-space text-sm font-bold text-star-white">{fact.title}</h3>
-
-                    <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-0.5">
-                      <span className="font-mono text-lg font-bold text-purple-400 block">{fact.metric}</span>
-                      <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">{fact.metricLabel}</span>
-                    </div>
-
-                    <p className="font-inter text-xs text-star-white/85 leading-relaxed">
-                      {fact.description}
-                    </p>
-
-                    <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] font-mono text-purple-300">
-                      {fact.breakdown}
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-white/5">
-                    <span className="text-[9px] font-mono text-muted-gray block truncate">
-                      Ref: {fact.scientificReference}
+            {/* Category Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+              {[
+                { id: 'ALL', label: 'ALL FACTS', count: ALL_SPACE_FACTS.length },
+                { id: 'RELATIVITY', label: 'RELATIVITY', count: ALL_SPACE_FACTS.filter((f) => f.category === 'RELATIVITY').length },
+                { id: 'CHANDRAYAAN_LUNAR', label: 'CHANDRAYAAN & LUNAR', count: ALL_SPACE_FACTS.filter((f) => f.category === 'CHANDRAYAAN_LUNAR').length },
+                { id: 'JWST_DISCOVERIES', label: 'JWST DISCOVERIES', count: ALL_SPACE_FACTS.filter((f) => f.category === 'JWST_DISCOVERIES').length },
+                { id: 'COMPACT_OBJECTS', label: 'COMPACT OBJECTS', count: ALL_SPACE_FACTS.filter((f) => f.category === 'COMPACT_OBJECTS').length },
+                { id: 'EXOPLANETS', label: 'EXOPLANETS', count: ALL_SPACE_FACTS.filter((f) => f.category === 'EXOPLANETS').length },
+                { id: 'SOLAR_SYSTEM', label: 'SOLAR SYSTEM', count: ALL_SPACE_FACTS.filter((f) => f.category === 'SOLAR_SYSTEM').length },
+                { id: 'COSMOLOGY', label: 'COSMOLOGY', count: ALL_SPACE_FACTS.filter((f) => f.category === 'COSMOLOGY').length },
+              ].map((cat) => {
+                const isSelected = selectedFactCategory === cat.id;
+                return (
+                  <button
+                    type="button"
+                    key={cat.id}
+                    onClick={() => setSelectedFactCategory(cat.id)}
+                    className={`px-3.5 py-2 rounded-2xl text-[11px] font-space tracking-wider border cursor-pointer shrink-0 transition-all flex items-center gap-2 ${
+                      isSelected
+                        ? 'bg-purple-500/25 border-purple-400 text-purple-300 font-bold shadow-[0_0_15px_rgba(168,85,247,0.3)] scale-105'
+                        : 'bg-black/40 border-white/10 text-muted-gray hover:text-star-white hover:border-purple-400/30'
+                    }`}
+                  >
+                    <span>{cat.label}</span>
+                    <span className={`px-1.5 py-0.2 rounded-md text-[9px] font-mono ${isSelected ? 'bg-purple-400/30 text-star-white' : 'bg-white/10 text-muted-gray'}`}>
+                      {cat.count}
                     </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Facts Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredFacts.map((fact) => {
+                const isHighlighted = highlightedFactId === fact.id;
+                return (
+                  <div
+                    id={fact.id}
+                    key={fact.id}
+                    className={`glass-panel rounded-3xl p-5 sm:p-6 border transition-all duration-500 space-y-3 relative overflow-hidden flex flex-col justify-between ${
+                      isHighlighted
+                        ? 'border-purple-400 ring-2 ring-purple-400/50 shadow-[0_0_35px_rgba(168,85,247,0.4)] scale-[1.02]'
+                        : 'border-glass-border hover:border-purple-400/40'
+                    }`}
+                  >
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span
+                          className="text-[9px] font-mono px-2 py-0.5 rounded-md font-bold uppercase"
+                          style={{
+                            backgroundColor: `${fact.color || '#a855f7'}20`,
+                            color: fact.color || '#c084fc',
+                            border: `1px solid ${fact.color || '#a855f7'}40`,
+                          }}
+                        >
+                          {fact.category.replace('_', ' ')}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-gray">{fact.id}</span>
+                      </div>
+
+                      <h3 className="font-space text-sm font-bold text-star-white">{fact.title}</h3>
+
+                      <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 space-y-0.5">
+                        <span className="font-mono text-lg font-bold block" style={{ color: fact.color || '#c084fc' }}>
+                          {fact.metric}
+                        </span>
+                        <span className="text-[9px] font-space text-muted-gray uppercase block font-semibold">
+                          {fact.metricLabel}
+                        </span>
+                      </div>
+
+                      <p className="font-inter text-xs text-star-white/85 leading-relaxed">
+                        {fact.description}
+                      </p>
+
+                      <div
+                        className="p-2.5 rounded-xl text-[11px] font-mono leading-relaxed"
+                        style={{
+                          backgroundColor: `${fact.color || '#a855f7'}10`,
+                          border: `1px solid ${fact.color || '#a855f7'}25`,
+                          color: fact.color || '#c084fc',
+                        }}
+                      >
+                        {fact.breakdown}
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-white/5">
+                      <span className="text-[9px] font-mono text-muted-gray block truncate">
+                        Ref: {fact.scientificReference}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

@@ -20,6 +20,13 @@ import {
   Eye,
   Crosshair,
   TrendingUp,
+  Flame,
+  Radar,
+  Play,
+  Pause,
+  RotateCcw,
+  Sliders,
+  Orbit,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import {
@@ -29,16 +36,70 @@ import {
   JWSTDeepSpaceData,
 } from '../lib/api';
 
+// JWST 18-Hex Mirror Segment Definition
+interface HexMirrorSegment {
+  id: string;
+  ring: 'A' | 'B' | 'C';
+  col: number;
+  cx: number;
+  cy: number;
+  pistonNm: number;
+  tiltArcsec: number;
+  wavefrontRmsNm: number;
+  status: 'NOMINAL_PHASED' | 'FINE_TUNING';
+}
+
+const JWST_HEX_SEGMENTS: HexMirrorSegment[] = [
+  // Ring A (Inner 6 segments)
+  { id: 'A1', ring: 'A', col: 1, cx: 300, cy: 120, pistonNm: +2.1, tiltArcsec: 0.004, wavefrontRmsNm: 24.2, status: 'NOMINAL_PHASED' },
+  { id: 'A2', ring: 'A', col: 2, cx: 345, cy: 145, pistonNm: -1.4, tiltArcsec: 0.003, wavefrontRmsNm: 22.8, status: 'NOMINAL_PHASED' },
+  { id: 'A3', ring: 'A', col: 3, cx: 345, cy: 195, pistonNm: +0.8, tiltArcsec: 0.005, wavefrontRmsNm: 26.1, status: 'NOMINAL_PHASED' },
+  { id: 'A4', ring: 'A', col: 4, cx: 300, cy: 220, pistonNm: +1.9, tiltArcsec: 0.002, wavefrontRmsNm: 21.5, status: 'NOMINAL_PHASED' },
+  { id: 'A5', ring: 'A', col: 5, cx: 255, cy: 195, pistonNm: -2.3, tiltArcsec: 0.004, wavefrontRmsNm: 25.0, status: 'NOMINAL_PHASED' },
+  { id: 'A6', ring: 'A', col: 6, cx: 255, cy: 145, pistonNm: +0.4, tiltArcsec: 0.003, wavefrontRmsNm: 23.4, status: 'NOMINAL_PHASED' },
+
+  // Ring B (Outer middle segments)
+  { id: 'B1', ring: 'B', col: 1, cx: 300, cy: 70, pistonNm: +3.4, tiltArcsec: 0.006, wavefrontRmsNm: 28.1, status: 'NOMINAL_PHASED' },
+  { id: 'B2', ring: 'B', col: 2, cx: 390, cy: 120, pistonNm: -0.9, tiltArcsec: 0.004, wavefrontRmsNm: 24.8, status: 'NOMINAL_PHASED' },
+  { id: 'B3', ring: 'B', col: 3, cx: 390, cy: 220, pistonNm: +4.2, tiltArcsec: 0.007, wavefrontRmsNm: 29.5, status: 'NOMINAL_PHASED' },
+  { id: 'B4', ring: 'B', col: 4, cx: 300, cy: 270, pistonNm: -1.8, tiltArcsec: 0.005, wavefrontRmsNm: 27.2, status: 'NOMINAL_PHASED' },
+  { id: 'B5', ring: 'B', col: 5, cx: 210, cy: 220, pistonNm: +2.7, tiltArcsec: 0.004, wavefrontRmsNm: 26.4, status: 'NOMINAL_PHASED' },
+  { id: 'B6', ring: 'B', col: 6, cx: 210, cy: 120, pistonNm: -3.1, tiltArcsec: 0.006, wavefrontRmsNm: 30.1, status: 'NOMINAL_PHASED' },
+
+  // Ring C (Outer wings)
+  { id: 'C1', ring: 'C', col: 1, cx: 345, cy: 95, pistonNm: +1.1, tiltArcsec: 0.003, wavefrontRmsNm: 25.6, status: 'NOMINAL_PHASED' },
+  { id: 'C2', ring: 'C', col: 2, cx: 435, cy: 170, pistonNm: -2.0, tiltArcsec: 0.005, wavefrontRmsNm: 28.9, status: 'NOMINAL_PHASED' },
+  { id: 'C3', ring: 'C', col: 3, cx: 345, cy: 245, pistonNm: +5.0, tiltArcsec: 0.008, wavefrontRmsNm: 34.2, status: 'FINE_TUNING' },
+  { id: 'C4', ring: 'C', col: 4, cx: 255, cy: 245, pistonNm: -0.6, tiltArcsec: 0.002, wavefrontRmsNm: 22.0, status: 'NOMINAL_PHASED' },
+  { id: 'C5', ring: 'C', col: 5, cx: 165, cy: 170, pistonNm: +3.8, tiltArcsec: 0.007, wavefrontRmsNm: 31.8, status: 'NOMINAL_PHASED' },
+  { id: 'C6', ring: 'C', col: 6, cx: 255, cy: 95, pistonNm: -1.5, tiltArcsec: 0.004, wavefrontRmsNm: 26.7, status: 'NOMINAL_PHASED' },
+];
+
 export default function DeepSpaceExplorer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
   const { formatMissionTime } = useMission();
 
-  const [activeTab, setActiveTab] = useState<'aditya' | 'chandrayaan' | 'jwst'>('aditya');
+  const [activeTab, setActiveTab] = useState<'aditya' | 'chandrayaan' | 'jwst'>('chandrayaan');
   const [adityaData, setAdityaData] = useState<AdityaL1DeepSpaceData | null>(null);
   const [ch3Data, setCh3Data] = useState<Chandrayaan3DeepSpaceData | null>(null);
   const [jwstData, setJwstData] = useState<JWSTDeepSpaceData | null>(null);
   const [coronaPulse, setCoronaPulse] = useState(0);
+
+  // Chandrayaan-3 Interactive State
+  const [ch3ViewMode, setCh3ViewMode] = useState<'SURFACE_3D' | 'TRAJECTORY' | 'CHASTE_PROFILE'>('SURFACE_3D');
+  const [ch3ThrustersActive, setCh3ThrustersActive] = useState<boolean>(true);
+  const [ch3LaserScanner, setCh3LaserScanner] = useState<boolean>(true);
+  const [ch3RoverTraverse, setCh3RoverTraverse] = useState<boolean>(true);
+  const [ch3RoverDistance, setCh3RoverDistance] = useState<number>(101.4);
+  const [ch3LaserScanPulse, setCh3LaserScanPulse] = useState<number>(0);
+
+  // JWST Interactive State
+  const [jwstViewMode, setJwstViewMode] = useState<'MIRROR_OPTICS' | 'SUNSHIELD_L2' | 'DEEP_FIELD_IR'>('MIRROR_OPTICS');
+  const [selectedHexSegment, setSelectedHexSegment] = useState<HexMirrorSegment>(JWST_HEX_SEGMENTS[0]);
+  const [jwstRayAnimation, setJwstRayAnimation] = useState<number>(0);
+  const [infraredWavelengthUm, setInfraredWavelengthUm] = useState<number>(4.4);
+  const [sunshieldActiveLayer, setSunshieldActiveLayer] = useState<number>(1);
 
   // Fetch specialized deep-space telemetry
   useEffect(() => {
@@ -61,13 +122,36 @@ export default function DeepSpaceExplorer() {
     return () => clearInterval(interval);
   }, []);
 
-  // Solar flare animation loop
+  // Solar flare and ray tracing animation loop
   useEffect(() => {
     const cInterval = setInterval(() => {
       setCoronaPulse((p) => (p + 1) % 360);
+      setJwstRayAnimation((r) => (r + 1) % 100);
+      setCh3LaserScanPulse((s) => (s + 1) % 100);
     }, 40);
     return () => clearInterval(cInterval);
   }, []);
+
+  // Pragyan rover drive simulation odometer
+  useEffect(() => {
+    if (!ch3RoverTraverse) return;
+    const rInterval = setInterval(() => {
+      setCh3RoverDistance((d) => parseFloat((d + 0.05).toFixed(2)));
+    }, 1500);
+    return () => clearInterval(rInterval);
+  }, [ch3RoverTraverse]);
+
+  // Helper function to create SVG hexagon points
+  const getHexPoints = (cx: number, cy: number, r: number = 24) => {
+    const pts: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      const angle = (Math.PI / 3) * i - Math.PI / 6;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    return pts.join(' ');
+  };
 
   return (
     <section id="deep-space" className="section-spacing relative overflow-hidden" ref={containerRef}>
@@ -79,7 +163,7 @@ export default function DeepSpaceExplorer() {
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-purple-400/20 bg-purple-400/5 mb-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-purple-400/20 bg-purple-400/5 mb-4 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
             <Sparkles size={13} className="text-purple-400 animate-pulse" />
             <span className="font-space text-[10px] tracking-[0.3em] text-purple-400 uppercase font-bold">
               MULTI-BODY INTERPLANETARY &amp; LAGRANGE TELEMETRY
@@ -88,8 +172,8 @@ export default function DeepSpaceExplorer() {
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
             DEEP-SPACE EXPLORER
           </h2>
-          <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-2xl mx-auto">
-            Specialized astrodynamics consoles for Sun-Earth L1 Halo Orbit (Aditya-L1), Lunar South Pole (Chandrayaan-3), and Sun-Earth L2 (JWST) with light-time radio latency modeling.
+          <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-2xl mx-auto leading-relaxed">
+            Specialized astrodynamics consoles &amp; interactive visualizers for Sun-Earth L1 Halo Orbit (Aditya-L1), Lunar South Pole (Chandrayaan-3), and Sun-Earth L2 (JWST) with light-time radio latency modeling.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-purple-400/50 to-transparent mx-auto mt-4"
@@ -101,16 +185,15 @@ export default function DeepSpaceExplorer() {
           {/* MISSION SELECTOR TABS */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {[
-              { id: 'aditya', label: 'ADITYA-L1 (SUN-EARTH L1)', icon: Sun, color: '#fbbf24', tag: '1.5M km SUNWARD' },
               { id: 'chandrayaan', label: 'CHANDRAYAAN-3 (LUNAR SOUTH POLE)', icon: Moon, color: '#f59e0b', tag: 'SHIV SHAKTI POINT' },
               { id: 'jwst', label: 'JWST (SUN-EARTH L2 INFRARED)', icon: Sparkles, color: '#ec4899', tag: '1.5M km ANTI-SUN' },
+              { id: 'aditya', label: 'ADITYA-L1 (SUN-EARTH L1)', icon: Sun, color: '#fbbf24', tag: '1.5M km SUNWARD' },
             ].map((tab) => {
               const Icon = tab.icon;
               const isSelected = activeTab === tab.id;
               return (
-                <div
-                  role="button"
-                  tabIndex={0}
+                <button
+                  type="button"
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`px-4 py-2.5 rounded-2xl border text-xs font-space tracking-wider transition-all duration-300 flex items-center gap-2.5 cursor-pointer ${
@@ -124,7 +207,7 @@ export default function DeepSpaceExplorer() {
                   <span className="px-2 py-0.5 rounded-md bg-black/40 text-[9px] font-mono text-star-white/60">
                     {tab.tag}
                   </span>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -132,7 +215,902 @@ export default function DeepSpaceExplorer() {
 
         {/* Tab Content Panes */}
         <AnimatePresence mode="wait">
-          {/* TAB 1: ADITYA-L1 SOLAR CORONAGRAPH & L1 HALO ORBIT */}
+          {/* ============================================================== */}
+          {/* TAB 1: CHANDRAYAAN-3 LUNAR SOUTH POLE & INTERACTIVE VISUALIZER */}
+          {/* ============================================================== */}
+          {activeTab === 'chandrayaan' && (
+            <motion.div
+              key="chandrayaan"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+              className="grid lg:grid-cols-12 gap-8 items-start"
+            >
+              {/* Left Console: High-Fidelity Interactive Visualizer */}
+              <div className="lg:col-span-8 glass-panel rounded-3xl p-6 border border-amber-500/30 overflow-hidden relative shadow-[0_0_60px_rgba(245,158,11,0.15)] flex flex-col">
+                {/* Console Header */}
+                <div className="flex items-center justify-between border-b border-glass-border pb-4 mb-4 flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <Moon size={22} className="text-amber-500 animate-pulse" />
+                    <div>
+                      <span className="font-space text-xs sm:text-sm tracking-widest text-star-white uppercase block font-bold">
+                        SHIV SHAKTI POINT // CHANDRAYAAN-3 DEEP SPACE VISUALIZER
+                      </span>
+                      <span className="font-space text-[10px] text-amber-400/80">
+                        COORDINATES: 69.373° S, 32.319° E // POLAR REGOLITH &amp; EDL DYNAMICS
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-amber-500/30">
+                    <Radio size={13} className="text-amber-500 animate-pulse" />
+                    <span className="font-mono text-[10px] text-star-white">
+                      RADIO DELAY: <strong className="text-amber-400">1.28s</strong> (384,400 km)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sub-View Navigation Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { id: 'SURFACE_3D', label: 'LUNAR SURFACE & ROVER 3D', icon: Crosshair },
+                      { id: 'TRAJECTORY', label: 'EARTH-MOON TRAJECTORY', icon: Orbit },
+                      { id: 'CHASTE_PROFILE', label: 'CHASTE THERMAL GRADIENT', icon: Thermometer },
+                    ].map((btn) => {
+                      const Icon = btn.icon;
+                      const isSel = ch3ViewMode === btn.id;
+                      return (
+                        <button
+                          type="button"
+                          key={btn.id}
+                          onClick={() => setCh3ViewMode(btn.id as any)}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-space tracking-wider border cursor-pointer transition-all flex items-center gap-1.5 ${
+                            isSel
+                              ? 'bg-amber-500/25 border-amber-400 text-amber-300 font-bold shadow-[0_0_15px_rgba(245,158,11,0.3)]'
+                              : 'bg-black/40 border-white/10 text-muted-gray hover:text-star-white'
+                          }`}
+                        >
+                          <Icon size={13} />
+                          <span>{btn.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Interactive Surface Controls */}
+                  {ch3ViewMode === 'SURFACE_3D' && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setCh3ThrustersActive(!ch3ThrustersActive)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all flex items-center gap-1.5 cursor-pointer ${
+                          ch3ThrustersActive
+                            ? 'bg-orange-500/20 border-orange-400 text-orange-300'
+                            : 'bg-black/40 border-white/10 text-muted-gray'
+                        }`}
+                      >
+                        <Flame size={12} className={ch3ThrustersActive ? 'text-orange-400 animate-pulse' : ''} />
+                        <span>THRUSTERS: {ch3ThrustersActive ? 'ON (800N)' : 'IDLE'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCh3LaserScanner(!ch3LaserScanner)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all flex items-center gap-1.5 cursor-pointer ${
+                          ch3LaserScanner
+                            ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300'
+                            : 'bg-black/40 border-white/10 text-muted-gray'
+                        }`}
+                      >
+                        <Radar size={12} className={ch3LaserScanner ? 'text-emerald-400 animate-spin' : ''} />
+                        <span>LHDAC LASER: {ch3LaserScanner ? 'SWEEPING' : 'OFF'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCh3RoverTraverse(!ch3RoverTraverse)}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all flex items-center gap-1.5 cursor-pointer ${
+                          ch3RoverTraverse
+                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
+                            : 'bg-black/40 border-white/10 text-muted-gray'
+                        }`}
+                      >
+                        {ch3RoverTraverse ? <Pause size={12} /> : <Play size={12} />}
+                        <span>ROVER DRIVE: {ch3RoverTraverse ? 'ACTIVE' : 'PAUSED'}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 1: 3D-STYLED LUNAR SOUTH POLE & PRAGYAN ROVER SVG */}
+                {/* ------------------------------------------------------------- */}
+                {ch3ViewMode === 'SURFACE_3D' && (
+                  <div className="relative aspect-[16/9] w-full bg-[#05060d] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center select-none shadow-inner">
+                    <svg viewBox="0 0 640 360" className="w-full h-full">
+                      <defs>
+                        {/* Space Sky Gradient */}
+                        <linearGradient id="lunarSky" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#020308" />
+                          <stop offset="60%" stopColor="#080c16" />
+                          <stop offset="100%" stopColor="#141824" />
+                        </linearGradient>
+
+                        {/* Lunar Mountain Gradient */}
+                        <linearGradient id="craterRim" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#2b3240" />
+                          <stop offset="50%" stopColor="#1e2330" />
+                          <stop offset="100%" stopColor="#0e121a" />
+                        </linearGradient>
+
+                        {/* Lunar Ground Gradient */}
+                        <linearGradient id="lunarGround" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#252a36" />
+                          <stop offset="30%" stopColor="#1a1e28" />
+                          <stop offset="100%" stopColor="#0d0f15" />
+                        </linearGradient>
+
+                        {/* Gold Lander Hull MLI Gradient */}
+                        <linearGradient id="goldMli" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#fde047" />
+                          <stop offset="30%" stopColor="#f59e0b" />
+                          <stop offset="70%" stopColor="#d97706" />
+                          <stop offset="100%" stopColor="#78350f" />
+                        </linearGradient>
+
+                        {/* Thruster Flame Gradient */}
+                        <linearGradient id="thrustFlame" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.9" />
+                          <stop offset="30%" stopColor="#38bdf8" stopOpacity="0.7" />
+                          <stop offset="70%" stopColor="#f97316" stopOpacity="0.8" />
+                          <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                        </linearGradient>
+
+                        {/* Laser Scan Conical Mesh */}
+                        <radialGradient id="laserMesh" cx="50%" cy="0%" r="100%">
+                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+                          <stop offset="60%" stopColor="#10b981" stopOpacity="0.15" />
+                          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                        </radialGradient>
+                      </defs>
+
+                      {/* Deep Space Sky */}
+                      <rect width="640" height="360" fill="url(#lunarSky)" />
+
+                      {/* Stars in lunar sky */}
+                      {[
+                        { x: 30, y: 30, r: 1 }, { x: 75, y: 70, r: 1.2 }, { x: 140, y: 25, r: 0.8 },
+                        { x: 190, y: 80, r: 1 }, { x: 280, y: 40, r: 1.5 }, { x: 350, y: 20, r: 0.9 },
+                        { x: 420, y: 65, r: 1.1 }, { x: 510, y: 35, r: 1.3 }, { x: 590, y: 75, r: 1 },
+                      ].map((st, i) => (
+                        <circle key={i} cx={st.x} cy={st.y} r={st.r} fill="#e2e8f0" opacity="0.8" />
+                      ))}
+
+                      {/* Earth visible in the black sky above South Pole Horizon */}
+                      <g transform="translate(90, 60)">
+                        <circle r="18" fill="#1e40af" stroke="#60a5fa" strokeWidth="1" />
+                        {/* Continents & clouds */}
+                        <path d="M -8 -8 Q -2 -14 6 -10 Q 12 -4 8 6 Q 0 12 -10 6 Z" fill="#22c55e" opacity="0.85" />
+                        <circle r="18" fill="none" stroke="rgba(147, 197, 253, 0.4)" strokeWidth="3" className="animate-pulse" />
+                        <text x="0" y="28" fill="#93c5fd" fontSize="7" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                          EARTH (384,400 km)
+                        </text>
+                      </g>
+
+                      {/* Distant Lunar South Pole Crater Ridges (Manzinus / Boguslawsky rims) */}
+                      <path
+                        d="M 0 180 Q 80 150 160 170 T 320 155 T 480 165 T 640 150 L 640 220 L 0 220 Z"
+                        fill="url(#craterRim)"
+                        opacity="0.9"
+                      />
+                      <path
+                        d="M 0 195 Q 120 175 240 190 T 460 180 T 640 195 L 640 360 L 0 360 Z"
+                        fill="url(#lunarGround)"
+                      />
+
+                      {/* Regolith Craters & Shadow Formations */}
+                      <ellipse cx="140" cy="270" rx="45" ry="14" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
+                      <ellipse cx="500" cy="300" rx="70" ry="18" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
+                      <ellipse cx="360" cy="335" rx="30" ry="8" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
+
+                      {/* SHIV SHAKTI POINT Landing Beacon Coordinates Marker */}
+                      <g transform="translate(240, 205)">
+                        <circle r="12" fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" className="animate-spin" style={{ animationDuration: '12s' }} />
+                        <circle r="4" fill="#f59e0b" />
+                        <line x1="0" y1="0" x2="0" y2="-45" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2,2" />
+                        <rect x="-65" y="-62" width="130" height="16" rx="4" fill="rgba(0,0,0,0.85)" stroke="#f59e0b" strokeWidth="1" />
+                        <text x="0" y="-50" fill="#fcd34d" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          SHIV SHAKTI (69.373°S, 32.319°E)
+                        </text>
+                      </g>
+
+                      {/* --------------------------------------------------------- */}
+                      {/* VIKRAM LANDER GRAPHICAL MODEL (Centered on landing pad) */}
+                      {/* --------------------------------------------------------- */}
+                      <g transform="translate(240, 155)">
+                        {/* LHDAC Laser Hazard Scan Cone */}
+                        {ch3LaserScanner && (
+                          <polygon
+                            points="0,25 -65,115 65,115"
+                            fill="url(#laserMesh)"
+                            stroke="#10b981"
+                            strokeWidth="0.8"
+                            strokeDasharray="4,4"
+                          />
+                        )}
+
+                        {/* Dual Laser Doppler Velocimeter / Altimeter Beams */}
+                        {ch3LaserScanner && (
+                          <>
+                            <line x1="-15" y1="20" x2="-25" y2="105" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.8" />
+                            <line x1="15" y1="20" x2="25" y2="105" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.8" />
+                          </>
+                        )}
+
+                        {/* Throttleable 800N Thruster Exhaust Plumes */}
+                        {ch3ThrustersActive && (
+                          <g>
+                            <polygon points="-18,22 -22,48 -14,48" fill="url(#thrustFlame)" className="animate-pulse" />
+                            <polygon points="-6,22 -9,52 -3,52" fill="url(#thrustFlame)" className="animate-pulse" />
+                            <polygon points="6,22 3,52 9,52" fill="url(#thrustFlame)" className="animate-pulse" />
+                            <polygon points="18,22 14,48 22,48" fill="url(#thrustFlame)" className="animate-pulse" />
+                          </g>
+                        )}
+
+                        {/* 4 Shock-Absorbing Landing Legs */}
+                        <line x1="-22" y1="15" x2="-45" y2="50" stroke="#94a3b8" strokeWidth="2.5" />
+                        <line x1="-45" y1="50" x2="-55" y2="52" stroke="#64748b" strokeWidth="3" />
+                        <circle cx="-50" cy="51" r="3" fill="#cbd5e1" />
+
+                        <line x1="22" y1="15" x2="45" y2="50" stroke="#94a3b8" strokeWidth="2.5" />
+                        <line x1="45" y1="50" x2="55" y2="52" stroke="#64748b" strokeWidth="3" />
+                        <circle cx="50" cy="51" r="3" fill="#cbd5e1" />
+
+                        {/* Central Octagonal Lander Hull with Gold Foil */}
+                        <polygon
+                          points="-24,-15 24,-15 32,15 -32,15"
+                          fill="url(#goldMli)"
+                          stroke="#fbbf24"
+                          strokeWidth="1.5"
+                        />
+
+                        {/* Upper Avionics Deck & Top Solar Panels */}
+                        <rect x="-26" y="-22" width="52" height="7" rx="1.5" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
+                        <line x1="-24" y1="-26" x2="-24" y2="-22" stroke="#38bdf8" strokeWidth="1.5" />
+                        <line x1="24" y1="-26" x2="24" y2="-22" stroke="#38bdf8" strokeWidth="1.5" />
+                        <rect x="-32" y="-30" width="64" height="4" rx="1" fill="#0284c7" stroke="#bae6fd" strokeWidth="0.8" />
+
+                        {/* High-Gain Deep Space Antenna */}
+                        <line x1="-12" y1="-22" x2="-28" y2="-42" stroke="#e2e8f0" strokeWidth="1.5" />
+                        <path d="M -34 -48 A 10 10 0 0 1 -22 -36" fill="none" stroke="#f59e0b" strokeWidth="2" />
+                        <circle cx="-28" cy="-42" r="1.5" fill="#f59e0b" />
+
+                        {/* Deployed Pragyan Rover Ramp */}
+                        <line x1="18" y1="15" x2="70" y2="52" stroke="#64748b" strokeWidth="2.5" strokeDasharray="3,2" />
+
+                        {/* Vikram Lander Label */}
+                        <text x="0" y="2" fill="#0f172a" fontSize="7" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          VIKRAM
+                        </text>
+                      </g>
+
+                      {/* --------------------------------------------------------- */}
+                      {/* PRAGYAN ROVER 6-WHEEL ROCKER-BOGIE MOBILITY SYSTEM */}
+                      {/* --------------------------------------------------------- */}
+                      <g transform={`translate(${330 + Math.sin(ch3LaserScanPulse * 0.05) * 15}, 225)`}>
+                        {/* Wheel Tracks in Lunar Regolith */}
+                        <line x1="-60" y1="16" x2="0" y2="16" stroke="#0f1420" strokeWidth="3" strokeDasharray="2,2" />
+                        <line x1="-60" y1="20" x2="0" y2="20" stroke="#0f1420" strokeWidth="3" strokeDasharray="2,2" />
+
+                        {/* Rover Body Gold MLI */}
+                        <rect x="-16" y="-6" width="32" height="14" rx="2" fill="url(#goldMli)" stroke="#fbbf24" strokeWidth="1" />
+
+                        {/* Solar Panel Wing angled towards Polar Sun */}
+                        <polygon points="-14,-6 14,-6 18,-18 -10,-18" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.8" />
+
+                        {/* NavCam Mast & Antenna */}
+                        <line x1="8" y1="-6" x2="10" y2="-22" stroke="#e2e8f0" strokeWidth="1.2" />
+                        <circle cx="10" cy="-22" r="2" fill="#10b981" />
+
+                        {/* 6 Rocker-Bogie Wheels */}
+                        {[-14, -2, 10].map((wx, idx) => (
+                          <g key={idx} transform={`translate(${wx}, 10)`}>
+                            <circle r="4.5" fill="#1e293b" stroke="#94a3b8" strokeWidth="1.2" />
+                            <circle r="2" fill="#475569" />
+                          </g>
+                        ))}
+
+                        {/* LIBS Laser pulse firing at surface rock */}
+                        <line x1="10" y1="-22" x2="70" y2="18" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4,2" className="animate-pulse" />
+                        <circle cx="70" cy="18" r="6" fill="#334155" stroke="#64748b" strokeWidth="1" />
+                        <circle cx="70" cy="18" r="2" fill="#10b981" className="animate-ping" />
+
+                        {/* Pragyan Label & Odometer */}
+                        <text x="0" y="32" fill="#38bdf8" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          PRAGYAN ({ch3RoverDistance}m)
+                        </text>
+                      </g>
+
+                      {/* Top HUD Badge Overlay */}
+                      <g transform="translate(15, 20)">
+                        <rect width="180" height="24" rx="6" fill="rgba(0,0,0,0.75)" stroke="rgba(245,158,11,0.4)" strokeWidth="1" />
+                        <circle cx="12" cy="12" r="4" fill="#10b981" className="animate-pulse" />
+                        <text x="24" y="15" fill="#f8fafc" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                          LUNAR SOUTH POLE // NOMINAL
+                        </text>
+                      </g>
+                    </svg>
+
+                    {/* HUD Status Card inside Canvas */}
+                    <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl bg-black/80 border border-white/10 text-[10px] font-space text-star-white flex items-center gap-3 backdrop-blur-md">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        <span>EDL DESCENT: TOUCHDOWN COMPLETE</span>
+                      </div>
+                      <span className="text-amber-400 font-mono font-bold">ΔV EXPENDED: 1,842 m/s</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 2: EARTH-MOON TRAJECTORY & INSERTION SVG */}
+                {/* ------------------------------------------------------------- */}
+                {ch3ViewMode === 'TRAJECTORY' && (
+                  <div className="relative aspect-[16/9] w-full bg-[#05060f] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center">
+                    <svg viewBox="0 0 600 340" className="w-full h-full">
+                      {/* Earth with parking orbit */}
+                      <g transform="translate(100, 170)">
+                        <circle r="28" fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1.5" />
+                        <circle r="42" fill="none" stroke="rgba(96, 165, 250, 0.4)" strokeDasharray="3,3" />
+                        <ellipse rx="65" ry="32" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeDasharray="2,2" transform="rotate(-15)" />
+                        <ellipse rx="88" ry="42" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeDasharray="2,2" transform="rotate(-15)" />
+                        <text x="0" y="4" fill="#ffffff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          EARTH
+                        </text>
+                        <text x="0" y="48" fill="#93c5fd" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                          5x Earth-Bound Burns
+                        </text>
+                      </g>
+
+                      {/* Trans-Lunar Injection (TLI) Trajectory Arc */}
+                      <path
+                        d="M 175 140 C 250 80, 360 90, 470 150"
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="2.5"
+                        strokeDasharray="6,4"
+                      />
+
+                      {/* Spacecraft Beacon traveling across TLI */}
+                      <circle cx="310" cy="108" r="5" fill="#f59e0b" className="animate-pulse" />
+                      <circle cx="310" cy="108" r="12" fill="none" stroke="#f59e0b" strokeWidth="1" opacity="0.6" />
+                      <text x="310" y="90" fill="#fcd34d" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                        TLI TRANSFER ARC (10.2 km/s)
+                      </text>
+
+                      {/* Moon with Lunar Orbit Insertion (LOI) Loops */}
+                      <g transform="translate(490, 170)">
+                        <circle r="22" fill="#475569" stroke="#cbd5e1" strokeWidth="1.5" />
+                        <ellipse rx="55" ry="30" fill="none" stroke="rgba(245, 158, 11, 0.6)" strokeDasharray="3,3" transform="rotate(25)" />
+                        <circle r="34" fill="none" stroke="#10b981" strokeWidth="1.5" />
+                        <text x="0" y="4" fill="#ffffff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          MOON
+                        </text>
+                        <text x="0" y="42" fill="#cbd5e1" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                          100km Circular Orbit
+                        </text>
+                      </g>
+
+                      {/* Trajectory Phase Milestones */}
+                      <g transform="translate(20, 290)">
+                        <rect width="560" height="34" rx="8" fill="rgba(0,0,0,0.8)" stroke="rgba(255,255,255,0.1)" />
+                        <text x="20" y="21" fill="#94a3b8" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif">
+                          1. Launch &amp; EBN (July 14) → 2. TLI (Aug 1) → 3. Lunar Insertion (Aug 5) → 4. Touchdown (Aug 23, 18:04 IST)
+                        </text>
+                      </g>
+                    </svg>
+                  </div>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 3: CHASTE REGOLITH THERMAL PROFILE */}
+                {/* ------------------------------------------------------------- */}
+                {ch3ViewMode === 'CHASTE_PROFILE' && (
+                  <div className="p-5 rounded-2xl bg-[#080a14] border border-glass-border/60 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-space text-xs font-bold text-amber-400 uppercase flex items-center gap-1.5">
+                        <Thermometer size={14} />
+                        <span>CHASTE THERMAL PROBE PENETRATION PROFILE (0 to -10 cm DEPTH)</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/30">
+                        ΔT = 60.6°C EXTREME GRADIENT
+                      </span>
+                    </div>
+
+                    {/* Gradient Bars */}
+                    <div className="space-y-2.5">
+                      {[
+                        { depth: 'Surface Regolith (0 cm)', temp: '+50.4 °C', val: 50.4, color: '#f59e0b', desc: 'Direct sunlit polar regolith' },
+                        { depth: 'Sub-surface (-2 cm)', temp: '+32.0 °C', val: 32.0, color: '#fbbf24', desc: 'Rapid vacuum thermal insulation' },
+                        { depth: 'Sub-surface (-4 cm)', temp: '+14.5 °C', val: 14.5, color: '#38bdf8', desc: 'Sharp conductivity drop-off' },
+                        { depth: 'Sub-surface (-6 cm)', temp: '+2.0 °C', val: 2.0, color: '#63c7ff', desc: 'Near-freezing transition zone' },
+                        { depth: 'Sub-surface (-8 cm)', temp: '-4.8 °C', val: -4.8, color: '#00d4ff', desc: 'Sub-zero cryo-boundary' },
+                        { depth: 'Deep Lunar Ice Bed (-10 cm)', temp: '-10.2 °C', val: -10.2, color: '#a855f7', desc: 'Permanent subsurface frost layer' },
+                      ].map((row, idx) => (
+                        <div key={idx} className="flex items-center gap-3 text-xs font-space">
+                          <div className="w-52">
+                            <span className="text-[11px] text-star-white font-semibold block">{row.depth}</span>
+                            <span className="text-[9px] text-muted-gray">{row.desc}</span>
+                          </div>
+                          <div className="flex-1 bg-black/60 rounded-full h-3.5 overflow-hidden border border-white/10 flex">
+                            <div
+                              className="h-full rounded-full transition-all duration-700"
+                              style={{
+                                width: `${Math.max(12, ((row.val + 20) / 80) * 100)}%`,
+                                backgroundColor: row.color,
+                              }}
+                            />
+                          </div>
+                          <span className="w-20 text-right font-mono font-bold text-sm" style={{ color: row.color }}>
+                            {row.temp}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Subsystem Telemetry Grid */}
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">ROVER TRAVERSED:</span>
+                    <span className="font-mono text-sm font-bold text-amber-400">{ch3RoverDistance} meters</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">ILSA SEISMICITY:</span>
+                    <span className="font-mono text-sm font-bold text-cyan-glow">3 Lunar Events</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">RAMBHA PLASMA:</span>
+                    <span className="font-mono text-sm font-bold text-purple-400">1.05 × 10⁴ / cm³</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">COMMUNICATION SNR:</span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">+48.2 dB (DSN)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: APXS Spectrometry & Mission Highlights */}
+              <div className="lg:col-span-4 space-y-4">
+                <div className="glass-panel rounded-3xl p-6 border border-amber-500/30 relative overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-glass-border pb-3 mb-4">
+                    <span className="font-space text-xs tracking-wider uppercase font-bold text-amber-500">
+                      APXS MINERAL SPECTROMETRY
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
+                      SHIV SHAKTI ROCKS
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 font-space text-xs">
+                    <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2">
+                      <span className="text-muted-gray text-[10px] uppercase font-semibold block">ELEMENTAL CONCENTRATION (APXS + LIBS)</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { el: 'Silicon (Si)', pct: '21.4%' },
+                          { el: 'Aluminum (Al)', pct: '14.8%' },
+                          { el: 'Calcium (Ca)', pct: '9.6%' },
+                          { el: 'Iron (Fe)', pct: '8.2%' },
+                          { el: 'Magnesium (Mg)', pct: '6.8%' },
+                          { el: 'Titanium (Ti)', pct: '2.1%' },
+                          { el: 'Sulfur (S)', pct: '0.34%' },
+                          { el: 'Oxygen (O)', pct: '44.2%' },
+                        ].map((e, idx) => (
+                          <div key={idx} className="p-2 rounded-lg bg-space-navy/50 border border-white/5 flex justify-between">
+                            <span className="text-[10px] text-star-white/80">{e.el}</span>
+                            <span className="font-mono text-[10px] font-bold text-cyan-glow">{e.pct}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
+                      <span className="text-[10px] text-emerald-400 font-bold uppercase block">CONFIRMED DISCOVERY</span>
+                      <p className="font-inter text-star-white/90 text-xs leading-relaxed">
+                        Definitive presence of <strong>Sulfur (S)</strong> confirmed on lunar polar surface via laser-induced breakdown spectroscopy (LIBS), shedding light on lunar formation vulcanism.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 2: NASA/ESA/CSA JWST (SUN-EARTH L2 INFRARED OBSERVATORY) */}
+          {/* ============================================================== */}
+          {activeTab === 'jwst' && (
+            <motion.div
+              key="jwst"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.4 }}
+              className="grid lg:grid-cols-12 gap-8 items-start"
+            >
+              {/* Left Console: JWST Primary Honeycomb Mirror & Optical Ray Tracing */}
+              <div className="lg:col-span-8 glass-panel rounded-3xl p-6 border border-pink-500/30 overflow-hidden relative shadow-[0_0_60px_rgba(236,72,153,0.15)] flex flex-col">
+                {/* Console Header */}
+                <div className="flex items-center justify-between border-b border-glass-border pb-4 mb-4 flex-wrap gap-3">
+                  <div className="flex items-center gap-3">
+                    <Sparkles size={22} className="text-pink-500 animate-pulse" />
+                    <div>
+                      <span className="font-space text-xs sm:text-sm tracking-widest text-star-white uppercase block font-bold">
+                        JAMES WEBB SPACE TELESCOPE // DEEP SPACE EXPLORER
+                      </span>
+                      <span className="font-space text-[10px] text-pink-400/80">
+                        ORBIT: SUN-EARTH L2 HALO (1.502M km ANTI-SUNWARD) // 6.5m PRIMARY MIRROR
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-pink-500/30">
+                    <Radio size={13} className="text-pink-500 animate-pulse" />
+                    <span className="font-mono text-[10px] text-star-white">
+                      RADIO DELAY: <strong className="text-pink-400">5.02s</strong> (1.5M km)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Sub-View Switcher */}
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { id: 'MIRROR_OPTICS', label: '18-SEGMENT GOLD MIRROR', icon: Crosshair },
+                      { id: 'SUNSHIELD_L2', label: '5-LAYER SUNSHIELD & L2', icon: Shield },
+                      { id: 'DEEP_FIELD_IR', label: 'INFRARED WAVELENGTH SCAN', icon: Eye },
+                    ].map((btn) => {
+                      const Icon = btn.icon;
+                      const isSel = jwstViewMode === btn.id;
+                      return (
+                        <button
+                          type="button"
+                          key={btn.id}
+                          onClick={() => setJwstViewMode(btn.id as any)}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-space tracking-wider border cursor-pointer transition-all flex items-center gap-1.5 ${
+                            isSel
+                              ? 'bg-pink-500/25 border-pink-400 text-pink-300 font-bold shadow-[0_0_15px_rgba(236,72,153,0.3)]'
+                              : 'bg-black/40 border-white/10 text-muted-gray hover:text-star-white'
+                          }`}
+                        >
+                          <Icon size={13} />
+                          <span>{btn.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {jwstViewMode === 'DEEP_FIELD_IR' && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-mono text-pink-400 font-bold">
+                        λ = {infraredWavelengthUm.toFixed(1)} µm
+                      </span>
+                      <input
+                        type="range"
+                        min="0.6"
+                        max="28.0"
+                        step="0.2"
+                        value={infraredWavelengthUm}
+                        onChange={(e) => setInfraredWavelengthUm(parseFloat(e.target.value))}
+                        className="w-28 accent-pink-400 cursor-pointer"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 1: 18-SEGMENT GOLD HONEYCOMB PRIMARY MIRROR ARRAY */}
+                {/* ------------------------------------------------------------- */}
+                {jwstViewMode === 'MIRROR_OPTICS' && (
+                  <div className="relative aspect-[16/9] w-full bg-[#05020a] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center select-none shadow-inner">
+                    <svg viewBox="0 0 600 340" className="w-full h-full">
+                      <defs>
+                        {/* Gold mirror segment gradient */}
+                        <linearGradient id="hexGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#fef08a" />
+                          <stop offset="40%" stopColor="#f59e0b" />
+                          <stop offset="80%" stopColor="#d97706" />
+                          <stop offset="100%" stopColor="#92400e" />
+                        </linearGradient>
+
+                        {/* Highlighted mirror segment gradient */}
+                        <linearGradient id="hexGoldActive" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="30%" stopColor="#fbbf24" />
+                          <stop offset="70%" stopColor="#ec4899" />
+                          <stop offset="100%" stopColor="#be185d" />
+                        </linearGradient>
+
+                        {/* Incoming Cosmic Ray Gradient */}
+                        <linearGradient id="cosmicRay" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#ec4899" stopOpacity="0.8" />
+                          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.2" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Space star background */}
+                      <rect width="600" height="340" fill="#040108" />
+
+                      {/* Animated Incoming Cosmic Infrared Photon Streams */}
+                      {[
+                        { x1: 50, y1: 40, x2: 210, y2: 120 },
+                        { x1: 80, y1: 290, x2: 210, y2: 220 },
+                        { x1: 550, y1: 40, x2: 390, y2: 120 },
+                        { x1: 520, y1: 290, x2: 390, y2: 220 },
+                      ].map((ray, i) => (
+                        <line
+                          key={i}
+                          x1={ray.x1}
+                          y1={ray.y1}
+                          x2={ray.x2}
+                          y2={ray.y2}
+                          stroke="url(#cosmicRay)"
+                          strokeWidth="1.5"
+                          strokeDasharray="4,4"
+                          opacity="0.6"
+                        />
+                      ))}
+
+                      {/* 18 Hexagonal Mirror Segments */}
+                      {JWST_HEX_SEGMENTS.map((seg) => {
+                        const isSelected = selectedHexSegment.id === seg.id;
+                        return (
+                          <g
+                            key={seg.id}
+                            className="cursor-pointer transition-transform hover:scale-105"
+                            onClick={() => setSelectedHexSegment(seg)}
+                          >
+                            <polygon
+                              points={getHexPoints(seg.cx, seg.cy, 24)}
+                              fill={isSelected ? 'url(#hexGoldActive)' : 'url(#hexGold)'}
+                              stroke={isSelected ? '#ec4899' : '#b45309'}
+                              strokeWidth={isSelected ? '2' : '1'}
+                              className={isSelected ? 'filter drop-shadow-[0_0_8px_rgba(236,72,153,0.8)]' : ''}
+                            />
+                            <text
+                              x={seg.cx}
+                              y={seg.cy + 3}
+                              fill={isSelected ? '#ffffff' : '#78350f'}
+                              fontSize="8"
+                              fontFamily="'Space Grotesk', sans-serif"
+                              fontWeight="bold"
+                              textAnchor="middle"
+                            >
+                              {seg.id}
+                            </text>
+                          </g>
+                        );
+                      })}
+
+                      {/* Center Cassegrain Core & Aft Optics Subsystem */}
+                      <polygon points={getHexPoints(300, 170, 20)} fill="#0f172a" stroke="#38bdf8" strokeWidth="1.5" />
+                      <circle cx="300" cy="170" r="8" fill="#1e293b" stroke="#ec4899" strokeWidth="1.2" />
+
+                      {/* 3 Secondary Mirror Spider Support Struts */}
+                      <line x1="300" y1="170" x2="300" y2="40" stroke="#94a3b8" strokeWidth="2" opacity="0.85" />
+                      <line x1="300" y1="170" x2="160" y2="280" stroke="#94a3b8" strokeWidth="2" opacity="0.85" />
+                      <line x1="300" y1="170" x2="440" y2="280" stroke="#94a3b8" strokeWidth="2" opacity="0.85" />
+
+                      {/* Secondary Mirror Reflector Node */}
+                      <circle cx="300" cy="170" r="14" fill="none" stroke="#fbbf24" strokeWidth="1" strokeDasharray="3,3" className="animate-spin" style={{ animationDuration: '20s' }} />
+
+                      {/* Selected Segment Actuator Inspector Callout HUD */}
+                      <g transform="translate(440, 20)">
+                        <rect width="145" height="74" rx="8" fill="rgba(0,0,0,0.85)" stroke="#ec4899" strokeWidth="1" />
+                        <text x="10" y="18" fill="#ec4899" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                          SEGMENT: {selectedHexSegment.id} (RING {selectedHexSegment.ring})
+                        </text>
+                        <text x="10" y="34" fill="#e2e8f0" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif">
+                          PISTON: <strong className="text-cyan-glow">{selectedHexSegment.pistonNm >= 0 ? `+${selectedHexSegment.pistonNm}` : selectedHexSegment.pistonNm} nm</strong>
+                        </text>
+                        <text x="10" y="48" fill="#e2e8f0" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif">
+                          WAVEFRONT RMS: <strong className="text-emerald-400">{selectedHexSegment.wavefrontRmsNm} nm</strong>
+                        </text>
+                        <text x="10" y="62" fill="#94a3b8" fontSize="7" fontFamily="'Space Grotesk', sans-serif">
+                          STATUS: {selectedHexSegment.status}
+                        </text>
+                      </g>
+                    </svg>
+
+                    {/* Telemetry Annotation inside Canvas */}
+                    <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl bg-black/80 border border-white/10 text-[10px] font-space text-star-white flex items-center gap-2 backdrop-blur-md">
+                      <span className="w-2 h-2 rounded-full bg-pink-400 animate-ping" />
+                      <span>OPTICAL ALIGNMENT: 18 SEGMENTS PHASED TO 50 nm RMS WAVEFRONT</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 2: 5-LAYER KAPTON SUNSHIELD & SUN-EARTH L2 HUD */}
+                {/* ------------------------------------------------------------- */}
+                {jwstViewMode === 'SUNSHIELD_L2' && (
+                  <div className="p-5 rounded-2xl bg-[#090310] border border-glass-border/60 space-y-4">
+                    <span className="font-space text-xs font-bold text-pink-400 uppercase flex items-center gap-1.5">
+                      <Shield size={14} />
+                      <span>5-LAYER KAPTON MEMBRANE THERMAL SHIELDING (+85°C → 39.8 K)</span>
+                    </span>
+
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5">
+                      {[
+                        { layer: 'Layer 1 (Sun-Facing)', tempC: '+85.2 °C', tempK: '358.3 K', color: '#f97316', desc: 'Direct solar flux (1,361 W/m²)' },
+                        { layer: 'Layer 2 (Reflective)', tempC: '+38.0 °C', tempK: '311.1 K', color: '#fbbf24', desc: '0.025mm Kapton with Al' },
+                        { layer: 'Layer 3 (Mid Gap)', tempC: '-35.0 °C', tempK: '238.1 K', color: '#38bdf8', desc: 'Vacuum radiative dissipation' },
+                        { layer: 'Layer 4 (Deep Cold)', tempC: '-170.0 °C', tempK: '103.1 K', color: '#00d4ff', desc: 'Sub-cryogenic expansion' },
+                        { layer: 'Layer 5 (Mirror Side)', tempC: '-233.3 °C', tempK: '39.8 K', color: '#a855f7', desc: 'Passive primary mirror base' },
+                      ].map((ly, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setSunshieldActiveLayer(idx + 1)}
+                          className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                            sunshieldActiveLayer === idx + 1
+                              ? 'bg-purple-500/20 border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                              : 'bg-black/40 border-white/5 hover:border-white/20'
+                          }`}
+                        >
+                          <span className="text-[9px] font-space text-muted-gray uppercase block">{ly.layer}</span>
+                          <span className="font-mono text-base font-bold mt-1 block" style={{ color: ly.color }}>
+                            {ly.tempC}
+                          </span>
+                          <span className="text-[10px] font-mono text-star-white/80 block">{ly.tempK}</span>
+                          <p className="text-[9px] font-inter text-star-white/60 mt-1">{ly.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* MIRI Closed-Cycle Helium Cryocooler */}
+                    <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <span className="font-space text-[10px] font-bold text-purple-400 uppercase block">
+                          MIRI (MID-INFRARED INSTRUMENT) CLOSED-CYCLE CRYOCOOLER
+                        </span>
+                        <span className="font-mono text-xs text-star-white">
+                          Active temperature: <strong className="text-cyan-glow">6.40 K (-266.75 °C)</strong>
+                        </span>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-black/50 text-[10px] font-mono text-emerald-400 font-bold border border-emerald-500/30">
+                        SUPERCONDUCTING HELIUM // OK
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 3: DEEP FIELD INFRARED SPECTRAL COMPARISON */}
+                {/* ------------------------------------------------------------- */}
+                {jwstViewMode === 'DEEP_FIELD_IR' && (
+                  <div className="p-5 rounded-2xl bg-[#090212] border border-glass-border/60 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-space text-xs font-bold text-pink-400 uppercase block">
+                          SMACS 0723 ULTRA-DEEP FIELD // INFRARED DUST PIERCING
+                        </span>
+                        <span className="font-inter text-[11px] text-muted-gray">
+                          Slider shifts observation wavelength from Visible/Near-IR (0.6 µm) to Mid-IR MIRI (28.0 µm)
+                        </span>
+                      </div>
+                      <span className="px-2.5 py-1 rounded-lg bg-pink-500/20 text-pink-300 font-mono text-xs font-bold border border-pink-500/30">
+                        REDSHIFT z = {(1.2 + infraredWavelengthUm * 0.45).toFixed(1)}
+                      </span>
+                    </div>
+
+                    {/* Visualizer Simulation Box */}
+                    <div className="relative aspect-[16/8] w-full rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center bg-black">
+                      <div
+                        className="absolute inset-0 bg-gradient-to-tr from-purple-950/80 via-black to-pink-950/80 transition-all duration-500"
+                        style={{ filter: `hue-rotate(${infraredWavelengthUm * 10}deg) brightness(${1 + infraredWavelengthUm * 0.03})` }}
+                      />
+
+                      {/* Primordial Galaxies and Gravitational Lenses */}
+                      {[
+                        { x: '25%', y: '35%', s: 18, color: '#ec4899', name: 'JADES-GS-z14-0 (z=14.3)' },
+                        { x: '70%', y: '60%', s: 28, color: '#f59e0b', name: 'Gravitational Arc SMACS-1' },
+                        { x: '45%', y: '50%', s: 36, color: '#38bdf8', name: 'Lensed Cluster Core' },
+                        { x: '80%', y: '25%', s: 14, color: '#10b981', name: 'Population III Nursery' },
+                      ].map((obj, idx) => (
+                        <div
+                          key={idx}
+                          className="absolute flex flex-col items-center justify-center transition-all duration-700"
+                          style={{
+                            left: obj.x,
+                            top: obj.y,
+                            opacity: Math.min(1, 0.4 + (infraredWavelengthUm / 10)),
+                            transform: `scale(${1 + (infraredWavelengthUm / 30)})`,
+                          }}
+                        >
+                          <div
+                            className="rounded-full animate-pulse"
+                            style={{
+                              width: obj.s,
+                              height: obj.s,
+                              backgroundColor: obj.color,
+                              boxShadow: `0 0 25px ${obj.color}`,
+                            }}
+                          />
+                          <span className="text-[9px] font-mono text-star-white/80 mt-1 block drop-shadow-md">
+                            {obj.name}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Subsystem Telemetry Grid */}
+                <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">POINTING JITTER:</span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">0.0012 mas</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">ACTIVE INSTRUMENT:</span>
+                    <span className="font-mono text-xs font-bold text-pink-400 truncate block">NIRSpec Slit Mask</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">MIRI CRYOCOOLER:</span>
+                    <span className="font-mono text-sm font-bold text-cyan-glow">6.40 K (-266.7°C)</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">PROPELLANT RESERVE:</span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">&gt;24 Years</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: JWST Cosmic Objectives Card */}
+              <div className="lg:col-span-4 space-y-4">
+                <div className="glass-panel rounded-3xl p-6 border border-pink-500/30 relative overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-glass-border pb-3 mb-4">
+                    <span className="font-space text-xs tracking-wider uppercase font-bold text-pink-400">
+                      CURRENT SCIENCE EXPOSURE
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-pink-500/20 text-pink-300">
+                      z = 14.32 RECORD
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 font-space text-xs">
+                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                      <span className="text-muted-gray text-[10px] uppercase font-semibold block">ASTRONOMICAL TARGET</span>
+                      <span className="text-sm font-bold text-star-white block">JADES-GS-z14-0 Deep Field</span>
+                      <p className="font-inter text-star-white/80 text-[11px] leading-relaxed mt-1">
+                        Detecting the earliest Population III stars and primordial galaxies formed 290 million years after the Big Bang.
+                      </p>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
+                      <span className="text-muted-gray text-[10px] uppercase font-semibold block">OPTICAL ALIGNMENT</span>
+                      <span className="text-xs text-emerald-400 font-mono">18 Hexagonal Segments Phased to 50 nm Wavefront RMS</span>
+                    </div>
+
+                    <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-purple-400 font-bold uppercase block">L2 HALO STABILITY</span>
+                        <span className="text-xs text-star-white font-mono">Station-keeping ΔV: 2.1 m/s / yr</span>
+                      </div>
+                      <CheckCircle2 size={18} className="text-purple-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ============================================================== */}
+          {/* TAB 3: ADITYA-L1 SOLAR CORONAGRAPH & L1 HALO ORBIT */}
+          {/* ============================================================== */}
           {activeTab === 'aditya' && (
             <motion.div
               key="aditya"
@@ -161,7 +1139,7 @@ export default function DeepSpaceExplorer() {
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-amber-400/30">
                     <Radio size={13} className="text-amber-400 animate-pulse" />
                     <span className="font-mono text-[10px] text-star-white">
-                      RADIO ONE-WAY DELAY: <strong className="text-amber-400">4.98s</strong>
+                      RADIO ONE-WAY DELAY: <strong className="text-amber-400">4.98s</strong> (1.49M km)
                     </span>
                   </div>
                 </div>
@@ -311,277 +1289,6 @@ export default function DeepSpaceExplorer() {
                         <span className="text-xs text-star-white font-mono">Lissajous station-keeping margin: &gt;5 years</span>
                       </div>
                       <CheckCircle2 size={18} className="text-emerald-400" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* TAB 2: CHANDRAYAAN-3 LUNAR SOUTH POLE & SHIV SHAKTI POINT */}
-          {activeTab === 'chandrayaan' && (
-            <motion.div
-              key="chandrayaan"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid lg:grid-cols-12 gap-8 items-start"
-            >
-              {/* Lunar Surface Topography & ChaSTE Thermal Gradient */}
-              <div className="lg:col-span-8 glass-panel rounded-3xl p-6 border border-amber-500/30 overflow-hidden relative shadow-[0_0_60px_rgba(245,158,11,0.15)] flex flex-col">
-                <div className="flex items-center justify-between border-b border-glass-border pb-4 mb-4 flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <Moon size={20} className="text-amber-500" />
-                    <div>
-                      <span className="font-space text-xs tracking-widest text-star-white uppercase block font-bold">
-                        SHIV SHAKTI POINT // CHANDRAYAAN-3 LUNAR RECONNAISSANCE
-                      </span>
-                      <span className="font-space text-[10px] text-amber-400/80">
-                        COORDINATES: 69.373° S, 32.319° E // POLAR REGOLITH THERMOPHYSICS
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-amber-500/30">
-                    <Radio size={13} className="text-amber-500 animate-pulse" />
-                    <span className="font-mono text-[10px] text-star-white">
-                      RADIO ONE-WAY DELAY: <strong className="text-amber-400">1.28s</strong>
-                    </span>
-                  </div>
-                </div>
-
-                {/* ChaSTE Regolith Thermal Gradient Chart */}
-                <div className="p-4 rounded-2xl bg-[#080a14] border border-glass-border/60 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="font-space text-xs font-bold text-amber-400 uppercase flex items-center gap-1.5">
-                      <Thermometer size={14} />
-                      <span>CHASTE THERMAL PROBE PENETRATION PROFILE (0 to -10 cm DEPTH)</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-emerald-400 font-bold">
-                      ΔT = 60.6°C GRADIENT
-                    </span>
-                  </div>
-
-                  {/* Gradient Bars */}
-                  <div className="space-y-2">
-                    {[
-                      { depth: 'Surface Regolith (0 cm)', temp: '+50.4 °C', val: 50.4, color: '#f59e0b' },
-                      { depth: 'Sub-surface (-2 cm)', temp: '+32.0 °C', val: 32.0, color: '#fbbf24' },
-                      { depth: 'Sub-surface (-4 cm)', temp: '+14.5 °C', val: 14.5, color: '#38bdf8' },
-                      { depth: 'Sub-surface (-6 cm)', temp: '+2.0 °C', val: 2.0, color: '#63c7ff' },
-                      { depth: 'Sub-surface (-8 cm)', temp: '-4.8 °C', val: -4.8, color: '#00d4ff' },
-                      { depth: 'Deep Lunar Ice Bed (-10 cm)', temp: '-10.2 °C', val: -10.2, color: '#a855f7' },
-                    ].map((row, idx) => (
-                      <div key={idx} className="flex items-center gap-3 text-xs font-space">
-                        <span className="w-44 text-[10px] text-star-white/70 truncate">{row.depth}</span>
-                        <div className="flex-1 bg-black/60 rounded-full h-3 overflow-hidden border border-white/10 flex">
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{
-                              width: `${Math.max(10, ((row.val + 20) / 80) * 100)}%`,
-                              backgroundColor: row.color,
-                            }}
-                          />
-                        </div>
-                        <span className="w-16 text-right font-mono font-bold" style={{ color: row.color }}>
-                          {row.temp}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* APXS Elemental Abundances */}
-                <div className="mt-4 p-4 rounded-2xl bg-black/40 border border-white/5 space-y-2">
-                  <span className="font-space text-xs font-bold text-star-white flex items-center gap-1.5 uppercase">
-                    <Activity size={14} className="text-cyan-glow" />
-                    <span>APXS SPECTROMETER ELEMENTAL CONCENTRATIONS (SHIV SHAKTI POINT)</span>
-                  </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 pt-1">
-                    {[
-                      { el: 'Silicon (Si)', pct: '21.4%' },
-                      { el: 'Aluminum (Al)', pct: '14.8%' },
-                      { el: 'Calcium (Ca)', pct: '9.6%' },
-                      { el: 'Iron (Fe)', pct: '8.2%' },
-                      { el: 'Magnesium (Mg)', pct: '6.8%' },
-                      { el: 'Titanium (Ti)', pct: '2.1%' },
-                      { el: 'Sulfur (S)', pct: '0.34%' },
-                    ].map((e, i) => (
-                      <div key={i} className="p-2 rounded-xl bg-space-navy/50 border border-white/10 text-center">
-                        <span className="text-[9px] font-space text-muted-gray block truncate">{e.el}</span>
-                        <span className="font-mono text-xs font-bold text-cyan-glow mt-0.5 block">{e.pct}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Pragyan Rover & Lander Status (Right Column) */}
-              <div className="lg:col-span-4 space-y-4">
-                <div className="glass-panel rounded-3xl p-6 border border-amber-500/30 relative overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-glass-border pb-3 mb-4">
-                    <span className="font-space text-xs tracking-wider uppercase font-bold text-amber-500">
-                      VIKRAM &amp; PRAGYAN MISSION
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
-                      TOUCHDOWN SUCCESS
-                    </span>
-                  </div>
-
-                  <div className="space-y-3 font-space text-xs">
-                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] text-muted-gray uppercase block font-semibold">ROVER TRAVERSED</span>
-                        <span className="text-lg font-bold text-amber-400 font-mono">101.4 meters</span>
-                      </div>
-                      <TrendingUp size={18} className="text-amber-400" />
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] text-muted-gray uppercase block font-semibold">ILSA SEISMIC EVENTS</span>
-                        <span className="text-lg font-bold text-cyan-glow font-mono">3 Events Logged</span>
-                      </div>
-                      <Activity size={18} className="text-cyan-glow" />
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] text-muted-gray uppercase block font-semibold">RAMBHA-LP PLASMA</span>
-                        <span className="text-lg font-bold text-purple-400 font-mono">1.05 × 10⁴ / cm³</span>
-                      </div>
-                      <Zap size={18} className="text-purple-400" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* TAB 3: NASA/ESA/CSA JWST (SUN-EARTH L2 INFRARED OBSERVATORY) */}
-          {activeTab === 'jwst' && (
-            <motion.div
-              key="jwst"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.4 }}
-              className="grid lg:grid-cols-12 gap-8 items-start"
-            >
-              {/* JWST 5-Layer Sunshield Thermal Balance HUD */}
-              <div className="lg:col-span-8 glass-panel rounded-3xl p-6 border border-pink-500/30 overflow-hidden relative shadow-[0_0_60px_rgba(236,72,153,0.15)] flex flex-col">
-                <div className="flex items-center justify-between border-b border-glass-border pb-4 mb-4 flex-wrap gap-2">
-                  <div className="flex items-center gap-3">
-                    <Sparkles size={20} className="text-pink-500" />
-                    <div>
-                      <span className="font-space text-xs tracking-widest text-star-white uppercase block font-bold">
-                        JAMES WEBB SPACE TELESCOPE // L2 CRYOGENIC THERMAL HUD
-                      </span>
-                      <span className="font-space text-[10px] text-pink-400/80">
-                        ORBIT: SUN-EARTH L2 LAGRANGE (1.502M km ANTI-SUNWARD) // NIRSPEC &amp; MIRI
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-pink-500/30">
-                    <Radio size={13} className="text-pink-500 animate-pulse" />
-                    <span className="font-mono text-[10px] text-star-white">
-                      RADIO ONE-WAY DELAY: <strong className="text-pink-400">5.02s</strong>
-                    </span>
-                  </div>
-                </div>
-
-                {/* 5-Layer Kapton Sunshield Thermal Gradient Visualizer */}
-                <div className="p-4 rounded-2xl bg-[#090310] border border-glass-border/60 space-y-4">
-                  <span className="font-space text-xs font-bold text-pink-400 uppercase flex items-center gap-1.5">
-                    <Thermometer size={14} />
-                    <span>5-LAYER KAPTON SUNSHIELD EXTREME THERMAL DELTA (+85°C → 40 K)</span>
-                  </span>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Hot Side Facing Sun */}
-                    <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/30 space-y-2">
-                      <span className="text-[10px] font-space text-orange-400 font-bold uppercase block">
-                        ☀️ SUN-FACING HOT SIDE
-                      </span>
-                      <span className="font-mono text-3xl font-bold text-orange-400 block">
-                        +85.2 °C
-                      </span>
-                      <p className="text-[11px] font-inter text-star-white/70">
-                        Layer 1 Kapton directly absorbs solar irradiance (1,361 W/m²).
-                      </p>
-                    </div>
-
-                    {/* Cold Side Facing Deep Space */}
-                    <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 space-y-2">
-                      <span className="text-[10px] font-space text-cyan-400 font-bold uppercase block">
-                        🌌 DEEP-SPACE CRYOGENIC COLD SIDE
-                      </span>
-                      <span className="font-mono text-3xl font-bold text-cyan-400 block">
-                        39.8 K (-233.3 °C)
-                      </span>
-                      <p className="text-[11px] font-inter text-star-white/70">
-                        Primary Beryllium gold-coated mirror array cooled for deep infrared sensitivity.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* MIRI Helium Loop Cryocooler */}
-                  <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <span className="font-space text-[10px] font-bold text-purple-400 uppercase block">
-                        MIRI (MID-INFRARED INSTRUMENT) CLOSED-CYCLE CRYOCOOLER
-                      </span>
-                      <span className="font-mono text-xs text-star-white">Active temperature: <strong className="text-cyan-glow">6.40 K (-266.75 °C)</strong></span>
-                    </div>
-                    <span className="px-2.5 py-1 rounded-lg bg-black/50 text-[10px] font-mono text-emerald-400 font-bold border border-emerald-500/30">
-                      SUPERCONDUCTING HELIUM // OK
-                    </span>
-                  </div>
-                </div>
-
-                {/* Pointing & Active Observation Metrics */}
-                <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-[9px] font-space text-muted-gray uppercase block">POINTING JITTER:</span>
-                    <span className="font-mono text-sm font-bold text-emerald-400">0.0012 milliarcsec</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-[9px] font-space text-muted-gray uppercase block">ACTIVE INSTRUMENT:</span>
-                    <span className="font-mono text-xs font-bold text-pink-400 truncate block">NIRSpec Slit Mask</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-[9px] font-space text-muted-gray uppercase block">STATION KEEPING LIFE:</span>
-                    <span className="font-mono text-sm font-bold text-cyan-glow">&gt;24 Years Propellant</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* JWST Target Observation Card (Right Column) */}
-              <div className="lg:col-span-4 space-y-4">
-                <div className="glass-panel rounded-3xl p-6 border border-pink-500/30 relative overflow-hidden">
-                  <div className="flex items-center justify-between border-b border-glass-border pb-3 mb-4">
-                    <span className="font-space text-xs tracking-wider uppercase font-bold text-pink-400">
-                      CURRENT EXPOSURE TARGET
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-mono font-bold bg-pink-500/20 text-pink-300">
-                      z = 11.4 REDSHIFT
-                    </span>
-                  </div>
-
-                  <div className="space-y-3 font-space text-xs">
-                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
-                      <span className="text-muted-gray text-[10px] uppercase font-semibold block">ASTRONOMICAL TARGET</span>
-                      <span className="text-sm font-bold text-star-white block">COSMOS-Web Ultra-Deep Field</span>
-                      <p className="font-inter text-star-white/80 text-[11px] leading-relaxed mt-1">
-                        Detecting the earliest Population III stars and primordial galaxies formed 300 million years after the Big Bang.
-                      </p>
-                    </div>
-
-                    <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 space-y-1">
-                      <span className="text-muted-gray text-[10px] uppercase font-semibold block">OPTICAL ALIGNMENT</span>
-                      <span className="text-xs text-emerald-400 font-mono">18 Hexagonal Segments Phased to 50 nm Wavefront RMS</span>
                     </div>
                   </div>
                 </div>

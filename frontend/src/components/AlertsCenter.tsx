@@ -145,14 +145,14 @@ export default function AlertsCenter() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-alert-critical/20 bg-alert-critical/5 mb-3.5 shadow-[0_0_15px_rgba(255,59,59,0.15)]">
             <AlertOctagon size={13} className="text-alert-critical animate-pulse" />
             <span className="font-space text-[10px] tracking-[0.3em] text-alert-critical uppercase font-semibold">
-              Mission Control Alert Dispatch // 5-Min Live Loop
+              Mission Control Alert Dispatch // 30-Sec Live Loop
             </span>
           </div>
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
             ACTIVE MISSION ALERTS
           </h2>
           <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-2xl mx-auto leading-relaxed">
-            Prioritized multi-vector space alerts automatically monitored and refreshed on a 5-minute synchronized telemetry polling loop.
+            Prioritized multi-vector space alerts automatically monitored, refreshed, and dispatched on a live 30-second synchronized telemetry polling loop.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-alert-critical/50 to-transparent mx-auto mt-4"
@@ -162,13 +162,19 @@ export default function AlertsCenter() {
           />
         </motion.div>
 
-        {/* LIVE 5-MINUTE DISPATCH BANNER & COUNTDOWN HUD */}
+        {/* LIVE 30-SECOND DISPATCH BANNER & COUNTDOWN HUD */}
         <motion.div
           className="mb-8 p-4 sm:p-5 rounded-3xl glass-panel border border-cyan-glow/30 shadow-[0_0_40px_rgba(4,18,34,0.8)] relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4"
           initial={{ opacity: 0, y: 15 }}
           animate={isInView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7, delay: 0.15 }}
         >
+          {/* Progress bar background indicator for 30s cycle */}
+          <div
+            className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-cyan-glow via-purple-400 to-emerald-400 transition-all duration-1000 ease-linear"
+            style={{ width: `${Math.min(100, Math.max(0, ((30 - alertScanCountdownSeconds) / 30) * 100))}%` }}
+          />
+
           {/* Left: Live Status & Pulse */}
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-cyan-glow/10 border border-cyan-glow/30 flex items-center justify-center text-cyan-glow shrink-0">
@@ -179,12 +185,12 @@ export default function AlertsCenter() {
                 <span className="font-space text-xs sm:text-sm font-bold tracking-wider text-star-white uppercase">
                   LIVE TELEMETRY ALERT ENGINE
                 </span>
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                  5-MIN REFRESH CYCLE ACTIVE
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse">
+                  30-SEC REFRESH ACTIVE
                 </span>
               </div>
               <span className="font-inter text-[11px] text-muted-gray block mt-0.5">
-                Continuously evaluates thermal gradients, orbital conjunctions, and EPS bus voltages across all 12 fleet spacecraft.
+                Continuously evaluates thermal gradients, orbital conjunctions, Deep Space telemetry, and EPS voltages across all fleet spacecraft.
               </span>
             </div>
           </div>

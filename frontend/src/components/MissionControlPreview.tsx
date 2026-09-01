@@ -350,7 +350,7 @@ export default function MissionControlPreview() {
             <div className="flex items-center gap-6 text-xs font-space flex-wrap justify-between md:justify-end w-full md:w-auto border-t md:border-t-0 border-white/10 pt-3 md:pt-0">
               <div>
                 <span className="text-[10px] text-muted-gray uppercase block font-semibold">TCA CONJUNCTION COUNTDOWN</span>
-                <span className="text-sm md:text-base font-bold text-alert-critical tracking-wider font-mono">
+                <span className="text-sm md:text-base font-bold text-alert-critical tracking-wider font-mono" suppressHydrationWarning>
                   {tcaString} ({formatMissionTime(new Date(Date.now() + tcaSecondsRemaining * 1000), 'hms')})
                 </span>
               </div>

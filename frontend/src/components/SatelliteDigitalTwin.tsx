@@ -554,11 +554,11 @@ export default function SatelliteDigitalTwin() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-star-white/50">Last Contact</span>
-                      <span className="text-star-white/80 font-medium font-mono">{formatMissionTime(new Date(Date.now() - 480000), 'hms')}</span>
+                      <span className="text-star-white/80 font-medium font-mono" suppressHydrationWarning>{formatMissionTime(new Date(Date.now() - 480000), 'hms')}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-star-white/50">Next Pass</span>
-                      <span className="text-cyan-glow font-semibold font-mono">{formatMissionTime(new Date(Date.now() + 1620000), 'hms')}</span>
+                      <span className="text-cyan-glow font-semibold font-mono" suppressHydrationWarning>{formatMissionTime(new Date(Date.now() + 1620000), 'hms')}</span>
                     </div>
                   </div>
 
@@ -705,7 +705,7 @@ export default function SatelliteDigitalTwin() {
                             <span className="font-inter text-xs text-muted-gray">{ev.desc}</span>
                           </div>
                         </div>
-                        <span className="font-space text-xs text-star-white/80 font-mono">{ev.time}</span>
+                        <span className="font-space text-xs text-star-white/80 font-mono" suppressHydrationWarning>{ev.time}</span>
                       </div>
                     ))}
                   </div>

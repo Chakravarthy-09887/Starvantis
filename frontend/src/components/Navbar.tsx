@@ -167,7 +167,7 @@ export default function Navbar() {
                 title="Select Mission Timezone Epoch"
               >
                 <Clock size={12} className="text-cyan-glow animate-pulse" />
-                <span className="font-mono text-[11px] text-star-white font-medium tracking-wider">
+                <span className="font-mono text-[11px] text-star-white font-medium tracking-wider" suppressHydrationWarning>
                   {currentClock || `${activeTz.code}`}
                 </span>
                 <ChevronDown

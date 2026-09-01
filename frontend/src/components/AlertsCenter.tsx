@@ -202,7 +202,7 @@ export default function AlertsCenter() {
                 NEXT FLEET ALERT SCAN IN:
               </span>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-lg sm:text-xl font-bold text-cyan-glow tracking-wider">
+                <span className="font-mono text-lg sm:text-xl font-bold text-cyan-glow tracking-wider" suppressHydrationWarning>
                   {formatCountdown(alertScanCountdownSeconds)}
                 </span>
                 <span className="w-2 h-2 rounded-full bg-cyan-glow animate-ping" />
@@ -404,7 +404,7 @@ export default function AlertsCenter() {
                           <span className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 font-inter text-[11px] text-star-white/80">
                             {alert.subsystem}
                           </span>
-                          <span className="px-2 py-0.5 rounded-md bg-black/40 font-space text-[10px] text-muted-gray">
+                          <span className="px-2 py-0.5 rounded-md bg-black/40 font-space text-[10px] text-muted-gray" suppressHydrationWarning>
                             {formatMissionTime(alert.timestamp, 'hms')}
                           </span>
                         </div>

@@ -146,7 +146,7 @@ export default function Administration() {
                     >
                       <div className="flex items-center gap-3 flex-wrap">
                         <Clock size={14} className="text-cyan-glow shrink-0" />
-                        <span className="text-muted-gray text-[11px]">{timeStr}</span>
+                        <span className="text-muted-gray text-[11px]" suppressHydrationWarning>{timeStr}</span>
                         <span className="text-star-white font-medium">{log.user}</span>
                         <span className="text-cyan-glow/90 font-inter">{log.action}</span>
                       </div>

@@ -503,7 +503,7 @@ export default function TelemetryExplorer() {
                 <div className="space-y-1.5 text-[11px] font-space">
                   {recentPackets.map((pkt, idx) => (
                     <div key={idx} className="flex items-center justify-between text-star-white/80 py-1 border-b border-white/5 last:border-0">
-                      <span className="text-muted-gray">{pkt.time}</span>
+                      <span className="text-muted-gray" suppressHydrationWarning>{pkt.time}</span>
                       <span className="text-star-white font-medium">{pkt.val}</span>
                       <span className="text-cyan-glow">{pkt.dev}</span>
                       <span className="text-emerald-400 text-[10px] font-bold">{pkt.status}</span>

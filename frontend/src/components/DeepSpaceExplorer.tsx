@@ -799,6 +799,8 @@ export default function DeepSpaceExplorer() {
                         λ = {infraredWavelengthUm.toFixed(1)} µm
                       </span>
                       <input
+                        id="jwst-infrared-wavelength-slider"
+                        name="jwstInfraredWavelength"
                         type="range"
                         min="0.6"
                         max="28.0"

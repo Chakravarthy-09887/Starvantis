@@ -689,6 +689,8 @@ export default function ConjunctionSection() {
               </div>
 
               <input
+                id="cam-tca-progress-slider"
+                name="camTcaProgress"
                 type="range"
                 min="0"
                 max="1"
@@ -731,6 +733,8 @@ export default function ConjunctionSection() {
                     <span className="font-mono font-bold text-cyan-glow">{deltaVx.toFixed(2)} m/s</span>
                   </div>
                   <input
+                    id="cam-delta-vx-slider"
+                    name="camDeltaVx"
                     type="range"
                     min="-1.5"
                     max="1.5"
@@ -749,6 +753,8 @@ export default function ConjunctionSection() {
                     <span className="font-mono font-bold text-amber-400">{deltaVy.toFixed(2)} m/s</span>
                   </div>
                   <input
+                    id="cam-delta-vy-slider"
+                    name="camDeltaVy"
                     type="range"
                     min="-1.0"
                     max="1.0"
@@ -767,6 +773,8 @@ export default function ConjunctionSection() {
                     <span className="font-mono font-bold text-emerald-400">{deltaVz.toFixed(2)} m/s</span>
                   </div>
                   <input
+                    id="cam-delta-vz-slider"
+                    name="camDeltaVz"
                     type="range"
                     min="-1.0"
                     max="1.0"

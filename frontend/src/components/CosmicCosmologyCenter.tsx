@@ -1817,6 +1817,8 @@ export default function CosmicCosmologyCenter() {
                     <span className="font-mono text-amber-400 font-bold">{observerDistRs} Rs</span>
                   </div>
                   <input
+                    id="bh-observer-dist-slider"
+                    name="bhObserverDist"
                     type="range"
                     min="1.01"
                     max="8.0"
@@ -1833,6 +1835,8 @@ export default function CosmicCosmologyCenter() {
                     <span className="font-mono text-cyan-glow font-bold">{(cameraTiltAngle * 90).toFixed(0)}°</span>
                   </div>
                   <input
+                    id="bh-camera-tilt-slider"
+                    name="bhCameraTilt"
                     type="range"
                     min="0.0"
                     max="0.45"
@@ -1849,6 +1853,8 @@ export default function CosmicCosmologyCenter() {
                     <span className="font-mono text-purple-400 font-bold">{bhMassSolar.toLocaleString()} M☉</span>
                   </div>
                   <input
+                    id="bh-mass-solar-slider"
+                    name="bhMassSolar"
                     type="range"
                     min="1000000"
                     max="300000000"
@@ -1930,6 +1936,8 @@ export default function CosmicCosmologyCenter() {
               <div className="relative flex-1">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-gray" />
                 <input
+                  id="fact-search-input"
+                  name="factSearch"
                   type="text"
                   value={factSearch}
                   onChange={(e) => setFactSearch(e.target.value)}

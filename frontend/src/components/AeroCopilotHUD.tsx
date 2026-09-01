@@ -835,6 +835,8 @@ export default function AeroCopilotHUD() {
 
               {/* Text Input */}
               <input
+                id="copilot-prompt-input"
+                name="copilotPrompt"
                 type="text"
                 value={inputPrompt}
                 onChange={(e) => setInputPrompt(e.target.value)}

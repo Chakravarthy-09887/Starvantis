@@ -633,7 +633,7 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
     // Gently wake up backend if sleeping
     const wakeUpBackend = () => {
       try {
-        fetch(`${API_BASE_URL}/health`, { mode: 'no-cors' }).catch(() => {});
+        fetch(`${API_BASE_URL}/health`).catch(() => {});
       } catch {
         // Ignore
       }

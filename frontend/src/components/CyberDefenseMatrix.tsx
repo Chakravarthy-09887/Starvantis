@@ -877,6 +877,8 @@ export default function CyberDefenseMatrix() {
                 <div className="relative">
                   <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-gray" />
                   <input
+                    id="cyber-threat-search-input"
+                    name="cyberThreatSearch"
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}

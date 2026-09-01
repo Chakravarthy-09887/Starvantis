@@ -795,6 +795,8 @@ export default function GroundStationNetwork() {
                     <span className="font-mono text-cyan-glow font-bold">{manualAzimuth}°</span>
                   </div>
                   <input
+                    id="dish-azimuth-slew-slider"
+                    name="dishAzimuthSlew"
                     type="range"
                     min="0"
                     max="360"
@@ -811,6 +813,8 @@ export default function GroundStationNetwork() {
                     <span className="font-mono text-cyan-glow font-bold">{manualElevation}°</span>
                   </div>
                   <input
+                    id="dish-elevation-slew-slider"
+                    name="dishElevationSlew"
                     type="range"
                     min="0"
                     max="90"

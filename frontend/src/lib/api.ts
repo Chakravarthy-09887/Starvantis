@@ -199,7 +199,7 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
     }
     return await res.json();
   } catch (err) {
-    console.warn(`[STARVANTIS API] Request note for ${endpoint}:`, err);
+    // Graceful silent fallback for disconnected or cold-starting remote backends
     throw err;
   }
 }

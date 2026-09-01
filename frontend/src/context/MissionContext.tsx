@@ -620,39 +620,31 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       if (telRes && telRes.length > 0) {
         setHistoricalTelemetry(telRes);
       }
-    } catch (err) {
-      console.warn('[STARVANTIS] API initialization warning (fallback active):', err);
+    } catch {
+      // Seamless fallback to client-side physics propagation
     }
   }, []);
 
-  // Connect to Live Real-time WebSocket with Automatic Cloud Failover
+  // Connect to Live Real-time WebSocket with Graceful Backoff and Silent Failover
   useEffect(() => {
     let isMounted = true;
-    let fallbackAttempted = false;
+    const reconnectDelayRef = { current: 5000 };
 
-    // Wake up Render cloud backend if sleeping
+    // Gently wake up backend if sleeping
     const wakeUpBackend = () => {
-      fetch('https://starvantis-1.onrender.com/health', { mode: 'no-cors' }).catch(() => {});
-      fetch('https://starvantis-1.onrender.com/', { mode: 'no-cors' }).catch(() => {});
+      try {
+        fetch(`${API_BASE_URL}/health`, { mode: 'no-cors' }).catch(() => {});
+      } catch {
+        // Ignore
+      }
     };
     wakeUpBackend();
-    const wakeUpInterval = setInterval(wakeUpBackend, 15000);
-
-    function getTargetWsUrl(): string {
-      if (typeof window === 'undefined') return WS_BASE_URL;
-      const isLocalHost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-      if (isLocalHost && !fallbackAttempted) {
-        return WS_BASE_URL;
-      }
-      return 'wss://starvantis-1.onrender.com/ws/mission';
-    }
+    const wakeUpInterval = setInterval(wakeUpBackend, 30000);
 
     function connectWebSocket() {
       if (!isMounted) return;
-      setConnectionStatus('connecting');
 
-      const targetUrl = getTargetWsUrl();
-      console.log(`[STARVANTIS] Initiating WebSocket link to ${targetUrl}...`);
+      const targetUrl = WS_BASE_URL;
 
       try {
         const ws = new WebSocket(targetUrl);
@@ -660,9 +652,9 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
 
         ws.onopen = () => {
           if (!isMounted) return;
-          console.log('[STARVANTIS] Real-Time WebSocket link LOCKED & STREAMING');
           setWsConnected(true);
           setConnectionStatus('connected');
+          reconnectDelayRef.current = 5000; // Reset backoff on success
           try {
             ws.send(JSON.stringify({ action: 'SUBSCRIBE_SATELLITE', satellite_id: selectedSatIdRef.current }));
           } catch {
@@ -722,29 +714,33 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
                 setConjunctionAnalysis(data.analysis);
               }
             }
-          } catch (err) {
-            console.error('[STARVANTIS] Error parsing WS message:', err);
+          } catch {
+            // Ignore message parse errors
           }
         };
 
         ws.onclose = () => {
           if (!isMounted) return;
-          console.warn('[STARVANTIS] WebSocket closed. Auto-reconnecting in 2.5s...');
           setWsConnected(false);
           setConnectionStatus('disconnected');
-          fallbackAttempted = true; // Try cloud backend on next attempt
-          reconnectTimeoutRef.current = setTimeout(connectWebSocket, 2500);
+          // Exponential backoff up to 30s to prevent console spam
+          const delay = reconnectDelayRef.current;
+          reconnectDelayRef.current = Math.min(30000, delay * 1.5);
+          reconnectTimeoutRef.current = setTimeout(connectWebSocket, delay);
         };
 
         ws.onerror = () => {
-          fallbackAttempted = true;
-          ws.close();
+          try {
+            ws.close();
+          } catch {
+            // Ignore
+          }
         };
-      } catch (err) {
-        console.warn('[STARVANTIS] Failed to initialize WebSocket:', err);
-        fallbackAttempted = true;
+      } catch {
         setConnectionStatus('disconnected');
-        reconnectTimeoutRef.current = setTimeout(connectWebSocket, 3000);
+        const delay = reconnectDelayRef.current;
+        reconnectDelayRef.current = Math.min(30000, delay * 1.5);
+        reconnectTimeoutRef.current = setTimeout(connectWebSocket, delay);
       }
     }
 
@@ -753,16 +749,26 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
 
     const pingInterval = setInterval(() => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify({ action: 'PING' }));
+        try {
+          wsRef.current.send(JSON.stringify({ action: 'PING' }));
+        } catch {
+          // Ignore
+        }
       }
-    }, 10000);
+    }, 15000);
 
     return () => {
       isMounted = false;
       clearInterval(wakeUpInterval);
       clearInterval(pingInterval);
       if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
-      if (wsRef.current) wsRef.current.close();
+      if (wsRef.current) {
+        try {
+          wsRef.current.close();
+        } catch {
+          // Ignore
+        }
+      }
     };
   }, [refreshAll]);
 

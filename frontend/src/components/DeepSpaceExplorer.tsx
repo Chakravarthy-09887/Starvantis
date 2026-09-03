@@ -388,13 +388,33 @@ export default function DeepSpaceExplorer() {
                         <circle key={i} cx={st.x} cy={st.y} r={st.r} fill="#e2e8f0" opacity="0.8" />
                       ))}
 
-                      {/* Earth visible in the black sky above South Pole Horizon */}
+                      {/* Photorealistic 3D Earth visible in the black sky above South Pole Horizon */}
                       <g transform="translate(90, 60)">
-                        <circle r="18" fill="#1e40af" stroke="#60a5fa" strokeWidth="1" />
-                        {/* Continents & clouds */}
-                        <path d="M -8 -8 Q -2 -14 6 -10 Q 12 -4 8 6 Q 0 12 -10 6 Z" fill="#22c55e" opacity="0.85" />
-                        <circle r="18" fill="none" stroke="rgba(147, 197, 253, 0.4)" strokeWidth="3" className="animate-pulse" />
-                        <text x="0" y="28" fill="#93c5fd" fontSize="7" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                        {/* Outer Atmospheric Rayleigh Scattering Glow */}
+                        <circle r="22" fill="none" stroke="rgba(96, 165, 250, 0.4)" strokeWidth="3.5" />
+                        <circle r="20" fill="none" stroke="rgba(147, 197, 253, 0.7)" strokeWidth="1.5" />
+                        
+                        {/* 3D Ocean Sphere */}
+                        <circle r="19" fill="#1e3a8a" />
+                        
+                        {/* Continent Landmasses (Asia, India, Africa, Australia) */}
+                        <path d="M -9 -7 Q -3 -13 5 -9 Q 11 -3 7 7 Q -1 13 -11 7 Z" fill="#15803d" opacity="0.9" />
+                        <path d="M -2 -3 L 2 5 L -4 6 Z" fill="#ca8a04" opacity="0.85" />
+                        <path d="M 6 -11 Q 12 -9 11 -3 Q 6 1 4 -6 Z" fill="#166534" opacity="0.9" />
+                        
+                        {/* Atmospheric Cloud Formations */}
+                        <path d="M -12 -5 Q -4 -9 8 -3 Q 12 4 4 10 Q -6 6 -12 2 Z" fill="#ffffff" opacity="0.6" />
+                        <path d="M -6 4 Q 2 8 9 5" stroke="#ffffff" strokeWidth="1.5" fill="none" opacity="0.75" />
+                        
+                        {/* 3D Curved Terminator Shadow & Night Lights */}
+                        <path d="M 0 -19 A 19 19 0 0 1 0 19 Q 8 0 0 -19 Z" fill="#020617" opacity="0.65" />
+                        <circle cx="5" cy="-2" r="0.6" fill="#fef08a" opacity="0.9" />
+                        <circle cx="8" cy="4" r="0.8" fill="#fde047" opacity="0.8" />
+                        
+                        {/* Limb Specular Edge */}
+                        <circle r="19" fill="none" stroke="rgba(255, 255, 255, 0.5)" strokeWidth="0.8" />
+                        
+                        <text x="0" y="30" fill="#93c5fd" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
                           EARTH (384,400 km)
                         </text>
                       </g>
@@ -560,16 +580,41 @@ export default function DeepSpaceExplorer() {
                 {ch3ViewMode === 'TRAJECTORY' && (
                   <div className="relative aspect-[16/9] w-full bg-[#05060f] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center">
                     <svg viewBox="0 0 600 340" className="w-full h-full">
-                      {/* Earth with parking orbit */}
+                      {/* Photorealistic 3D Earth with parking orbit & multi-burn loops */}
                       <g transform="translate(100, 170)">
-                        <circle r="28" fill="#1d4ed8" stroke="#60a5fa" strokeWidth="1.5" />
-                        <circle r="42" fill="none" stroke="rgba(96, 165, 250, 0.4)" strokeDasharray="3,3" />
-                        <ellipse rx="65" ry="32" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeDasharray="2,2" transform="rotate(-15)" />
-                        <ellipse rx="88" ry="42" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeDasharray="2,2" transform="rotate(-15)" />
-                        <text x="0" y="4" fill="#ffffff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                        {/* Outer Atmospheric Glow */}
+                        <circle r="38" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeWidth="5" />
+                        <circle r="34" fill="none" stroke="rgba(147, 197, 253, 0.6)" strokeWidth="1.5" />
+                        
+                        {/* 3D Ocean Base */}
+                        <circle r="32" fill="#1e3a8a" />
+                        
+                        {/* Realistic Continents */}
+                        <path d="M -16 -12 Q -6 -22 10 -15 Q 20 -5 12 12 Q -2 22 -20 12 Z" fill="#15803d" opacity="0.9" />
+                        <path d="M -4 -6 L 4 8 L -7 10 Z" fill="#ca8a04" opacity="0.85" />
+                        <path d="M 10 -18 Q 20 -15 18 -5 Q 10 2 6 -10 Z" fill="#166534" opacity="0.9" />
+                        
+                        {/* Cloud Layers */}
+                        <path d="M -20 -8 Q -7 -15 14 -5 Q 20 6 6 16 Q -10 10 -20 3 Z" fill="#ffffff" opacity="0.55" />
+                        <path d="M -10 6 Q 3 13 15 8" stroke="#ffffff" strokeWidth="2.5" fill="none" opacity="0.7" />
+                        
+                        {/* 3D Terminator Shadow */}
+                        <path d="M 0 -32 A 32 32 0 0 1 0 32 Q 14 0 0 -32 Z" fill="#020617" opacity="0.65" />
+                        <circle cx="8" cy="-4" r="1.1" fill="#fef08a" opacity="0.9" />
+                        <circle cx="14" cy="6" r="1.3" fill="#fde047" opacity="0.8" />
+                        
+                        {/* Specular Limb Ring */}
+                        <circle r="32" fill="none" stroke="rgba(255, 255, 255, 0.4)" strokeWidth="1" />
+
+                        {/* Earth-Bound Maneuver Elliptical Loops */}
+                        <circle r="46" fill="none" stroke="rgba(96, 165, 250, 0.45)" strokeDasharray="3,3" />
+                        <ellipse rx="70" ry="34" fill="none" stroke="rgba(96, 165, 250, 0.35)" strokeDasharray="2,2" transform="rotate(-15)" />
+                        <ellipse rx="95" ry="46" fill="none" stroke="rgba(96, 165, 250, 0.35)" strokeDasharray="2,2" transform="rotate(-15)" />
+                        
+                        <text x="0" y="5" fill="#ffffff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
                           EARTH
                         </text>
-                        <text x="0" y="48" fill="#93c5fd" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                        <text x="0" y="52" fill="#93c5fd" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
                           5x Earth-Bound Burns
                         </text>
                       </g>

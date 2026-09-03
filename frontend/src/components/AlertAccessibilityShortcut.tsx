@@ -143,8 +143,8 @@ export default function AlertAccessibilityShortcut() {
 
   return (
     <>
-      {/* Floating Tactical Launcher Pill (Bottom-Left - Responsive compact on mobile, full on desktop) */}
-      <div className="fixed bottom-4 left-3 sm:bottom-6 sm:left-6 z-40">
+      {/* Floating Tactical Launcher Pill (Bottom-Right - Stacked directly ABOVE Copilot) */}
+      <div className="fixed bottom-16 right-3 sm:bottom-20 sm:right-6 z-40">
         <motion.div
           role="button"
           tabIndex={0}
@@ -152,7 +152,7 @@ export default function AlertAccessibilityShortcut() {
           onClick={() => setIsOpen(!isOpen)}
           whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.95 }}
-          className={`relative px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border backdrop-blur-xl flex items-center gap-2 sm:gap-3 cursor-pointer transition-all duration-300 shadow-2xl group select-none ${
+          className={`relative px-3 sm:px-4 py-1.5 sm:py-2 rounded-full border backdrop-blur-xl flex items-center gap-2 sm:gap-2.5 cursor-pointer transition-all duration-300 shadow-2xl group select-none ${
             isPlaying
               ? 'bg-alert-critical/30 border-alert-critical text-white shadow-[0_0_30px_rgba(255,59,59,0.7)] animate-pulse'
               : criticalCount > 0
@@ -164,7 +164,7 @@ export default function AlertAccessibilityShortcut() {
           {/* Icon & Badge Indicator */}
           <div className="relative flex items-center justify-center">
             <div
-              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full border flex items-center justify-center transition-all ${
+              className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border flex items-center justify-center transition-all ${
                 isPlaying
                   ? 'bg-alert-critical text-white border-white animate-bounce'
                   : criticalCount > 0
@@ -173,11 +173,11 @@ export default function AlertAccessibilityShortcut() {
               }`}
             >
               {isPlaying ? (
-                <BellRing size={15} className="animate-spin" style={{ animationDuration: '3s' }} />
+                <BellRing size={13} className="animate-spin" style={{ animationDuration: '3s' }} />
               ) : criticalCount > 0 ? (
-                <AlertOctagon size={15} className="animate-pulse" />
+                <AlertOctagon size={13} className="animate-pulse" />
               ) : (
-                <ShieldAlert size={15} />
+                <ShieldAlert size={13} />
               )}
             </div>
 
@@ -194,19 +194,16 @@ export default function AlertAccessibilityShortcut() {
             )}
           </div>
 
-          {/* Label Text & Quick State (Compact on mobile, descriptive on desktop) */}
+          {/* Label Text & Quick State */}
           <div className="flex flex-col text-left">
             <div className="flex items-center gap-1.5">
-              <span className={`font-space text-[11px] sm:text-xs font-bold tracking-wider uppercase ${isPlaying ? 'text-white' : criticalCount > 0 ? 'text-alert-critical' : 'text-cyan-glow'}`}>
+              <span className={`font-space text-[10px] sm:text-xs font-bold tracking-wider uppercase ${isPlaying ? 'text-white' : criticalCount > 0 ? 'text-alert-critical' : 'text-cyan-glow'}`}>
                 {isPlaying ? 'SIREN ACTIVE' : criticalCount > 0 ? `${criticalCount} CRITICAL` : 'ALERTS'}
               </span>
               <span className="hidden md:inline-block px-1.5 py-0.2 rounded text-[8px] font-mono bg-white/10 text-star-white/60 border border-white/10">
                 Alt+A
               </span>
             </div>
-            <span className="hidden sm:block font-mono text-[9px] text-star-white/70 tracking-wider">
-              {isPlaying ? 'CLICK TO SILENCE' : unacknowledgedAlerts.length > 0 ? `${unacknowledgedAlerts.length} PENDING` : 'NOMINAL'}
-            </span>
           </div>
 
           {/* Quick Instant Silence Button directly on launcher pill if actively playing */}
@@ -215,16 +212,16 @@ export default function AlertAccessibilityShortcut() {
               role="button"
               tabIndex={0}
               onClick={handleSilenceAlarm}
-              className="ml-0.5 sm:ml-1 p-1 sm:p-1.5 rounded-full bg-white text-alert-critical hover:bg-star-white transition-all shadow-md cursor-pointer hover:scale-110"
+              className="ml-0.5 sm:ml-1 p-1 rounded-full bg-white text-alert-critical hover:bg-star-white transition-all shadow-md cursor-pointer hover:scale-110"
               title="Silence siren immediately"
             >
-              <BellOff size={13} />
+              <BellOff size={12} />
             </div>
           )}
         </motion.div>
       </div>
 
-      {/* Floating Alerts & Alarm Silence HUD Popover / Drawer (Responsive viewport) */}
+      {/* Floating Alerts & Alarm Silence HUD Popover / Drawer (Responsive viewport positioned above dock) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -232,7 +229,7 @@ export default function AlertAccessibilityShortcut() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 25, scale: 0.96 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-16 sm:bottom-20 left-3 right-3 sm:right-auto sm:left-6 z-50 w-[calc(100vw-24px)] sm:w-[460px] md:w-[500px] max-h-[82vh] rounded-2xl sm:rounded-3xl border border-cyan-glow/30 bg-[#040812]/98 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(99,199,255,0.2)] flex flex-col overflow-hidden text-star-white"
+            className="fixed bottom-28 sm:bottom-32 left-3 right-3 sm:left-auto sm:right-6 z-50 w-[calc(100vw-24px)] sm:w-[460px] md:w-[500px] max-h-[75vh] rounded-2xl sm:rounded-3xl border border-cyan-glow/30 bg-[#040812]/98 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(99,199,255,0.2)] flex flex-col overflow-hidden text-star-white"
             role="dialog"
             aria-modal="true"
             aria-label="Mission Alerts Quick Control Console"

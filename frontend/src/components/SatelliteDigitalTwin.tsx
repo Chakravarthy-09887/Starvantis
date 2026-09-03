@@ -85,7 +85,7 @@ export default function SatelliteDigitalTwin() {
     health: liveTelemetry.health ?? selectedSat.health,
   }), [selectedSat, liveTelemetry]);
 
-  // Stable calibrated numeric telemetry dynamics (linear and stable)
+  // Stable calibrated numeric telemetry dynamics
   const rollVal = parseFloat(activeSat.roll.replace(/[+°]/g, '')) || 0.04;
   const pitchVal = parseFloat(activeSat.pitch.replace(/[+°]/g, '')) || 0.02;
   const yawVal = parseFloat(activeSat.yaw.replace(/[+°]/g, '')) || 142.5;
@@ -106,11 +106,6 @@ export default function SatelliteDigitalTwin() {
       return `${km.toLocaleString()} km (LEO)`;
     }
   };
-
-  // Static clean waveforms for steady 60fps telemetry visualization
-  const voltWavePath = "M 0 16 L 20 14 L 40 17 L 60 15 L 80 16 L 100 14 L 120 18 L 140 15 L 160 16 L 180 14 L 200 16";
-  const powerWavePath = "M 0 18 L 20 15 L 40 20 L 60 16 L 80 18 L 100 15 L 120 21 L 140 17 L 160 18 L 180 16 L 200 18";
-  const tempWavePath = "M 0 14 L 20 16 L 40 13 L 60 15 L 80 14 L 100 16 L 120 13 L 140 15 L 160 14 L 180 15 L 200 14";
 
   const satelliteAlerts = alerts.filter(
     (a) => a.asset.includes(activeSat.id) || a.asset.includes(activeSat.code) || activeSat.id === 'SENTINEL-6A'
@@ -625,7 +620,7 @@ export default function SatelliteDigitalTwin() {
                         <span className="text-cyan-glow font-bold font-mono">{voltVal.toFixed(2)} V</span>
                       </div>
                       <svg className="w-full h-12" viewBox="0 0 200 30">
-                        <path d={voltWavePath} fill="none" stroke="#00d4ff" strokeWidth="2.5" />
+                        <path d="M 0 15 Q 25 5, 50 15 T 100 15 T 150 15 T 200 15" fill="none" stroke="#00d4ff" strokeWidth="2.5" className="animate-pulse" />
                       </svg>
                       <span className="text-[10px] text-star-white/60 font-inter block">Variance: ±0.02V (Optimal Nominal)</span>
                     </div>
@@ -636,7 +631,7 @@ export default function SatelliteDigitalTwin() {
                         <span className="text-emerald-400 font-bold font-mono">{powerVal.toFixed(2)} kW</span>
                       </div>
                       <svg className="w-full h-12" viewBox="0 0 200 30">
-                        <path d={powerWavePath} fill="none" stroke="#10b981" strokeWidth="2.5" />
+                        <path d="M 0 18 Q 25 8, 50 18 T 100 18 T 150 18 T 200 18" fill="none" stroke="#10b981" strokeWidth="2.5" className="animate-pulse" />
                       </svg>
                       <span className="text-[10px] text-star-white/60 font-inter block">Multi-junction GaAs solar efficiency 98.4%</span>
                     </div>
@@ -647,7 +642,7 @@ export default function SatelliteDigitalTwin() {
                         <span className="text-amber-400 font-bold font-mono">{tempVal.toFixed(1)} °C</span>
                       </div>
                       <svg className="w-full h-12" viewBox="0 0 200 30">
-                        <path d={tempWavePath} fill="none" stroke="#f59e0b" strokeWidth="2.5" />
+                        <path d="M 0 14 Q 25 24, 50 14 T 100 14 T 150 14 T 200 14" fill="none" stroke="#f59e0b" strokeWidth="2.5" className="animate-pulse" />
                       </svg>
                       <span className="text-[10px] text-star-white/60 font-inter block">Radiator louvers active at optimal angle</span>
                     </div>
@@ -910,10 +905,10 @@ export default function SatelliteDigitalTwin() {
             </div>
           )}
 
-          {/* 3. BOTTOM TELEMETRY GRID (STABLE, CALIBRATED & VERIFIED LINEAR DATA) */}
+          {/* 3. BOTTOM TELEMETRY GRID (ANIMATED, LIVELY & STABLE VERIFIED DATA) */}
           <div className="border-t border-cyan-glow/15 bg-[#04080e]/95 p-4 sm:p-5 md:p-6 space-y-5 w-full">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-              {/* CARD 1: ORBIT OVERVIEW (CALIBRATED MISSION ALTITUDE) */}
+              {/* CARD 1: ORBIT OVERVIEW (ANIMATED 3D ROTATING ORBIT GLOBE) */}
               <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/40 p-4 flex flex-col justify-between space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
@@ -927,8 +922,8 @@ export default function SatelliteDigitalTwin() {
 
                 <div className="relative aspect-[4/3] w-full flex items-center justify-center my-1">
                   <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-900 via-blue-600 to-cyan-400 shadow-[0_0_25px_rgba(99,199,255,0.4)] relative">
-                    {/* Stable Orbit Ring */}
-                    <div className="absolute inset-0 -m-4 rounded-full border border-dashed border-cyan-glow/60">
+                    {/* Continuous Smooth 3D Orbit Ring */}
+                    <div className="absolute inset-0 -m-4 rounded-full border border-dashed border-cyan-glow/70 animate-spin" style={{ animationDuration: '14s' }}>
                       {/* Orbiting Satellite Marker */}
                       <div className="absolute -top-1.5 left-1/2 -ml-1.5 w-3 h-3 rounded-full bg-white shadow-[0_0_12px_#63c7ff]" />
                     </div>
@@ -941,15 +936,15 @@ export default function SatelliteDigitalTwin() {
                 </div>
               </div>
 
-              {/* CARD 2: TELEMETRY FEED WAVEFORMS */}
+              {/* CARD 2: TELEMETRY FEED WAVEFORMS (ANIMATED SWEEPING PULSE) */}
               <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/40 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-space text-xs tracking-[0.2em] text-cyan-glow uppercase font-bold block">
                     TELEMETRY FEED
                   </span>
                   <span className="inline-flex items-center gap-1 text-[9px] font-space text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    LINEAR 1Hz
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE 50Hz
                   </span>
                 </div>
 
@@ -960,7 +955,7 @@ export default function SatelliteDigitalTwin() {
                     <span className="text-cyan-glow font-bold font-mono">{voltVal.toFixed(2)} V</span>
                   </div>
                   <svg className="w-full h-7 mt-0.5" viewBox="0 0 200 30" preserveAspectRatio="none">
-                    <path d={voltWavePath} fill="none" stroke={activeSat.waveColor || '#00d4ff'} strokeWidth="2" />
+                    <path d="M 0 16 Q 25 6, 50 16 T 100 16 T 150 16 T 200 16" fill="none" stroke={activeSat.waveColor || '#00d4ff'} strokeWidth="2" className="animate-pulse" />
                   </svg>
                 </div>
 
@@ -971,7 +966,7 @@ export default function SatelliteDigitalTwin() {
                     <span className="text-emerald-400 font-bold font-mono">{powerVal.toFixed(2)} kW</span>
                   </div>
                   <svg className="w-full h-7 mt-0.5" viewBox="0 0 200 30" preserveAspectRatio="none">
-                    <path d={powerWavePath} fill="none" stroke="#10b981" strokeWidth="2" />
+                    <path d="M 0 18 Q 25 8, 50 18 T 100 18 T 150 18 T 200 18" fill="none" stroke="#10b981" strokeWidth="2" className="animate-pulse" />
                   </svg>
                 </div>
 
@@ -982,12 +977,12 @@ export default function SatelliteDigitalTwin() {
                     <span className="text-amber-400 font-bold font-mono">{tempVal.toFixed(1)} °C</span>
                   </div>
                   <svg className="w-full h-7 mt-0.5" viewBox="0 0 200 30" preserveAspectRatio="none">
-                    <path d={tempWavePath} fill="none" stroke="#f59e0b" strokeWidth="2" />
+                    <path d="M 0 14 Q 25 24, 50 14 T 100 14 T 150 14 T 200 14" fill="none" stroke="#f59e0b" strokeWidth="2" className="animate-pulse" />
                   </svg>
                 </div>
               </div>
 
-              {/* CARD 3: ATTITUDE & ORIENTATION (STABLE & CALIBRATED 3-AXIS AOCS FLIGHT INSTRUMENT DECK) */}
+              {/* CARD 3: ATTITUDE & ORIENTATION (ANIMATED AOCS FLIGHT DECK WITH LIVE STABILIZATION DIALS) */}
               <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/40 p-4 flex flex-col justify-between space-y-3">
                 <div className="flex items-center justify-between border-b border-cyan-glow/10 pb-2">
                   <div>
@@ -997,23 +992,23 @@ export default function SatelliteDigitalTwin() {
                     <span className="font-space text-[10px] text-star-white/60 block">3-AXIS GYRO-STABILIZATION MATRIX</span>
                   </div>
                   <span className="text-[9px] font-space text-cyan-glow font-bold bg-cyan-glow/15 px-2 py-0.5 rounded border border-cyan-glow/30">
-                    ADCS LOCKED
+                    ADCS ACTIVE
                   </span>
                 </div>
 
-                {/* 3 Dedicated AOCS Flight Attitude Dials (Roll, Pitch, Yaw) */}
+                {/* 3 Dedicated Animated AOCS Flight Attitude Dials (Roll, Pitch, Yaw) */}
                 <div className="grid grid-cols-3 gap-2 py-1 text-center">
                   {/* ROLL (Bank Horizon Dial) */}
                   <div className="p-2.5 rounded-xl bg-black/60 border border-cyan-glow/20 flex flex-col items-center justify-between">
                     <span className="font-space text-[10px] text-cyan-glow font-bold uppercase tracking-wider">ROLL</span>
                     <div className="relative w-12 h-12 my-1.5 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full border border-cyan-glow/30" />
+                      <div className="absolute inset-0 rounded-full border border-dashed border-cyan-glow/40 animate-pulse" />
                       {/* Fixed horizon level tick marks */}
-                      <div className="absolute left-1 w-1.5 h-[1px] bg-cyan-glow/60" />
-                      <div className="absolute right-1 w-1.5 h-[1px] bg-cyan-glow/60" />
-                      {/* Bank Horizon Needle */}
+                      <div className="absolute left-1 w-1.5 h-[1px] bg-cyan-glow/80" />
+                      <div className="absolute right-1 w-1.5 h-[1px] bg-cyan-glow/80" />
+                      {/* Bank Horizon Needle with gentle stabilization float */}
                       <div
-                        className="w-8 h-1 bg-cyan-glow rounded-full shadow-[0_0_8px_#00d4ff]"
+                        className="w-8 h-1 bg-cyan-glow rounded-full shadow-[0_0_8px_#00d4ff] transition-transform duration-500"
                         style={{ transform: `rotate(${(rollVal * 15).toFixed(1)}deg)` }}
                       />
                       <div className="w-1.5 h-1.5 rounded-full bg-cyan-glow absolute" />
@@ -1028,7 +1023,7 @@ export default function SatelliteDigitalTwin() {
                   <div className="p-2.5 rounded-xl bg-black/60 border border-emerald-500/20 flex flex-col items-center justify-between">
                     <span className="font-space text-[10px] text-emerald-400 font-bold uppercase tracking-wider">PITCH</span>
                     <div className="relative w-12 h-12 my-1.5 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full border border-emerald-500/30" />
+                      <div className="absolute inset-0 rounded-full border border-dashed border-emerald-500/40 animate-pulse" />
                       {/* Pitch Ladder Indicator */}
                       <div className="flex flex-col items-center justify-center gap-1">
                         <div className="w-4 h-[1px] bg-emerald-400/50" />
@@ -1047,12 +1042,12 @@ export default function SatelliteDigitalTwin() {
                   <div className="p-2.5 rounded-xl bg-black/60 border border-amber-500/20 flex flex-col items-center justify-between">
                     <span className="font-space text-[10px] text-amber-400 font-bold uppercase tracking-wider">YAW</span>
                     <div className="relative w-12 h-12 my-1.5 flex items-center justify-center">
-                      <div className="absolute inset-0 rounded-full border border-amber-500/30" />
+                      <div className="absolute inset-0 rounded-full border border-dashed border-amber-500/40 animate-spin" style={{ animationDuration: '40s' }} />
                       {/* Cardinal markers */}
                       <span className="absolute top-0.5 text-[6px] font-bold text-amber-300">N</span>
                       {/* Azimuth Rotating Pointer */}
                       <div
-                        className="w-full h-full absolute inset-0 flex items-center justify-center"
+                        className="w-full h-full absolute inset-0 flex items-center justify-center transition-transform duration-500"
                         style={{ transform: `rotate(${yawVal.toFixed(1)}deg)` }}
                       >
                         <div className="w-1 h-3.5 bg-amber-400 rounded-t-full absolute top-1 shadow-[0_0_8px_#f59e0b]" />
@@ -1069,7 +1064,7 @@ export default function SatelliteDigitalTwin() {
                 {/* Pointing Jitter & ADCS Subsystem Metric */}
                 <div className="flex items-center justify-between text-[11px] font-space pt-1.5 border-t border-white/5">
                   <span className="text-star-white/60">Pointing Jitter</span>
-                  <span className="text-emerald-400 font-bold font-mono">&lt; 0.0042°/s RMS</span>
+                  <span className="text-emerald-400 font-bold font-mono animate-pulse">&lt; 0.0042°/s RMS</span>
                 </div>
               </div>
 

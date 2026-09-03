@@ -14,11 +14,11 @@ export default function StarvantisWordmark({
   animate = true,
 }: StarvantisWordmarkProps) {
   return (
-    <div className={`relative w-full flex items-center justify-center ${className}`}>
+    <div className={`relative w-full flex items-center justify-center mx-auto text-center ${className}`}>
       <svg
-        viewBox="0 0 1350 180"
+        viewBox="40 0 1060 180"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-auto overflow-visible select-none"
+        className="w-full h-auto max-w-full overflow-visible select-none mx-auto block"
         aria-label="STARVANTIS"
       >
         <defs>
@@ -62,13 +62,13 @@ export default function StarvantisWordmark({
 
         {/* 1. HORIZONTAL LIGHT BEAM PASSING DIRECTLY THROUGH WORD */}
         <g opacity="0.85">
-          <ellipse cx="650" cy="94" rx="630" ry="20" fill="url(#beam-laser)" opacity="0.3" filter="blur(8px)" />
-          <line x1="30" y1="94" x2="1280" y2="94" stroke="url(#beam-laser)" strokeWidth="1.8" />
-          <line x1="280" y1="94" x2="1050" y2="94" stroke="#ffffff" strokeWidth="0.8" opacity="0.7" />
+          <ellipse cx="570" cy="94" rx="520" ry="18" fill="url(#beam-laser)" opacity="0.3" filter="blur(8px)" />
+          <line x1="40" y1="94" x2="1100" y2="94" stroke="url(#beam-laser)" strokeWidth="1.8" />
+          <line x1="200" y1="94" x2="940" y2="94" stroke="#ffffff" strokeWidth="0.8" opacity="0.7" />
         </g>
 
         {/* 2. RADIANT SPACE GLOW HIGHLIGHT ON 'A' NEXT TO 'V' */}
-        <g transform="translate(675, 72)">
+        <g transform="translate(655, 72)">
           <ellipse cx="0" cy="0" rx="95" ry="48" fill="url(#a-space-glow)" opacity="0.8" />
           <circle cx="0" cy="0" r="14" fill="#ffffff" filter="blur(2px)" />
           <circle cx="0" cy="0" r="5" fill="#ffffff" />

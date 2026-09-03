@@ -241,8 +241,8 @@ export default function HeroSpaceSequence() {
             </div>
           </div>
 
-          {/* STARVANTIS Wordmark */}
-          <div className="w-[94vw] md:w-[84vw] lg:w-[72vw] max-w-[1150px] my-2 md:my-3">
+          {/* STARVANTIS Wordmark (Perfect Center Alignment on Mobile & Desktop) */}
+          <div className="w-[94vw] md:w-[84vw] lg:w-[72vw] max-w-[1150px] my-2 md:my-3 mx-auto flex items-center justify-center text-center">
             <StarvantisWordmark animate={true} glowIntensity={2.0} />
           </div>
 

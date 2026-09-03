@@ -108,6 +108,38 @@ body {
   -webkit-backdrop-filter: blur(20px);
 }
 
+/* Responsive scroll & typography helpers */
+.overflow-touch {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.text-balance-wrap {
+  text-wrap: balance;
+}
+
+.text-pretty-wrap {
+  text-wrap: pretty;
+}
+
+/* Universal Typography Normalization for Clean Text Rendering */
+h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.25;
+  letter-spacing: normal;
+}
+
+p, span, li, a {
+  overflow-wrap: break-word;
+}
+
+/* Ensure monospace telemetry codes & metrics don't collide */
+code, pre, .font-mono {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 /* Animations */
 @keyframes float {
   0%, 100% { transform: translateY(0); }

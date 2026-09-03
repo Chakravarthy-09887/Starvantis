@@ -466,6 +466,15 @@ export default function CosmicCosmologyCenter() {
       renderer.setSize(width, height, false);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 
+      // Ensure WebGL pixel store does not enforce FLIP_Y/PREMULTIPLY_ALPHA on 3D textures
+      const gl = renderer.getContext();
+      if (gl && 'pixelStorei' in gl) {
+        try {
+          gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+          gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, 0);
+        } catch {}
+      }
+
       // Lighting: Central Warm Sun Light + Ambient Space Fill
       const sunLight = new THREE.PointLight(0xfff6dd, 3.8, 3500, 0.15);
       sunLight.position.set(0, 0, 0);
@@ -506,6 +515,8 @@ export default function CosmicCosmologyCenter() {
         const tex = new THREE.CanvasTexture(c);
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.flipY = false;
+        tex.premultiplyAlpha = false;
         return tex;
       };
 

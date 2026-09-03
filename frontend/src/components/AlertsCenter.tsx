@@ -240,9 +240,9 @@ export default function AlertsCenter() {
           )}
         </AnimatePresence>
 
-        {/* Filter Navigation Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-6 p-3 rounded-2xl glass-panel border border-glass-border">
-          <div className="flex flex-wrap items-center gap-2">
+        {/* Filter & Audio Controls Navigation Bar */}
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 mb-6 p-3 sm:p-4 rounded-2xl glass-panel border border-glass-border">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {[
               { id: 'all', label: 'ALL ALERTS', count: alerts.length },
               { id: 'unack', label: 'PENDING ACTION', count: totalUnack, highlight: totalUnack > 0 },
@@ -255,7 +255,7 @@ export default function AlertsCenter() {
               return (
                 <div role="button" tabIndex={0} key={f.id}
                   onClick={() => setActiveFilter(f.id as any)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-space tracking-wider uppercase transition-all flex items-center gap-2 border cursor-pointer ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-space tracking-wider uppercase transition-all flex items-center gap-1.5 sm:gap-2 border cursor-pointer ${
                     isSelected
                       ? 'bg-cyan-glow/20 border-cyan-glow text-star-white font-bold shadow-[0_0_15px_rgba(99,199,255,0.3)]'
                       : f.isCrit && f.count > 0
@@ -280,13 +280,19 @@ export default function AlertsCenter() {
             })}
           </div>
 
-          <div className="flex items-center gap-2 text-xs font-space text-muted-gray flex-wrap">
+          <div className="flex items-center gap-2 text-xs font-space text-muted-gray flex-wrap justify-between xl:justify-end">
+            {/* Alarm Policy Indicator: CRITICAL ONLY */}
+            <span className="px-2.5 py-1 rounded-xl bg-alert-critical/10 border border-alert-critical/30 text-alert-critical text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5">
+              <AlertOctagon size={11} className="text-alert-critical" />
+              <span>SIREN: CRITICAL ONLY</span>
+            </span>
+
             {/* Continuous Audio Alert Beep Toggle (Manual Stop Only) */}
             <div
               role="button"
               tabIndex={0}
               onClick={toggleContinuousBeep}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl border font-bold cursor-pointer transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold cursor-pointer transition-all ${
                 isBeeping
                   ? 'border-alert-critical bg-alert-critical/30 text-white shadow-[0_0_20px_rgba(255,59,59,0.6)] animate-pulse'
                   : 'border-alert-critical/40 bg-alert-critical/15 text-alert-critical hover:bg-alert-critical/25 shadow-[0_0_12px_rgba(255,59,59,0.2)]'
@@ -294,7 +300,7 @@ export default function AlertsCenter() {
               title={isBeeping ? 'Click to manually stop continuous beep' : 'Click to start continuous alarm beep'}
             >
               <BellRing size={13} className={isBeeping ? 'animate-bounce text-white' : 'animate-pulse text-alert-critical'} />
-              <span>{isBeeping ? 'SILENCE ALARM BEEP (ACTIVE)' : 'START ALARM BEEP'}</span>
+              <span>{isBeeping ? 'SILENCE BEEP' : 'TEST SIREN'}</span>
             </div>
 
             <div
@@ -306,25 +312,25 @@ export default function AlertsCenter() {
                 }
                 setSoundEnabled(!soundEnabled);
               }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border cursor-pointer transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[11px] sm:text-xs cursor-pointer transition-all ${
                 soundEnabled
                   ? 'border-cyan-glow/40 bg-cyan-glow/15 text-cyan-glow font-bold'
                   : 'border-white/10 bg-white/5 text-muted-gray'
               }`}
             >
               {soundEnabled ? <Volume2 size={13} /> : <VolumeX size={13} />}
-              <span>AUDIO: {soundEnabled ? 'ACTIVE' : 'MUTED'}</span>
+              <span>{soundEnabled ? 'AUDIO: ON' : 'AUDIO: OFF'}</span>
             </div>
 
             <span
-              className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] sm:text-[11px] ${
                 wsConnected
                   ? 'border-emerald-500/40 bg-emerald-500/15 text-emerald-400 font-bold shadow-[0_0_12px_rgba(16,185,129,0.25)]'
                   : 'border-cyan-glow/40 bg-cyan-glow/10 text-cyan-glow font-bold'
               }`}
             >
-              <Wifi size={12} className="animate-pulse" />
-              <span>{wsConnected ? '2-WAY WS SYNC ACTIVE' : 'LIVE 1Hz TELEMETRY STREAM'}</span>
+              <Wifi size={11} className="animate-pulse" />
+              <span>{wsConnected ? '2-WAY WS' : '1Hz STREAM'}</span>
             </span>
           </div>
         </div>

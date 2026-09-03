@@ -258,7 +258,7 @@ export default function HeroSpaceSequence() {
                   transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                   className="flex flex-wrap items-center justify-center gap-x-2.5 gap-y-1"
                 >
-                  <h2 className="font-space text-lg md:text-2xl lg:text-3xl text-star-white tracking-[0.25em] font-light uppercase text-glow leading-snug">
+                  <h2 className="font-space text-base sm:text-xl md:text-2xl lg:text-3xl text-star-white tracking-[0.1em] sm:tracking-[0.16em] md:tracking-[0.22em] font-light uppercase text-glow leading-relaxed max-w-2xl px-2">
                     &ldquo;{DYNAMIC_SLOGANS[sloganIndex]}&rdquo;
                   </h2>
                 </motion.div>

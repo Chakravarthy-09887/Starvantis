@@ -10,10 +10,29 @@ class AlarmAudioController {
   private volume: number = 0.75;
   private soundEnabled: boolean = true;
 
+  private userHasInteracted: boolean = false;
+
   constructor() {
     if (typeof window !== 'undefined') {
       this.initAudio();
+      this.setupInteractionListeners();
     }
+  }
+
+  private setupInteractionListeners() {
+    if (typeof window === 'undefined') return;
+    const unlock = () => {
+      this.userHasInteracted = true;
+      if (this.audio && this.audio.paused && this.isPlaying) {
+        this.audio.play().catch(() => {});
+      }
+      window.removeEventListener('click', unlock);
+      window.removeEventListener('keydown', unlock);
+      window.removeEventListener('touchstart', unlock);
+    };
+    window.addEventListener('click', unlock, { once: true, passive: true });
+    window.addEventListener('keydown', unlock, { once: true, passive: true });
+    window.addEventListener('touchstart', unlock, { once: true, passive: true });
   }
 
   private initAudio() {
@@ -38,7 +57,7 @@ class AlarmAudioController {
         }
       });
     } catch (e) {
-      console.warn('[AlarmAudio] Initialization note:', e);
+      // Safe initialization catch
     }
   }
 
@@ -82,11 +101,15 @@ class AlarmAudioController {
       .play()
       .then(() => {
         this.isPlaying = true;
+        this.userHasInteracted = true;
         this.notify();
         return true;
       })
       .catch((err) => {
-        console.warn('[AlarmAudio] Playback prevented by browser policy until user interaction:', err);
+        // Browser autoplay policy requires user interaction first
+        if (err && err.name !== 'NotAllowedError') {
+          console.debug('[AlarmAudio] Autoplay queued until user gesture:', err.message);
+        }
         this.isPlaying = false;
         this.notify();
         return false;

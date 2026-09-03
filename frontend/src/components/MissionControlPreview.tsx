@@ -132,7 +132,7 @@ export default function MissionControlPreview() {
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs font-space text-muted-gray flex-wrap">
-              <span className="flex items-center gap-1.5 text-star-white font-mono bg-black/40 px-2.5 py-1 rounded-lg border border-cyan-glow/20">
+              <span className="flex items-center gap-1.5 text-star-white font-mono bg-black/40 px-2.5 py-1 rounded-lg border border-cyan-glow/20" suppressHydrationWarning>
                 <Clock size={13} className="text-cyan-glow animate-pulse" /> {currentClock}
               </span>
               <span className="text-cyan-glow font-bold">LIVE TIMESCALEDB // OK</span>

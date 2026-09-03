@@ -20,9 +20,13 @@ import {
   Sparkles,
   Compass,
   ArrowRight,
+  BellRing,
+  BellOff,
+  AlertOctagon,
 } from 'lucide-react';
 import StarvantisLogo from './StarvantisLogo';
 import { useMission } from '../context/MissionContext';
+import { alarmAudio } from '../lib/alarmAudio';
 
 // Primary quick links shown on wider desktop screens
 const PRIMARY_QUICK_LINKS = [
@@ -81,9 +85,18 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tzDropdownOpen, setTzDropdownOpen] = useState(false);
+  const [isAlarmPlaying, setIsAlarmPlaying] = useState(false);
   const tzDropdownRef = useRef<HTMLDivElement>(null);
 
-  const { wsConnected, timezone, setTimezone, timezoneOptions, currentClock } = useMission();
+  const { wsConnected, timezone, setTimezone, timezoneOptions, currentClock, alerts } = useMission();
+
+  useEffect(() => {
+    setIsAlarmPlaying(alarmAudio.getIsPlaying());
+    const unsubscribe = alarmAudio.subscribe((playing) => {
+      setIsAlarmPlaying(playing);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 80);
@@ -244,6 +257,43 @@ export default function Navbar() {
               <span className="font-bold tracking-wider hidden sm:inline">{wsConnected ? 'LIVE 1Hz • WS' : 'LIVE 1Hz'}</span>
             </div>
 
+            {/* Quick Alerts & Alarm Silence Shortcut Pill */}
+            <a
+              href="#alerts"
+              onClick={(e) => {
+                if (isAlarmPlaying) {
+                  e.preventDefault();
+                  alarmAudio.stop();
+                }
+              }}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-full border text-[9px] sm:text-[10px] font-space tracking-wider uppercase flex items-center gap-1.5 transition-all cursor-pointer ${
+                isAlarmPlaying
+                  ? 'bg-alert-critical border-alert-critical text-white shadow-[0_0_20px_rgba(255,59,59,0.8)] animate-pulse font-bold'
+                  : alerts.filter((a) => !a.acknowledged && a.severity === 'critical').length > 0
+                  ? 'bg-alert-critical/20 border-alert-critical/60 text-alert-critical hover:bg-alert-critical/30 shadow-[0_0_12px_rgba(255,59,59,0.3)]'
+                  : alerts.filter((a) => !a.acknowledged).length > 0
+                  ? 'bg-cyan-glow/15 border-cyan-glow/40 text-cyan-glow hover:bg-cyan-glow/25'
+                  : 'bg-space-navy/50 border-glass-border text-muted-gray hover:text-star-white'
+              }`}
+              title={isAlarmPlaying ? 'Click to silence active alarm immediately' : 'Jump to Active Mission Alerts'}
+            >
+              {isAlarmPlaying ? (
+                <>
+                  <BellOff size={11} className="animate-spin" style={{ animationDuration: '3s' }} />
+                  <span className="font-bold">SILENCE ALARM</span>
+                </>
+              ) : (
+                <>
+                  <AlertOctagon size={11} className={alerts.filter((a) => !a.acknowledged).length > 0 ? 'text-alert-critical animate-pulse' : 'text-cyan-glow'} />
+                  <span>
+                    {alerts.filter((a) => !a.acknowledged).length > 0
+                      ? `${alerts.filter((a) => !a.acknowledged).length} ALERTS`
+                      : 'ALERTS'}
+                  </span>
+                </>
+              )}
+            </a>
+
             {/* 3-Dash Menu Bar Button (Permanent Mission Drawer Toggle) */}
             <div
               role="button"
@@ -354,7 +404,7 @@ export default function Navbar() {
               <div className="pt-6 mt-6 border-t border-glass-border flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-                  <span className="font-mono text-xs text-star-white/80">
+                  <span className="font-mono text-xs text-star-white/80" suppressHydrationWarning>
                     EPOCH: {currentClock} ({timezone})
                   </span>
                 </div>

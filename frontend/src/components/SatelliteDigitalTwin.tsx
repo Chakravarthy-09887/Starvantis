@@ -48,6 +48,21 @@ export default function SatelliteDigitalTwin() {
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Telemetry' | 'Orbits' | 'Events' | 'Alerts' | 'Reports' | 'Settings'>('Dashboard');
   const [zoomLevel, setZoomLevel] = useState(1.0);
   const [tick, setTick] = useState(0);
+  const cadCanvasRef = useRef<HTMLDivElement>(null);
+
+  // Safe non-passive wheel zoom listener
+  useEffect(() => {
+    const el = cadCanvasRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setZoomLevel((z) => Number(Math.min(2.5, Math.max(0.6, z + (e.deltaY < 0 ? 0.15 : -0.15))).toFixed(2)));
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   const selectedSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
@@ -115,11 +130,11 @@ export default function SatelliteDigitalTwin() {
   );
 
   return (
-    <section id="satellite-inspector" className="section-spacing relative overflow-hidden py-16 md:py-24 w-full" ref={containerRef}>
-      <div className="max-w-[1440px] mx-auto px-4 md:px-6 w-full">
+    <section id="satellite-inspector" className="section-spacing relative overflow-hidden py-16 md:py-24 w-full flex flex-col items-center justify-center" ref={containerRef}>
+      <div className="max-w-[1440px] w-full mx-auto px-4 md:px-6 flex flex-col items-center">
         {/* Section Heading */}
         <motion.div
-          className="text-center mb-10"
+          className="text-center mb-10 w-full flex flex-col items-center justify-center"
           initial={{ opacity: 0, y: 25, filter: 'blur(10px)' }}
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
@@ -130,10 +145,10 @@ export default function SatelliteDigitalTwin() {
               Fleet Telemetry &amp; Orbital Digital Twin
             </span>
           </div>
-          <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-extralight tracking-wide text-star-white">
+          <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-extralight tracking-wide text-star-white text-center">
             PRIMARY MISSION CONTROL
           </h2>
-          <p className="font-inter text-xs md:text-sm text-star-white/60 mt-2.5 max-w-2xl mx-auto font-light leading-relaxed">
+          <p className="font-inter text-xs md:text-sm text-star-white/60 mt-2.5 max-w-2xl mx-auto font-light leading-relaxed text-center">
             Multi-satellite fleet command deck. Select any active constellation asset below to inspect its unique 3D digital twin model, live real-time attitude orientation, and streaming telemetry waveforms.
           </p>
           <motion.div
@@ -149,8 +164,6 @@ export default function SatelliteDigitalTwin() {
               const isSelected = sat.id === activeSat.id;
               return (
                 <div role="button" tabIndex={0} key={sat.id}
-                  
-                  
                   onClick={() => setSelectedSatelliteId(sat.id)}
                   className={`px-4 py-2.5 rounded-2xl border transition-all duration-300 flex items-center gap-3 cursor-pointer ${
                     isSelected
@@ -176,7 +189,7 @@ export default function SatelliteDigitalTwin() {
 
         {/* MAIN DASHBOARD FRAME */}
         <motion.div
-          className="rounded-3xl border border-cyan-glow/25 bg-[#060c14]/95 shadow-[0_0_80px_rgba(4,18,34,0.95)] overflow-hidden backdrop-blur-2xl w-full"
+          className="rounded-3xl border border-cyan-glow/25 bg-[#060c14]/95 shadow-[0_0_80px_rgba(4,18,34,0.95)] overflow-hidden backdrop-blur-2xl w-full max-w-7xl mx-auto"
           initial={{ opacity: 0, scale: 0.98 }}
           animate={isInView ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
@@ -244,7 +257,7 @@ export default function SatelliteDigitalTwin() {
               {/* Dynamic Mission Clock with Timezone */}
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-black/60 border border-cyan-glow/25 text-star-white font-mono text-xs shadow-[0_0_10px_rgba(99,199,255,0.1)]">
                 <Clock size={13} className="text-cyan-glow animate-pulse" />
-                <span className="tracking-wider font-semibold">{currentClock}</span>
+                <span className="tracking-wider font-semibold" suppressHydrationWarning>{currentClock}</span>
               </div>
             </div>
           </div>
@@ -378,11 +391,8 @@ export default function SatelliteDigitalTwin() {
 
                 {/* 3D Holographic Rendering Canvas with Scroll-to-Zoom */}
                 <div
-                  className="relative w-full h-[400px] flex items-center justify-center overflow-hidden rounded-2xl bg-[#030712] my-2 border border-cyan-glow/30 shadow-[inset_0_0_40px_rgba(99,199,255,0.15)] group cursor-crosshair select-none"
-                  onWheel={(e) => {
-                    e.preventDefault();
-                    setZoomLevel((z) => Number(Math.min(2.5, Math.max(0.6, z + (e.deltaY < 0 ? 0.15 : -0.15))).toFixed(2)));
-                  }}
+                  ref={cadCanvasRef}
+                  className="relative w-full h-[320px] sm:h-[380px] md:h-[420px] flex items-center justify-center overflow-hidden rounded-2xl bg-[#030712] my-2 border border-cyan-glow/30 shadow-[inset_0_0_40px_rgba(99,199,255,0.15)] group cursor-crosshair select-none"
                 >
                   {/* Cyber Hologram Radial Aura & Scanline Background */}
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,199,255,0.25)_0%,rgba(3,7,18,0.95)_75%)] pointer-events-none" />
@@ -397,13 +407,13 @@ export default function SatelliteDigitalTwin() {
 
                   {/* High-Resolution Unique Satellite Hologram Model */}
                   <div
-                    className="relative w-full h-full flex items-center justify-center transition-transform duration-300 ease-out"
+                    className="relative w-full h-full flex items-center justify-center mx-auto transition-transform duration-300 ease-out"
                     style={{ transform: `scale(${zoomLevel})` }}
                   >
                     <img
                       src={activeSat.image || '/images/satellites/sentinel6a.jpg'}
                       alt={`${activeSat.name} 3D Digital Twin`}
-                      className="max-h-[340px] w-auto max-w-[90%] object-contain filter drop-shadow-[0_0_35px_rgba(99,199,255,0.6)] select-none pointer-events-none"
+                      className="max-h-[340px] w-auto max-w-[90%] object-contain object-center filter drop-shadow-[0_0_35px_rgba(99,199,255,0.6)] select-none pointer-events-none mx-auto block"
                     />
 
                     {/* Interactive Subsystem Telemetry Pins (Live Values) */}

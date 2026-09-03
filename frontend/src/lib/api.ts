@@ -3,19 +3,33 @@
  * Connects Next.js Frontend directly with FastAPI + PostgreSQL + TimescaleDB Backend
  */
 
-const defaultApiUrl =
-  typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-    ? 'https://starvantis.onrender.com'
-    : 'http://localhost:8000';
+// Determine API and WebSocket Base URLs dynamically based on execution environment
+function resolveApiBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
+      return 'http://localhost:8000';
+    }
+  }
+  return (process.env.NEXT_PUBLIC_API_URL || 'https://starvantis.onrender.com').replace(/\/$/, '');
+}
 
-export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || defaultApiUrl).replace(/\/$/, '');
-export const WS_BASE_URL =
-  process.env.NEXT_PUBLIC_WS_URL ||
-  (API_BASE_URL.startsWith('https://')
-    ? API_BASE_URL.replace('https://', 'wss://') + '/ws/mission'
-    : API_BASE_URL.startsWith('http://')
-    ? API_BASE_URL.replace('http://', 'ws://') + '/ws/mission'
-    : 'ws://localhost:8000/ws/mission');
+function resolveWsBaseUrl(): string {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.')) {
+      return 'ws://localhost:8000/ws/mission';
+    }
+  }
+  const api = resolveApiBaseUrl();
+  if (process.env.NEXT_PUBLIC_WS_URL) return process.env.NEXT_PUBLIC_WS_URL;
+  if (api.startsWith('https://')) return api.replace('https://', 'wss://') + '/ws/mission';
+  if (api.startsWith('http://')) return api.replace('http://', 'ws://') + '/ws/mission';
+  return 'wss://starvantis.onrender.com/ws/mission';
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
+export const WS_BASE_URL = resolveWsBaseUrl();
 
 export interface SatelliteAsset {
   id: string;

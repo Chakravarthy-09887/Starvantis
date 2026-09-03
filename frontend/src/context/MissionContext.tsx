@@ -552,11 +552,13 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       ...prev,
     ]);
 
-    // Play subtle audio alert notification
-    try {
-      alarmAudio.playOnce().catch(() => {});
-    } catch {
-      // Ignore
+    // Play alert alarm sound ONLY when a CRITICAL alert comes
+    if (template.severity === 'critical') {
+      try {
+        alarmAudio.playOnce().catch(() => {});
+      } catch {
+        // Ignore
+      }
     }
   }, [formatMissionTime]);
 

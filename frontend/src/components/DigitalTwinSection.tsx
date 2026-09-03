@@ -77,6 +77,22 @@ export default function DigitalTwinSection() {
     },
   ];
 
+  const cadContainerRef = useRef<HTMLDivElement>(null);
+
+  // Attach non-passive wheel event listener safely
+  React.useEffect(() => {
+    const el = cadContainerRef.current;
+    if (!el) return;
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setZoom((z) => Number(Math.min(2.5, Math.max(0.7, z + (e.deltaY < 0 ? 0.15 : -0.15))).toFixed(2)));
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
+
   const activeSub = subsystems.find((s) => s.id === activeSubId) || null;
 
   const handleSubClick = (sub: typeof subsystems[0]) => {
@@ -90,28 +106,28 @@ export default function DigitalTwinSection() {
   };
 
   return (
-    <section id="digital-twin" className="section-spacing relative overflow-hidden py-20 md:py-28" ref={ref}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+    <section id="digital-twin" className="section-spacing relative overflow-hidden py-16 md:py-24 w-full flex flex-col items-center justify-center" ref={ref}>
+      <div className="max-w-7xl w-full mx-auto px-4 md:px-6 flex flex-col items-center">
         {/* Title */}
         <motion.div
-          className="text-center mb-10"
+          className="text-center mb-8 md:mb-10 w-full flex flex-col items-center justify-center"
           initial={{ opacity: 0, y: 25, filter: 'blur(10px)' }}
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-glow/20 bg-space-navy/60 mb-3.5 shadow-[0_0_15px_rgba(99,199,255,0.15)]">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-cyan-glow/20 bg-space-navy/60 mb-3 shadow-[0_0_15px_rgba(99,199,255,0.15)]">
             <Cpu size={14} className="text-cyan-glow animate-pulse" />
-            <span className="font-space text-[10px] md:text-xs tracking-[0.3em] text-cyan-glow uppercase font-light">
+            <span className="font-space text-[10px] md:text-xs tracking-[0.25em] text-cyan-glow uppercase font-light">
               Holographic 3D Spacecraft CAD Virtualization
             </span>
           </div>
-          <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-extralight tracking-wide text-star-white">
+          <h2 className="font-space text-2xl sm:text-3xl md:text-5xl font-extralight tracking-wide text-star-white text-center">
             THE DIGITAL TWIN
           </h2>
-          <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-extralight tracking-wide text-cyan-glow mt-1 text-glow">
+          <h2 className="font-space text-2xl sm:text-3xl md:text-5xl font-extralight tracking-wide text-cyan-glow mt-1 text-glow text-center">
             OF YOUR MISSION.
           </h2>
-          <p className="font-inter text-xs md:text-sm text-star-white/50 mt-3 max-w-xl mx-auto leading-relaxed font-light">
+          <p className="font-inter text-xs sm:text-sm text-star-white/60 mt-3 max-w-xl mx-auto leading-relaxed font-light text-center">
             Interactive holographic digital twin synchronized with real-time spacecraft sensor streams. Select any fleet asset to inspect subsystem telemetry probes.
           </p>
           <motion.div
@@ -122,7 +138,7 @@ export default function DigitalTwinSection() {
           />
 
           {/* SATELLITE SWITCHER TABS */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-2">
+          <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-2 mx-auto">
             {FLEET_SATELLITES.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId;
               return (
@@ -144,34 +160,34 @@ export default function DigitalTwinSection() {
         </motion.div>
 
         {/* Spacecraft Stage Frame */}
-        <div className="relative max-w-5xl mx-auto aspect-[16/10] md:aspect-[16/9] rounded-3xl p-4 md:p-6 border border-cyan-glow/20 bg-[#060c14]/95 shadow-[0_0_60px_rgba(99,199,255,0.15)] overflow-hidden flex flex-col justify-between backdrop-blur-2xl">
+        <div className="relative w-full max-w-5xl mx-auto aspect-[16/11] sm:aspect-[16/10] md:aspect-[16/9] min-h-[380px] rounded-3xl p-3 sm:p-5 md:p-6 border border-cyan-glow/20 bg-[#060c14]/95 shadow-[0_0_60px_rgba(99,199,255,0.15)] overflow-hidden flex flex-col justify-between backdrop-blur-2xl">
           {/* Top HUD */}
-          <div className="flex items-center justify-between border-b border-cyan-glow/15 pb-3 z-20 flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <span className="font-space text-xs md:text-sm font-semibold text-star-white uppercase tracking-wider">
+          <div className="flex items-center justify-between border-b border-cyan-glow/15 pb-2.5 z-20 flex-wrap gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <span className="font-space text-xs sm:text-sm font-semibold text-star-white uppercase tracking-wider">
                 ASSET: {activeSat.name}
               </span>
-              <span className="px-2.5 py-0.5 rounded text-[10px] font-space tracking-wider bg-cyan-glow/15 text-cyan-glow border border-cyan-glow/30 font-medium">
+              <span className="px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-space tracking-wider bg-cyan-glow/15 text-cyan-glow border border-cyan-glow/30 font-medium">
                 TWIN: 1:1 SYNC
               </span>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="font-space text-xs text-star-white/60 font-light mr-2">MAG: {zoom.toFixed(1)}x</span>
-              <div role="button" tabIndex={0} onClick={() => setZoom((z) => Math.min(3.0, z + 0.3))}
-                className="p-1.5 rounded-lg border border-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow/15 transition-all cursor-pointer"
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className="font-space text-[10px] sm:text-xs text-star-white/60 font-light mr-1 sm:mr-2">MAG: {zoom.toFixed(1)}x</span>
+              <div role="button" tabIndex={0} onClick={() => setZoom((z) => Math.min(2.5, z + 0.2))}
+                className="p-1 sm:p-1.5 rounded-lg border border-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow/15 transition-all cursor-pointer"
                 title="Zoom In"
               >
-                <ZoomIn size={15} />
+                <ZoomIn size={14} />
               </div>
-              <div role="button" tabIndex={0} onClick={() => setZoom((z) => Math.max(1.0, z - 0.3))}
-                className="p-1.5 rounded-lg border border-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow/15 transition-all cursor-pointer"
+              <div role="button" tabIndex={0} onClick={() => setZoom((z) => Math.max(0.7, z - 0.2))}
+                className="p-1 sm:p-1.5 rounded-lg border border-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow/15 transition-all cursor-pointer"
                 title="Zoom Out"
               >
-                <ZoomOut size={15} />
+                <ZoomOut size={14} />
               </div>
               <div role="button" tabIndex={0} onClick={resetView}
-                className="px-3 py-1 rounded-lg border border-cyan-glow/20 text-xs font-space text-star-white/60 hover:text-star-white hover:bg-cyan-glow/10 transition-all flex items-center gap-1 cursor-pointer">
-                <RotateCcw size={12} />
+                className="px-2.5 py-1 rounded-lg border border-cyan-glow/20 text-[10px] sm:text-xs font-space text-star-white/60 hover:text-star-white hover:bg-cyan-glow/10 transition-all flex items-center gap-1 cursor-pointer">
+                <RotateCcw size={11} />
                 <span>Reset</span>
               </div>
             </div>
@@ -179,17 +195,14 @@ export default function DigitalTwinSection() {
 
           {/* Holographic Satellite CAD Model with Scroll-to-Zoom */}
           <div
-            className="relative w-full h-full flex items-center justify-center overflow-hidden rounded-2xl bg-black my-2 border border-cyan-glow/15 cursor-crosshair"
-            onWheel={(e) => {
-              e.preventDefault();
-              setZoom((z) => Number(Math.min(2.5, Math.max(0.7, z + (e.deltaY < 0 ? 0.15 : -0.15))).toFixed(2)));
-            }}
+            ref={cadContainerRef}
+            className="relative w-full h-full min-h-[220px] flex items-center justify-center overflow-hidden rounded-2xl bg-black my-2 border border-cyan-glow/15 cursor-crosshair mx-auto"
           >
             {/* Luminous cyan galaxy aura backdrop */}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,199,255,0.12)_0%,rgba(0,0,0,0.95)_75%)] pointer-events-none" />
 
             <motion.div
-              className="relative w-full h-full flex items-center justify-center"
+              className="relative w-full h-full flex items-center justify-center mx-auto"
               animate={{
                 scale: zoom,
                 x: activeSub ? activeSub.pan.x * 2.5 : 0,
@@ -200,7 +213,7 @@ export default function DigitalTwinSection() {
               <img
                 src={activeSat.image || '/images/digital-satellite.jpg'}
                 alt={`${activeSat.name} Holographic Digital Twin Satellite`}
-                className="w-full h-full max-h-[420px] object-contain object-center filter drop-shadow-[0_0_35px_rgba(99,199,255,0.4)] pointer-events-none select-none"
+                className="w-full h-full max-h-[420px] object-contain object-center filter drop-shadow-[0_0_35px_rgba(99,199,255,0.4)] pointer-events-none select-none mx-auto block"
               />
 
               {/* Interactive Telemetry Reticles */}
@@ -264,7 +277,7 @@ export default function DigitalTwinSection() {
           </div>
 
           {/* Bottom Subsystem Quick Selector Badges */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 z-20 pt-2 border-t border-cyan-glow/15">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 z-20 pt-2 border-t border-cyan-glow/15 w-full mx-auto">
             {subsystems.map((sub) => {
               const Icon = sub.icon;
               const isCur = activeSubId === sub.id;

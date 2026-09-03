@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import StarField from '../components/StarField';
 import SpaceParticles from '../components/SpaceParticles';
@@ -33,8 +33,37 @@ import TechnologyStack from '../components/TechnologyStack';
 import CTASection from '../components/CTASection';
 import Footer from '../components/Footer';
 import AeroCopilotHUD from '../components/AeroCopilotHUD';
+import AlertAccessibilityShortcut from '../components/AlertAccessibilityShortcut';
 
 export default function Home() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <main className="min-h-screen bg-[#05070B] text-star-white relative selection:bg-cyan-glow/20 selection:text-white flex items-center justify-center">
+        <StarField starCount={160} />
+        <div className="relative z-10 flex flex-col items-center gap-4 text-center px-4">
+          <div className="relative w-12 h-12 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-full border-2 border-cyan-glow/20 animate-ping" />
+            <div className="w-10 h-10 rounded-full border-2 border-cyan-glow border-t-transparent animate-spin" />
+          </div>
+          <div className="space-y-1">
+            <p className="font-space text-xs sm:text-sm tracking-[0.25em] text-cyan-glow uppercase font-semibold">
+              STARVANTIS // AEROSPACE INTELLIGENCE
+            </p>
+            <p className="font-mono text-[10px] text-muted-gray tracking-widest uppercase">
+              INITIALIZING MISSION CONTROL DECK...
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#05070B] text-star-white relative selection:bg-cyan-glow/20 selection:text-white">
       {/* Background Starfield and Floating Cosmic Particles */}
@@ -147,6 +176,9 @@ export default function Home() {
 
       {/* Autonomous JARVIS Natural Language Flight Director Copilot HUD */}
       <AeroCopilotHUD />
+
+      {/* Accessible Floating Shortcut Button for Alerts & Alarm Silencing */}
+      <AlertAccessibilityShortcut />
     </main>
   );
 }

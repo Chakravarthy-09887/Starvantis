@@ -383,8 +383,8 @@ export default function AeroCopilotHUD() {
 
   return (
     <>
-      {/* Floating Tactical Launcher Pill */}
-      <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating Tactical Launcher Pill (Bottom-Right - Responsive compact on mobile, full on desktop) */}
+      <div className="fixed bottom-4 right-3 sm:bottom-6 sm:right-6 z-40">
         <motion.div
           role="button"
           tabIndex={0}
@@ -392,32 +392,32 @@ export default function AeroCopilotHUD() {
             setIsOpen(!isOpen);
             if (isOpen) stopSpeaking();
           }}
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: 1.04 }}
           whileTap={{ scale: 0.95 }}
-          className="relative px-4 py-2.5 rounded-full border border-cyan-glow/40 bg-space-black/90 backdrop-blur-xl text-star-white flex items-center gap-3 cursor-pointer shadow-[0_0_25px_rgba(99,199,255,0.35)] hover:border-cyan-glow transition-all group"
+          className="relative px-3 sm:px-4 py-2 sm:py-2.5 rounded-full border border-cyan-glow/40 bg-space-black/90 backdrop-blur-xl text-star-white flex items-center gap-2 sm:gap-3 cursor-pointer shadow-[0_0_25px_rgba(99,199,255,0.35)] hover:border-cyan-glow transition-all group select-none"
         >
           <div className="relative">
-            <div className="w-8 h-8 rounded-full bg-cyan-glow/20 border border-cyan-glow flex items-center justify-center text-cyan-glow">
-              <Bot size={18} className="group-hover:rotate-12 transition-transform" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-cyan-glow/20 border border-cyan-glow flex items-center justify-center text-cyan-glow">
+              <Bot size={16} className="group-hover:rotate-12 transition-transform" />
             </div>
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-400 animate-ping" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-emerald-400" />
           </div>
 
           <div className="flex flex-col text-left">
-            <span className="font-space text-xs font-bold tracking-wider text-cyan-glow flex items-center gap-1">
-              <span>JARVIS COPILOT</span>
-              <Sparkles size={11} className="text-amber-400 animate-pulse" />
+            <span className="font-space text-[11px] sm:text-xs font-bold tracking-wider text-cyan-glow flex items-center gap-1">
+              <span>COPILOT</span>
+              <Sparkles size={10} className="text-amber-400 animate-pulse" />
             </span>
-            <span className="font-mono text-[9px] text-star-white/60 tracking-wider flex items-center gap-1.5">
-              <span>{isOpen ? 'CLICK TO DOCK' : 'FLIGHT DIRECTOR ACTIVE'}</span>
+            <span className="hidden sm:flex font-mono text-[9px] text-star-white/60 tracking-wider items-center gap-1.5">
+              <span>{isOpen ? 'DOCK' : 'JARVIS'}</span>
               <span className="text-cyan-glow font-bold">• {selectedSatelliteId}</span>
             </span>
           </div>
         </motion.div>
       </div>
 
-      {/* Expanded Flight Director HUD Console */}
+      {/* Expanded Flight Director HUD Console (Responsive mobile/laptop layout) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -425,15 +425,15 @@ export default function AeroCopilotHUD() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className={`fixed z-50 border border-cyan-glow/30 bg-space-black/95 backdrop-blur-2xl rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.9),0_0_35px_rgba(99,199,255,0.25)] flex flex-col overflow-hidden transition-all duration-300 ${
+            className={`fixed z-50 border border-cyan-glow/30 bg-space-black/95 backdrop-blur-2xl rounded-2xl sm:rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.95),0_0_35px_rgba(99,199,255,0.25)] flex flex-col overflow-hidden transition-all duration-300 ${
               isExpanded
-                ? 'inset-4 md:inset-8'
-                : 'bottom-20 right-4 sm:right-6 w-[94vw] sm:w-[480px] md:w-[540px] h-[640px] max-h-[85vh]'
+                ? 'inset-3 sm:inset-6 md:inset-8'
+                : 'bottom-16 sm:bottom-20 left-3 right-3 sm:left-auto sm:right-6 w-[calc(100vw-24px)] sm:w-[480px] md:w-[540px] h-[580px] sm:h-[640px] max-h-[82vh]'
             }`}
           >
             {/* HUD Header Bar */}
-            <div className="px-4 md:px-5 py-3 border-b border-cyan-glow/20 bg-space-navy/50 flex items-center justify-between flex-shrink-0">
-              <div className="flex items-center gap-2.5">
+            <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 border-b border-cyan-glow/20 bg-space-navy/50 flex items-center justify-between flex-shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5">
                 <div className="p-2 rounded-xl bg-cyan-glow/15 border border-cyan-glow/30 text-cyan-glow relative">
                   <Bot size={18} />
                   {isSpeaking && (

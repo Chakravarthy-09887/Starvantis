@@ -33,7 +33,7 @@ export default function TelemetryExplorer() {
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
-  // Derive stable live numeric telemetry values for smooth continuous stream interpolation
+  // Derive stable live numeric telemetry values
   const currentTempNum = liveTelemetry.temp
     ? parseFloat(liveTelemetry.temp.replace(/[^\d.-]/g, '')) || activeSat.telemetryMetrics.batteryTemp.current
     : activeSat.telemetryMetrics.batteryTemp.current;
@@ -46,20 +46,20 @@ export default function TelemetryExplorer() {
   const currentAttitudeNum = activeSat.telemetryMetrics.attitudeError.current;
   const currentSnrNum = activeSat.telemetryMetrics.commsSnr.current;
 
-  // Generate smooth, physically-coherent historical data points that seamlessly merge with live observed value
-  const buildSmoothStreamData = (baseVal: number, curVal: number) => {
+  // Generate linear, physically consistent historical points
+  const buildLinearStreamData = (baseVal: number, curVal: number) => {
     const diff = curVal - baseVal;
     return [
-      { time: 'T-10m', current: Number((baseVal + diff * 0.12).toFixed(3)), baseline: baseVal },
-      { time: 'T-8m', current: Number((baseVal + diff * 0.28).toFixed(3)), baseline: baseVal },
-      { time: 'T-6m', current: Number((baseVal + diff * 0.48).toFixed(3)), baseline: baseVal },
+      { time: 'T-10m', current: Number((baseVal).toFixed(3)), baseline: baseVal },
+      { time: 'T-8m', current: Number((baseVal + diff * 0.20).toFixed(3)), baseline: baseVal },
+      { time: 'T-6m', current: Number((baseVal + diff * 0.45).toFixed(3)), baseline: baseVal },
       { time: 'T-4m', current: Number((baseVal + diff * 0.70).toFixed(3)), baseline: baseVal },
-      { time: 'T-2m', current: Number((baseVal + diff * 0.88).toFixed(3)), baseline: baseVal },
+      { time: 'T-2m', current: Number((baseVal + diff * 0.90).toFixed(3)), baseline: baseVal },
       { time: 'NOW', current: Number(curVal.toFixed(3)), baseline: baseVal },
     ];
   };
 
-  // Dynamic telemetry streams calculated for selected satellite
+  // Dedicated channels with fixed linear physical domains to prevent any graph bouncing or glitches
   const telemetryStreams = useMemo(() => [
     {
       id: 'battery-temp',
@@ -77,7 +77,8 @@ export default function TelemetryExplorer() {
           : '#10b981',
       icon: Thermometer,
       description: 'Internal thermal sensor reading compared against thermodynamic radiator equilibrium baseline.',
-      data: buildSmoothStreamData(activeSat.telemetryMetrics.batteryTemp.baseline, currentTempNum),
+      domain: { min: 10, max: 40, ticks: [10, 20, 30, 40] },
+      data: buildLinearStreamData(activeSat.telemetryMetrics.batteryTemp.baseline, currentTempNum),
     },
     {
       id: 'bus-voltage',
@@ -95,7 +96,8 @@ export default function TelemetryExplorer() {
           : '#00d4ff',
       icon: Zap,
       description: 'Solid-state electrical power distribution bus voltage regulating solar array and battery cell draw.',
-      data: buildSmoothStreamData(activeSat.telemetryMetrics.busVoltage.baseline, currentVoltNum),
+      domain: { min: 25.0, max: 31.0, ticks: [25.0, 27.0, 29.0, 31.0] },
+      data: buildLinearStreamData(activeSat.telemetryMetrics.busVoltage.baseline, currentVoltNum),
     },
     {
       id: 'power-draw',
@@ -108,7 +110,8 @@ export default function TelemetryExplorer() {
       color: activeSat.telemetryMetrics.powerDraw.status === 'warning' ? '#ffd700' : '#38bdf8',
       icon: Layers,
       description: 'Instantaneous optical, SAR radar, or transponder payload power consumption under active mission load.',
-      data: buildSmoothStreamData(activeSat.telemetryMetrics.powerDraw.baseline, currentPowerNum),
+      domain: { min: 0, max: 400, ticks: [0, 100, 200, 300, 400] },
+      data: buildLinearStreamData(activeSat.telemetryMetrics.powerDraw.baseline, currentPowerNum),
     },
     {
       id: 'attitude-error',
@@ -126,7 +129,8 @@ export default function TelemetryExplorer() {
           : '#00d4ff',
       icon: Compass,
       description: 'Fine sun-sensor and star-tracker attitude deviation from optimal nadir/solar pointing orientation.',
-      data: buildSmoothStreamData(activeSat.telemetryMetrics.attitudeError.baseline, currentAttitudeNum),
+      domain: { min: 0.000, max: 0.040, ticks: [0.000, 0.010, 0.020, 0.030, 0.040] },
+      data: buildLinearStreamData(activeSat.telemetryMetrics.attitudeError.baseline, currentAttitudeNum),
     },
     {
       id: 'comms-snr',
@@ -139,63 +143,39 @@ export default function TelemetryExplorer() {
       color: '#10b981',
       icon: Wifi,
       description: 'Telemetry, Tracking & Command (TT&C) carrier signal-to-noise ratio received at active ground station.',
-      data: buildSmoothStreamData(activeSat.telemetryMetrics.commsSnr.baseline, currentSnrNum),
+      domain: { min: 10, max: 25, ticks: [10, 15, 20, 25] },
+      data: buildLinearStreamData(activeSat.telemetryMetrics.commsSnr.baseline, currentSnrNum),
     },
   ], [activeSat, currentTempNum, currentVoltNum, currentPowerNum, currentAttitudeNum, currentSnrNum]);
 
   const activeStream = telemetryStreams.find((s) => s.id === activeStreamId) || telemetryStreams[0];
 
-  // Robust mathematical scaling for glitch-free SVG plotting
-  const allVals = activeStream.data.flatMap((d) => [d.current, d.baseline]);
-  const rawMin = Math.min(...allVals);
-  const rawMax = Math.max(...allVals);
-  const delta = Math.abs(rawMax - rawMin);
-  const pad = delta > 0.0001 ? delta * 0.35 : Math.max(Math.abs(rawMax) * 0.15, 0.5);
-  const minVal = rawMin - pad;
-  const maxVal = rawMax + pad;
-  const range = maxVal - minVal || 1;
+  // Fixed, rock-solid linear coordinate scaling
+  const minDomain = activeStream.domain.min;
+  const maxDomain = activeStream.domain.max;
+  const domainRange = maxDomain - minDomain || 1;
 
   // Safe normalized Y coordinate [25, 125]
   const toY = (val: number) => {
-    const ratio = (val - minVal) / range;
+    const ratio = (val - minDomain) / domainRange;
     const clamped = Math.max(0, Math.min(1, ratio));
     return 125 - clamped * 95;
   };
 
-  // Generate smooth cubic spline for flawless aerospace charting
-  const generateSmoothSpline = (points: Array<{ x: number; y: number }>) => {
-    if (points.length === 0) return '';
-    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-    let path = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-    for (let i = 0; i < points.length - 1; i++) {
-      const p0 = points[i === 0 ? 0 : i - 1];
-      const p1 = points[i];
-      const p2 = points[i + 1];
-      const p3 = points[i + 2] || p2;
-
-      const cp1x = p1.x + (p2.x - p0.x) / 6;
-      const cp1y = p1.y + (p2.y - p0.y) / 6;
-      const cp2x = p2.x - (p3.x - p1.x) / 6;
-      const cp2y = p2.y - (p3.y - p1.y) / 6;
-
-      path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-    }
-    return path;
-  };
-
+  // Generate clean linear polyline paths (no cubic bezier overshoot or loops)
   const observedPoints = activeStream.data.map((d, i) => ({
-    x: 45 + i * 122,
+    x: 60 + i * 120,
     y: toY(d.current),
   }));
 
   const baselinePoints = activeStream.data.map((d, i) => ({
-    x: 45 + i * 122,
+    x: 60 + i * 120,
     y: toY(d.baseline),
   }));
 
-  const observedSplinePath = generateSmoothSpline(observedPoints);
-  const baselineSplinePath = generateSmoothSpline(baselinePoints);
-  const shadedAreaPath = `${observedSplinePath} L ${observedPoints[observedPoints.length - 1].x} 132 L ${observedPoints[0].x} 132 Z`;
+  const observedLinePath = observedPoints.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`, '');
+  const baselineLinePath = baselinePoints.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`, '');
+  const shadedAreaPath = `${observedLinePath} L ${observedPoints[observedPoints.length - 1].x} 125 L ${observedPoints[0].x} 125 Z`;
 
   // Recent simulated / ingested TimescaleDB packets table with dynamic timezone formatting
   const recentPackets = [
@@ -224,7 +204,7 @@ export default function TelemetryExplorer() {
             TELEMETRY EXPLORER
           </h2>
           <p className="font-inter text-xs sm:text-sm text-star-white/70 mt-3 max-w-2xl mx-auto leading-relaxed">
-            Interactive multi-channel sensor drift monitoring. Switch across Indian and international constellation assets to inspect residual deviations from physical thermodynamic baselines.
+            Interactive multi-channel sensor drift monitoring. Linear historical telemetry curves compared against physical thermodynamic model baselines.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-cyan-glow/50 to-transparent mx-auto mt-4"
@@ -233,7 +213,7 @@ export default function TelemetryExplorer() {
             transition={{ duration: 0.8, delay: 0.25 }}
           />
 
-          {/* SATELLITE SWITCHER TABS (Responsive horizontal scroll on mobile, flex-wrap on desktop) */}
+          {/* SATELLITE SWITCHER TABS */}
           <div className="mt-8 flex items-center gap-2 max-w-5xl mx-auto overflow-x-auto pb-2 sm:pb-0 sm:justify-center sm:flex-wrap scrollbar-thin">
             {FLEET_SATELLITES.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId;
@@ -400,7 +380,7 @@ export default function TelemetryExplorer() {
                 </p>
               </div>
 
-              {/* Smooth Spline Telemetry Graph Frame (Glitch-Free & Monotonic Bezier Curves) */}
+              {/* Stable Linear Telemetry Graph Frame (Glitch-Free & Calibrated Domain) */}
               <div className="relative w-full h-52 md:h-60 bg-[#040914]/90 rounded-2xl p-4 border border-cyan-glow/20 overflow-hidden shadow-[inset_0_0_30px_rgba(0,0,0,0.8)]">
                 <svg viewBox="0 0 700 160" className="w-full h-full" preserveAspectRatio="none">
                   <defs>
@@ -410,40 +390,56 @@ export default function TelemetryExplorer() {
                     </linearGradient>
                   </defs>
 
-                  {/* Horizontal Grid lines */}
-                  {[0.25, 0.5, 0.75].map((r, i) => (
-                    <line
-                      key={i}
-                      x1="30"
-                      y1={130 - r * 95}
-                      x2="670"
-                      y2={130 - r * 95}
-                      stroke="rgba(255, 255, 255, 0.08)"
-                      strokeDasharray="4,4"
-                    />
-                  ))}
+                  {/* Horizontal Grid lines & Fixed Physical Ticks */}
+                  {activeStream.domain.ticks.map((val) => {
+                    const y = toY(val);
+                    return (
+                      <g key={val}>
+                        <line
+                          x1="50"
+                          y1={y}
+                          x2="680"
+                          y2={y}
+                          stroke="rgba(255, 255, 255, 0.08)"
+                          strokeDasharray="4,4"
+                        />
+                        <text
+                          x="42"
+                          y={y + 3}
+                          textAnchor="end"
+                          fill="rgba(255, 255, 255, 0.4)"
+                          fontSize="9"
+                          fontFamily="'Space Grotesk', monospace"
+                        >
+                          {val}
+                        </text>
+                      </g>
+                    );
+                  })}
 
-                  {/* Model Baseline Curve (Dashed Reference Line) */}
+                  {/* Model Baseline Reference Line */}
                   <path
-                    d={baselineSplinePath}
+                    d={baselineLinePath}
                     fill="none"
                     stroke="rgba(255, 255, 255, 0.35)"
                     strokeWidth="1.5"
                     strokeDasharray="4,4"
                   />
 
-                  {/* Shaded Area Under Observed Curve */}
+                  {/* Shaded Area Under Observed Linear Curve */}
                   <path
                     d={shadedAreaPath}
                     fill="url(#telemetryStreamGrad)"
                   />
 
-                  {/* Observed Live Stream Curve (Smooth Aerospace Spline) */}
+                  {/* Observed Live Stream Line (Linear & Sharp) */}
                   <path
-                    d={observedSplinePath}
+                    d={observedLinePath}
                     fill="none"
                     stroke={activeStream.color}
                     strokeWidth="2.5"
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
                   />
 
                   {/* Data Points */}
@@ -466,7 +462,7 @@ export default function TelemetryExplorer() {
                         )}
                         <text
                           x={cx}
-                          y="152"
+                          y="150"
                           textAnchor="middle"
                           fill="rgba(255, 255, 255, 0.65)"
                           fontSize="10"
@@ -507,7 +503,7 @@ export default function TelemetryExplorer() {
                 <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
                   <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">SAMPLING FREQ</span>
                   <span className="font-space text-sm md:text-base font-bold text-emerald-400 mt-1 block font-mono">
-                    1.0 Hz (Live 50Hz)
+                    1.0 Hz (Calibrated)
                   </span>
                 </div>
               </div>

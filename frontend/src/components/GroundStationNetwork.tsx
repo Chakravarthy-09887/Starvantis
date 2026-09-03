@@ -64,17 +64,17 @@ export default function GroundStationNetwork() {
     let isMounted = true;
     const fetchGroundData = async () => {
       try {
-        const [gsList, gsLinks, dsnList, passes] = await Promise.all([
+        const [gsList, gsLinks, dsnList, passes] = await Promise.allSettled([
           api.getGroundStations(),
           api.getSatelliteGroundLinks(selectedSatelliteId),
           api.getDSNStatus(),
           api.getPassPredictions(selectedSatelliteId),
         ]);
         if (isMounted) {
-          if (gsList && gsList.length > 0) setStations(gsList);
-          if (gsLinks && gsLinks.length > 0) setLinks(gsLinks);
-          if (dsnList && dsnList.length > 0) setDsnComplexes(dsnList);
-          if (passes && passes.length > 0) setPassPredictions(passes);
+          if (gsList.status === 'fulfilled' && gsList.value && gsList.value.length > 0) setStations(gsList.value);
+          if (gsLinks.status === 'fulfilled' && gsLinks.value && gsLinks.value.length > 0) setLinks(gsLinks.value);
+          if (dsnList.status === 'fulfilled' && dsnList.value && dsnList.value.length > 0) setDsnComplexes(dsnList.value);
+          if (passes.status === 'fulfilled' && passes.value && passes.value.length > 0) setPassPredictions(passes.value);
         }
       } catch {
         // Keep active state

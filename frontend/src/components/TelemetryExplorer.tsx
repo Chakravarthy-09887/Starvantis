@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
 import {
   LineChart,
@@ -33,18 +33,41 @@ export default function TelemetryExplorer() {
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
+  // Derive stable live numeric telemetry values for smooth continuous stream interpolation
+  const currentTempNum = liveTelemetry.temp
+    ? parseFloat(liveTelemetry.temp.replace(/[^\d.-]/g, '')) || activeSat.telemetryMetrics.batteryTemp.current
+    : activeSat.telemetryMetrics.batteryTemp.current;
+
+  const currentVoltNum = liveTelemetry.battery_voltage
+    ? parseFloat(liveTelemetry.battery_voltage.replace(/[^\d.-]/g, '')) || activeSat.telemetryMetrics.busVoltage.current
+    : activeSat.telemetryMetrics.busVoltage.current;
+
+  const currentPowerNum = activeSat.telemetryMetrics.powerDraw.current;
+  const currentAttitudeNum = activeSat.telemetryMetrics.attitudeError.current;
+  const currentSnrNum = activeSat.telemetryMetrics.commsSnr.current;
+
+  // Generate smooth, physically-coherent historical data points that seamlessly merge with live observed value
+  const buildSmoothStreamData = (baseVal: number, curVal: number) => {
+    const diff = curVal - baseVal;
+    return [
+      { time: 'T-10m', current: Number((baseVal + diff * 0.12).toFixed(3)), baseline: baseVal },
+      { time: 'T-8m', current: Number((baseVal + diff * 0.28).toFixed(3)), baseline: baseVal },
+      { time: 'T-6m', current: Number((baseVal + diff * 0.48).toFixed(3)), baseline: baseVal },
+      { time: 'T-4m', current: Number((baseVal + diff * 0.70).toFixed(3)), baseline: baseVal },
+      { time: 'T-2m', current: Number((baseVal + diff * 0.88).toFixed(3)), baseline: baseVal },
+      { time: 'NOW', current: Number(curVal.toFixed(3)), baseline: baseVal },
+    ];
+  };
+
   // Dynamic telemetry streams calculated for selected satellite
-  const telemetryStreams = [
+  const telemetryStreams = useMemo(() => [
     {
       id: 'battery-temp',
       name: 'BATTERY / SUBSYSTEM TEMPERATURE',
       unit: '°C',
-      currentVal:
-        liveTelemetry.temp
-          ? liveTelemetry.temp.replace(' °C', '')
-          : activeSat.telemetryMetrics.batteryTemp.current.toFixed(1),
+      currentVal: currentTempNum.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.batteryTemp.baseline.toFixed(1),
-      deviation: activeSat.telemetryMetrics.batteryTemp.deviation,
+      deviation: `${currentTempNum >= activeSat.telemetryMetrics.batteryTemp.baseline ? '+' : ''}${(currentTempNum - activeSat.telemetryMetrics.batteryTemp.baseline).toFixed(1)}°C`,
       status: activeSat.telemetryMetrics.batteryTemp.status,
       color:
         activeSat.telemetryMetrics.batteryTemp.status === 'critical'
@@ -54,25 +77,15 @@ export default function TelemetryExplorer() {
           : '#10b981',
       icon: Thermometer,
       description: 'Internal thermal sensor reading compared against thermodynamic radiator equilibrium baseline.',
-      data: [
-        { time: 'T-10m', current: activeSat.telemetryMetrics.batteryTemp.baseline, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
-        { time: 'T-8m', current: activeSat.telemetryMetrics.batteryTemp.baseline + 0.6, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
-        { time: 'T-6m', current: activeSat.telemetryMetrics.batteryTemp.baseline + 1.4, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
-        { time: 'T-4m', current: activeSat.telemetryMetrics.batteryTemp.baseline + 2.8, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
-        { time: 'T-2m', current: activeSat.telemetryMetrics.batteryTemp.baseline + 4.2, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
-        { time: 'NOW', current: liveTelemetry.temp ? parseFloat(liveTelemetry.temp.replace(' °C', '')) : activeSat.telemetryMetrics.batteryTemp.current, baseline: activeSat.telemetryMetrics.batteryTemp.baseline },
-      ],
+      data: buildSmoothStreamData(activeSat.telemetryMetrics.batteryTemp.baseline, currentTempNum),
     },
     {
       id: 'bus-voltage',
       name: 'MAIN 28V REGULATED POWER BUS',
       unit: 'V',
-      currentVal:
-        liveTelemetry.battery_voltage
-          ? liveTelemetry.battery_voltage.replace(' V', '')
-          : activeSat.telemetryMetrics.busVoltage.current.toFixed(1),
+      currentVal: currentVoltNum.toFixed(2),
       baselineVal: activeSat.telemetryMetrics.busVoltage.baseline.toFixed(1),
-      deviation: activeSat.telemetryMetrics.busVoltage.deviation,
+      deviation: `${currentVoltNum >= activeSat.telemetryMetrics.busVoltage.baseline ? '+' : ''}${(currentVoltNum - activeSat.telemetryMetrics.busVoltage.baseline).toFixed(2)}V`,
       status: activeSat.telemetryMetrics.busVoltage.status,
       color:
         activeSat.telemetryMetrics.busVoltage.status === 'critical'
@@ -82,40 +95,26 @@ export default function TelemetryExplorer() {
           : '#00d4ff',
       icon: Zap,
       description: 'Solid-state electrical power distribution bus voltage regulating solar array and battery cell draw.',
-      data: [
-        { time: 'T-10m', current: activeSat.telemetryMetrics.busVoltage.baseline, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
-        { time: 'T-8m', current: activeSat.telemetryMetrics.busVoltage.baseline - 0.1, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
-        { time: 'T-6m', current: activeSat.telemetryMetrics.busVoltage.baseline - 0.3, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
-        { time: 'T-4m', current: activeSat.telemetryMetrics.busVoltage.baseline - 0.5, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
-        { time: 'T-2m', current: activeSat.telemetryMetrics.busVoltage.baseline - 0.8, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
-        { time: 'NOW', current: liveTelemetry.battery_voltage ? parseFloat(liveTelemetry.battery_voltage.replace(' V', '')) : activeSat.telemetryMetrics.busVoltage.current, baseline: activeSat.telemetryMetrics.busVoltage.baseline },
-      ],
+      data: buildSmoothStreamData(activeSat.telemetryMetrics.busVoltage.baseline, currentVoltNum),
     },
     {
       id: 'power-draw',
       name: 'PRIMARY PAYLOAD POWER DRAW',
       unit: 'W',
-      currentVal: activeSat.telemetryMetrics.powerDraw.current.toFixed(1),
+      currentVal: currentPowerNum.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.powerDraw.baseline.toFixed(1),
       deviation: activeSat.telemetryMetrics.powerDraw.deviation,
       status: activeSat.telemetryMetrics.powerDraw.status,
       color: activeSat.telemetryMetrics.powerDraw.status === 'warning' ? '#ffd700' : '#38bdf8',
       icon: Layers,
       description: 'Instantaneous optical, SAR radar, or transponder payload power consumption under active mission load.',
-      data: [
-        { time: 'T-10m', current: activeSat.telemetryMetrics.powerDraw.baseline - 5, baseline: activeSat.telemetryMetrics.powerDraw.baseline },
-        { time: 'T-8m', current: activeSat.telemetryMetrics.powerDraw.baseline, baseline: activeSat.telemetryMetrics.powerDraw.baseline },
-        { time: 'T-6m', current: activeSat.telemetryMetrics.powerDraw.baseline + 12, baseline: activeSat.telemetryMetrics.powerDraw.baseline },
-        { time: 'T-4m', current: activeSat.telemetryMetrics.powerDraw.baseline + 24, baseline: activeSat.telemetryMetrics.powerDraw.baseline },
-        { time: 'T-2m', current: activeSat.telemetryMetrics.powerDraw.baseline + 36, baseline: activeSat.telemetryMetrics.powerDraw.baseline },
-        { time: 'NOW', current: activeSat.telemetryMetrics.powerDraw.current, baseline: activeSat.telemetryMetrics.powerDraw.baseline },
-      ],
+      data: buildSmoothStreamData(activeSat.telemetryMetrics.powerDraw.baseline, currentPowerNum),
     },
     {
       id: 'attitude-error',
       name: '3-AXIS ATTITUDE POINTING JITTER',
       unit: 'deg',
-      currentVal: activeSat.telemetryMetrics.attitudeError.current.toFixed(3),
+      currentVal: currentAttitudeNum.toFixed(3),
       baselineVal: activeSat.telemetryMetrics.attitudeError.baseline.toFixed(3),
       deviation: activeSat.telemetryMetrics.attitudeError.deviation,
       status: activeSat.telemetryMetrics.attitudeError.status,
@@ -127,45 +126,76 @@ export default function TelemetryExplorer() {
           : '#00d4ff',
       icon: Compass,
       description: 'Fine sun-sensor and star-tracker attitude deviation from optimal nadir/solar pointing orientation.',
-      data: [
-        { time: 'T-10m', current: 0.008, baseline: 0.010 },
-        { time: 'T-8m', current: 0.012, baseline: 0.010 },
-        { time: 'T-6m', current: 0.018, baseline: 0.010 },
-        { time: 'T-4m', current: 0.024, baseline: 0.010 },
-        { time: 'T-2m', current: 0.030, baseline: 0.010 },
-        { time: 'NOW', current: activeSat.telemetryMetrics.attitudeError.current, baseline: activeSat.telemetryMetrics.attitudeError.baseline },
-      ],
+      data: buildSmoothStreamData(activeSat.telemetryMetrics.attitudeError.baseline, currentAttitudeNum),
     },
     {
       id: 'comms-snr',
       name: 'GROUND LINK SNR & CARRIER LOCK',
       unit: 'dB',
-      currentVal: activeSat.telemetryMetrics.commsSnr.current.toFixed(1),
+      currentVal: currentSnrNum.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.commsSnr.baseline.toFixed(1),
       deviation: activeSat.telemetryMetrics.commsSnr.deviation,
       status: activeSat.telemetryMetrics.commsSnr.status,
       color: '#10b981',
       icon: Wifi,
       description: 'Telemetry, Tracking & Command (TT&C) carrier signal-to-noise ratio received at active ground station.',
-      data: [
-        { time: 'T-10m', current: activeSat.telemetryMetrics.commsSnr.baseline + 0.4, baseline: activeSat.telemetryMetrics.commsSnr.baseline },
-        { time: 'T-8m', current: activeSat.telemetryMetrics.commsSnr.baseline + 0.2, baseline: activeSat.telemetryMetrics.commsSnr.baseline },
-        { time: 'T-6m', current: activeSat.telemetryMetrics.commsSnr.baseline - 0.1, baseline: activeSat.telemetryMetrics.commsSnr.baseline },
-        { time: 'T-4m', current: activeSat.telemetryMetrics.commsSnr.baseline - 0.3, baseline: activeSat.telemetryMetrics.commsSnr.baseline },
-        { time: 'T-2m', current: activeSat.telemetryMetrics.commsSnr.baseline - 0.5, baseline: activeSat.telemetryMetrics.commsSnr.baseline },
-        { time: 'NOW', current: activeSat.telemetryMetrics.commsSnr.current, baseline: activeSat.telemetryMetrics.commsSnr.baseline },
-      ],
+      data: buildSmoothStreamData(activeSat.telemetryMetrics.commsSnr.baseline, currentSnrNum),
     },
-  ];
+  ], [activeSat, currentTempNum, currentVoltNum, currentPowerNum, currentAttitudeNum, currentSnrNum]);
 
   const activeStream = telemetryStreams.find((s) => s.id === activeStreamId) || telemetryStreams[0];
 
+  // Robust mathematical scaling for glitch-free SVG plotting
   const allVals = activeStream.data.flatMap((d) => [d.current, d.baseline]);
-  const minVal = Math.min(...allVals) * 0.95;
-  const maxVal = Math.max(...allVals) * 1.05;
+  const rawMin = Math.min(...allVals);
+  const rawMax = Math.max(...allVals);
+  const delta = Math.abs(rawMax - rawMin);
+  const pad = delta > 0.0001 ? delta * 0.35 : Math.max(Math.abs(rawMax) * 0.15, 0.5);
+  const minVal = rawMin - pad;
+  const maxVal = rawMax + pad;
   const range = maxVal - minVal || 1;
 
-  const toY = (val: number) => 140 - ((val - minVal) / range) * 110;
+  // Safe normalized Y coordinate [25, 125]
+  const toY = (val: number) => {
+    const ratio = (val - minVal) / range;
+    const clamped = Math.max(0, Math.min(1, ratio));
+    return 125 - clamped * 95;
+  };
+
+  // Generate smooth cubic spline for flawless aerospace charting
+  const generateSmoothSpline = (points: Array<{ x: number; y: number }>) => {
+    if (points.length === 0) return '';
+    if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+    let path = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i === 0 ? 0 : i - 1];
+      const p1 = points[i];
+      const p2 = points[i + 1];
+      const p3 = points[i + 2] || p2;
+
+      const cp1x = p1.x + (p2.x - p0.x) / 6;
+      const cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6;
+      const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+      path += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    }
+    return path;
+  };
+
+  const observedPoints = activeStream.data.map((d, i) => ({
+    x: 45 + i * 122,
+    y: toY(d.current),
+  }));
+
+  const baselinePoints = activeStream.data.map((d, i) => ({
+    x: 45 + i * 122,
+    y: toY(d.baseline),
+  }));
+
+  const observedSplinePath = generateSmoothSpline(observedPoints);
+  const baselineSplinePath = generateSmoothSpline(baselinePoints);
+  const shadedAreaPath = `${observedSplinePath} L ${observedPoints[observedPoints.length - 1].x} 132 L ${observedPoints[0].x} 132 Z`;
 
   // Recent simulated / ingested TimescaleDB packets table with dynamic timezone formatting
   const recentPackets = [
@@ -175,11 +205,11 @@ export default function TelemetryExplorer() {
   ];
 
   return (
-    <section id="telemetry" className="section-spacing relative overflow-hidden py-20 md:py-28 w-full" ref={containerRef}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6 w-full">
+    <section id="telemetry" className="section-spacing relative overflow-hidden py-16 md:py-24 w-full" ref={containerRef}>
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 w-full">
         {/* Section Heading */}
         <motion.div
-          className="text-center mb-12"
+          className="text-center mb-10 md:mb-12"
           initial={{ opacity: 0, y: 25, filter: 'blur(10px)' }}
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
@@ -190,10 +220,10 @@ export default function TelemetryExplorer() {
               Real-Time TimescaleDB Ingestion Pipeline
             </span>
           </div>
-          <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
+          <h2 className="font-space text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
             TELEMETRY EXPLORER
           </h2>
-          <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-2xl mx-auto leading-relaxed">
+          <p className="font-inter text-xs sm:text-sm text-star-white/70 mt-3 max-w-2xl mx-auto leading-relaxed">
             Interactive multi-channel sensor drift monitoring. Switch across Indian and international constellation assets to inspect residual deviations from physical thermodynamic baselines.
           </p>
           <motion.div
@@ -203,22 +233,22 @@ export default function TelemetryExplorer() {
             transition={{ duration: 0.8, delay: 0.25 }}
           />
 
-          {/* SATELLITE SWITCHER TABS */}
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-2 max-w-5xl mx-auto">
+          {/* SATELLITE SWITCHER TABS (Responsive horizontal scroll on mobile, flex-wrap on desktop) */}
+          <div className="mt-8 flex items-center gap-2 max-w-5xl mx-auto overflow-x-auto pb-2 sm:pb-0 sm:justify-center sm:flex-wrap scrollbar-thin">
             {FLEET_SATELLITES.map((sat) => {
               const isSelected = sat.id === selectedSatelliteId;
               const hasAlert = sat.riskBreakdown.status === 'CRITICAL';
               return (
                 <div role="button" tabIndex={0} key={sat.id}
                   onClick={() => setSelectedSatelliteId(sat.id)}
-                  className={`px-3.5 py-2 rounded-xl border text-xs font-space tracking-wider transition-all duration-300 flex items-center gap-2 cursor-pointer ${
+                  className={`px-3 sm:px-3.5 py-2 rounded-xl border text-xs font-space tracking-wider transition-all duration-300 flex items-center gap-2 cursor-pointer flex-shrink-0 select-none ${
                     isSelected
                       ? 'bg-cyan-glow/20 border-cyan-glow text-star-white shadow-[0_0_20px_rgba(99,199,255,0.3)] scale-105 font-bold'
-                      : 'bg-space-navy/60 border-glass-border text-muted-gray hover:text-star-white hover:border-cyan-glow/40'
+                      : 'bg-space-navy/60 border-glass-border text-star-white/70 hover:text-star-white hover:border-cyan-glow/40'
                   }`}
                   title={`${sat.name} • ${sat.type}`}
                 >
-                  <Satellite size={12} className={isSelected ? 'text-cyan-glow' : 'text-muted-gray'} />
+                  <Satellite size={12} className={isSelected ? 'text-cyan-glow' : 'text-star-white/60'} />
                   <span>{sat.code}</span>
                   <span
                     className={`w-1.5 h-1.5 rounded-full ${
@@ -236,11 +266,11 @@ export default function TelemetryExplorer() {
           {/* Left Column: Sensor Stream Selectors (4 cols) */}
           <div className="lg:col-span-4 space-y-3 flex flex-col justify-between">
             <div className="space-y-3">
-              <div className="flex items-center justify-between px-2 pb-1 text-xs font-space text-muted-gray">
+              <div className="flex items-center justify-between px-2 pb-1 text-xs font-space text-star-white/70">
                 <span className="uppercase text-[10px] tracking-widest font-bold text-cyan-glow">
                   SENSORS: {activeSat.name}
                 </span>
-                <span className="text-[10px] text-star-white/60 font-semibold">{activeSat.orbitType}</span>
+                <span className="text-[10px] text-star-white/80 font-semibold">{activeSat.orbitType}</span>
               </div>
 
               <div className="space-y-2.5">
@@ -251,7 +281,7 @@ export default function TelemetryExplorer() {
                   return (
                     <motion.div role="button" tabIndex={0} key={stream.id}
                       onClick={() => setActiveStreamId(stream.id)}
-                      className={`w-full text-left p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer ${
+                      className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer select-none ${
                         isSelected
                           ? 'glass-panel border-cyan-glow bg-cyan-glow/15 shadow-[0_0_25px_rgba(99,199,255,0.2)] ring-1 ring-cyan-glow/50'
                           : 'glass-panel border-glass-border hover:border-cyan-glow/30 hover:bg-white/[0.02]'
@@ -281,7 +311,7 @@ export default function TelemetryExplorer() {
                       </div>
 
                       <div className="text-right shrink-0 pl-2">
-                        <span className="font-space text-sm font-bold block" style={{ color: stream.color }}>
+                        <span className="font-space text-sm font-bold block font-mono" style={{ color: stream.color }}>
                           {stream.currentVal} {stream.unit}
                         </span>
                         <span className="font-space text-[10px] text-star-white/70 font-medium">
@@ -296,17 +326,17 @@ export default function TelemetryExplorer() {
 
             {/* Satellite Metadata Quick Card */}
             <div className="p-4 rounded-2xl bg-black/50 border border-glass-border space-y-2 mt-4 text-xs font-space">
-              <div className="flex justify-between text-muted-gray">
+              <div className="flex justify-between text-star-white/70">
                 <span>Ground Station:</span>
                 <span className="text-star-white font-bold truncate">{activeSat.groundStation}</span>
               </div>
-              <div className="flex justify-between text-muted-gray">
+              <div className="flex justify-between text-star-white/70">
                 <span>Orbit Inclination:</span>
-                <span className="text-cyan-glow font-bold">{activeSat.inclination}</span>
+                <span className="text-cyan-glow font-bold font-mono">{activeSat.inclination}</span>
               </div>
-              <div className="flex justify-between text-muted-gray">
+              <div className="flex justify-between text-star-white/70">
                 <span>Orbital Velocity:</span>
-                <span className="text-star-white font-bold">{activeSat.velocity}</span>
+                <span className="text-star-white font-bold font-mono">{activeSat.velocity}</span>
               </div>
             </div>
           </div>
@@ -314,7 +344,7 @@ export default function TelemetryExplorer() {
           {/* Right Column: Visualization & Complete Statistical Telemetry Deck (8 cols, Fills 100% width) */}
           <div className="lg:col-span-8 w-full">
             <motion.div
-              className="glass-panel rounded-3xl p-6 md:p-7 border border-glass-border box-glow shadow-[0_0_50px_rgba(4,18,34,0.9)] space-y-5 w-full h-full flex flex-col justify-between"
+              className="glass-panel rounded-3xl p-5 sm:p-6 md:p-7 border border-glass-border box-glow shadow-[0_0_50px_rgba(4,18,34,0.9)] space-y-5 w-full h-full flex flex-col justify-between"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={isInView ? { opacity: 1, scale: 1 } : {}}
               transition={{ duration: 0.6 }}
@@ -336,7 +366,7 @@ export default function TelemetryExplorer() {
                     <h3 className="font-space text-base md:text-lg font-bold text-star-white tracking-wide truncate">
                       {activeStream.name}
                     </h3>
-                    <span className="font-space text-xs text-cyan-glow font-medium block mt-0.5">
+                    <span className="font-space text-xs text-cyan-glow font-medium block mt-0.5 font-mono">
                       {activeSat.name} • LAT: {activeSat.lat}, LNG: {activeSat.lng}
                     </span>
                   </div>
@@ -354,7 +384,7 @@ export default function TelemetryExplorer() {
                     {activeStream.status.toUpperCase()}
                   </span>
                   <div role="button" tabIndex={0} onClick={() => setRefreshKey((k) => k + 1)}
-                    className="p-2 rounded-lg border border-glass-border hover:border-cyan-glow/40 text-muted-gray hover:text-cyan-glow transition-colors cursor-pointer"
+                    className="p-2 rounded-lg border border-glass-border hover:border-cyan-glow/40 text-star-white/60 hover:text-cyan-glow transition-colors cursor-pointer"
                     title="Refresh Telemetry Feed"
                   >
                     <RefreshCw size={14} />
@@ -370,12 +400,12 @@ export default function TelemetryExplorer() {
                 </p>
               </div>
 
-              {/* Progressive SVG Graph Frame */}
-              <div className="relative w-full h-52 md:h-60 bg-space-navy/50 rounded-2xl p-4 border border-glass-border/60 overflow-hidden">
+              {/* Smooth Spline Telemetry Graph Frame (Glitch-Free & Monotonic Bezier Curves) */}
+              <div className="relative w-full h-52 md:h-60 bg-[#040914]/90 rounded-2xl p-4 border border-cyan-glow/20 overflow-hidden shadow-[inset_0_0_30px_rgba(0,0,0,0.8)]">
                 <svg viewBox="0 0 700 160" className="w-full h-full" preserveAspectRatio="none">
                   <defs>
                     <linearGradient id="telemetryStreamGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor={activeStream.color} stopOpacity="0.45" />
+                      <stop offset="0%" stopColor={activeStream.color} stopOpacity="0.4" />
                       <stop offset="100%" stopColor={activeStream.color} stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
@@ -385,19 +415,17 @@ export default function TelemetryExplorer() {
                     <line
                       key={i}
                       x1="30"
-                      y1={140 - r * 110}
+                      y1={130 - r * 95}
                       x2="670"
-                      y2={140 - r * 110}
+                      y2={130 - r * 95}
                       stroke="rgba(255, 255, 255, 0.08)"
                       strokeDasharray="4,4"
                     />
                   ))}
 
-                  {/* Baseline Curve (Dashed White) */}
+                  {/* Model Baseline Curve (Dashed Reference Line) */}
                   <path
-                    d={activeStream.data
-                      .map((d, i) => `${i === 0 ? 'M' : 'L'} ${40 + i * 124} ${toY(d.baseline)}`)
-                      .join(' ')}
+                    d={baselineSplinePath}
                     fill="none"
                     stroke="rgba(255, 255, 255, 0.35)"
                     strokeWidth="1.5"
@@ -406,17 +434,13 @@ export default function TelemetryExplorer() {
 
                   {/* Shaded Area Under Observed Curve */}
                   <path
-                    d={`M 40 140 L 40 ${toY(activeStream.data[0].current)} ${activeStream.data
-                      .map((d, i) => `L ${40 + i * 124} ${toY(d.current)}`)
-                      .join(' ')} L 660 140 Z`}
+                    d={shadedAreaPath}
                     fill="url(#telemetryStreamGrad)"
                   />
 
-                  {/* Observed Live Stream Curve */}
+                  {/* Observed Live Stream Curve (Smooth Aerospace Spline) */}
                   <path
-                    d={activeStream.data
-                      .map((d, i) => `${i === 0 ? 'M' : 'L'} ${40 + i * 124} ${toY(d.current)}`)
-                      .join(' ')}
+                    d={observedSplinePath}
                     fill="none"
                     stroke={activeStream.color}
                     strokeWidth="2.5"
@@ -424,8 +448,8 @@ export default function TelemetryExplorer() {
 
                   {/* Data Points */}
                   {activeStream.data.map((d, i) => {
-                    const cx = 40 + i * 124;
-                    const cy = toY(d.current);
+                    const cx = observedPoints[i].x;
+                    const cy = observedPoints[i].y;
                     return (
                       <g key={i}>
                         <circle cx={cx} cy={cy} r={i === 5 ? 5.5 : 4} fill={activeStream.color} />
@@ -433,7 +457,7 @@ export default function TelemetryExplorer() {
                           <circle
                             cx={cx}
                             cy={cy}
-                            r="12"
+                            r="11"
                             fill="none"
                             stroke={activeStream.color}
                             opacity="0.6"
@@ -442,7 +466,7 @@ export default function TelemetryExplorer() {
                         )}
                         <text
                           x={cx}
-                          y="155"
+                          y="152"
                           textAnchor="middle"
                           fill="rgba(255, 255, 255, 0.65)"
                           fontSize="10"
@@ -460,29 +484,29 @@ export default function TelemetryExplorer() {
               {/* Comprehensive Statistical Breakdown Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
                 <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
-                  <span className="font-inter text-[9px] text-muted-gray uppercase block font-semibold">OBSERVED VALUE</span>
-                  <span className="font-space text-sm md:text-base font-bold text-star-white mt-1 block">
+                  <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">OBSERVED VALUE</span>
+                  <span className="font-space text-sm md:text-base font-bold text-star-white mt-1 block font-mono">
                     {activeStream.currentVal} {activeStream.unit}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
-                  <span className="font-inter text-[9px] text-muted-gray uppercase block font-semibold">MODEL BASELINE</span>
-                  <span className="font-space text-sm md:text-base font-medium text-cyan-glow mt-1 block">
+                  <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">MODEL BASELINE</span>
+                  <span className="font-space text-sm md:text-base font-medium text-cyan-glow mt-1 block font-mono">
                     {activeStream.baselineVal} {activeStream.unit}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
-                  <span className="font-inter text-[9px] text-muted-gray uppercase block font-semibold">RESIDUAL DRIFT</span>
+                  <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">RESIDUAL DRIFT</span>
                   <span
-                    className="font-space text-sm md:text-base font-bold mt-1 block"
+                    className="font-space text-sm md:text-base font-bold mt-1 block font-mono"
                     style={{ color: activeStream.color }}
                   >
                     {activeStream.deviation}
                   </span>
                 </div>
                 <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
-                  <span className="font-inter text-[9px] text-muted-gray uppercase block font-semibold">SAMPLING FREQ</span>
-                  <span className="font-space text-sm md:text-base font-bold text-emerald-400 mt-1 block">
+                  <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">SAMPLING FREQ</span>
+                  <span className="font-space text-sm md:text-base font-bold text-emerald-400 mt-1 block font-mono">
                     1.0 Hz (Live 50Hz)
                   </span>
                 </div>
@@ -490,7 +514,7 @@ export default function TelemetryExplorer() {
 
               {/* Real-time TimescaleDB Ingestion Log Packets */}
               <div className="p-4 rounded-2xl bg-black/60 border border-glass-border space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-space text-muted-gray border-b border-white/10 pb-2 flex-wrap gap-2">
+                <div className="flex items-center justify-between text-xs font-space text-star-white/70 border-b border-white/10 pb-2 flex-wrap gap-2">
                   <span className="flex items-center gap-2 text-cyan-glow font-bold text-[11px] tracking-wider uppercase">
                     <Database size={14} />
                     <span>TIMESCALE HYPERTABLE INGESTION STREAM // {activeSat.code}</span>
@@ -503,10 +527,10 @@ export default function TelemetryExplorer() {
                 <div className="space-y-1.5 text-[11px] font-space">
                   {recentPackets.map((pkt, idx) => (
                     <div key={idx} className="flex items-center justify-between text-star-white/80 py-1 border-b border-white/5 last:border-0">
-                      <span className="text-muted-gray" suppressHydrationWarning>{pkt.time}</span>
-                      <span className="text-star-white font-medium">{pkt.val}</span>
-                      <span className="text-cyan-glow">{pkt.dev}</span>
-                      <span className="text-emerald-400 text-[10px] font-bold">{pkt.status}</span>
+                      <span className="text-star-white/60 font-mono" suppressHydrationWarning>{pkt.time}</span>
+                      <span className="text-star-white font-medium font-mono">{pkt.val}</span>
+                      <span className="text-cyan-glow font-mono">{pkt.dev}</span>
+                      <span className="text-emerald-400 text-[10px] font-bold font-mono">{pkt.status}</span>
                     </div>
                   ))}
                 </div>

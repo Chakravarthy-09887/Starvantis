@@ -307,7 +307,7 @@ export default function SatelliteDigitalTwin() {
 
   return (
     <section id="satellite-inspector" className="section-spacing relative overflow-hidden py-12 md:py-20 w-full flex flex-col items-center justify-center" ref={containerRef}>
-      <div className="max-w-[1440px] w-full mx-auto px-3 sm:px-4 md:px-6 flex flex-col items-center">
+      <div className="max-w-[1700px] w-full mx-auto px-4 sm:px-6 md:px-8 flex flex-col items-center">
         {/* Section Heading */}
         <motion.div
           className="text-center mb-8 md:mb-10 w-full flex flex-col items-center justify-center"
@@ -324,7 +324,7 @@ export default function SatelliteDigitalTwin() {
           <h2 className="font-space text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extralight tracking-wide text-star-white text-center">
             PRIMARY MISSION CONTROL
           </h2>
-          <p className="font-inter text-xs sm:text-sm text-star-white/70 mt-2 max-w-2xl mx-auto font-light leading-relaxed text-center px-2">
+          <p className="font-inter text-xs sm:text-sm text-star-white/70 mt-2 max-w-3xl mx-auto font-light leading-relaxed text-center px-2">
             Multi-satellite fleet command deck. Select any active constellation asset below to inspect its unique 3D digital twin model, stable attitude orientation, and linear telemetry data.
           </p>
           <motion.div
@@ -335,7 +335,7 @@ export default function SatelliteDigitalTwin() {
           />
 
           {/* SATELLITE FLEET SELECTOR BAR */}
-          <div className="mt-6 md:mt-8 w-full max-w-6xl mx-auto">
+          <div className="mt-6 md:mt-8 w-full max-w-full mx-auto">
             <div className="flex items-center gap-2.5 overflow-x-auto pb-3 pt-1 px-1 sm:justify-center sm:flex-wrap scrollbar-thin">
               {FLEET_SATELLITES.map((sat) => {
                 const isSelected = sat.id === activeSat.id;
@@ -372,7 +372,7 @@ export default function SatelliteDigitalTwin() {
 
         {/* MAIN DASHBOARD FRAME */}
         <motion.div
-          className="rounded-2xl sm:rounded-3xl border border-cyan-glow/25 bg-[#060c14]/95 shadow-[0_0_80px_rgba(4,18,34,0.95)] overflow-hidden backdrop-blur-2xl w-full max-w-7xl mx-auto"
+          className="rounded-2xl sm:rounded-3xl border border-cyan-glow/25 bg-[#060c14]/95 shadow-[0_0_80px_rgba(4,18,34,0.95)] overflow-hidden backdrop-blur-2xl w-full max-w-full mx-auto"
           initial={{ opacity: 0, scale: 0.98 }}
           animate={isInView ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 0.8, delay: 0.2 }}
@@ -578,6 +578,23 @@ export default function SatelliteDigitalTwin() {
                       <span className="text-star-white/60 block uppercase">Star Sensor Head</span>
                       <span className="text-emerald-400 font-bold font-mono">18 Stars Tracked</span>
                     </div>
+                  </div>
+                </div>
+
+                {/* EPS BATTERY CELL RAILS & CHARGE BALANCE */}
+                <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-cyan-glow/10 pb-1.5">
+                    <span className="font-space text-[11px] tracking-wider text-cyan-glow uppercase font-bold">
+                      EPS CELL RAILS &amp; CHARGE
+                    </span>
+                    <span className="text-[9px] font-space text-emerald-400 font-mono font-bold">SOC: 96.8%</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1.5 text-[9px] font-space font-mono text-center">
+                    {['C1: 3.55V', 'C2: 3.54V', 'C3: 3.55V', 'C4: 3.54V', 'C5: 3.55V', 'C6: 3.54V', 'C7: 3.55V', 'C8: 3.55V'].map((c, i) => (
+                      <div key={i} className="p-1 rounded bg-black/40 border border-white/5 text-cyan-glow">
+                        {c}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -966,6 +983,26 @@ export default function SatelliteDigitalTwin() {
                     <div className="p-2 rounded-xl bg-black/40 border border-white/5">
                       <span className="text-star-white/60 block uppercase">Bit Error Rate</span>
                       <span className="text-emerald-400 font-bold font-mono">&lt; 1.0e-9 (FEC)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* FDIR STATUS & THERMAL LOUVERS */}
+                <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-cyan-glow/10 pb-1.5">
+                    <span className="font-space text-[11px] tracking-wider text-cyan-glow uppercase font-bold">
+                      FDIR &amp; THERMAL LOUVERS
+                    </span>
+                    <span className="text-[9px] font-space text-emerald-400 font-mono font-bold">AUTO-SAFE: ARMED</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-space">
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Heatpipe Loop</span>
+                      <span className="text-emerald-400 font-bold font-mono">Nominal Flow</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Watchdog Timer</span>
+                      <span className="text-cyan-glow font-bold font-mono">0.02s Heartbeat</span>
                     </div>
                   </div>
                 </div>

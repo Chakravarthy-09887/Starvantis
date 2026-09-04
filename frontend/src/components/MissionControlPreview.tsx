@@ -18,6 +18,9 @@ import {
   Clock,
   Radar,
   Zap,
+  Layers,
+  Thermometer,
+  Compass,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
@@ -65,8 +68,8 @@ export default function MissionControlPreview() {
 
   // Dynamic moving coordinates for satellite & uncooperative debris in radar
   const radT = radarStep * 0.025;
-  const satOrbitRadius = 80;
-  const debOrbitRadius = 98;
+  const satOrbitRadius = 82;
+  const debOrbitRadius = 104;
 
   const satRadarX = Math.cos(radT * 0.8) * satOrbitRadius;
   const satRadarY = Math.sin(radT * 0.8) * (satOrbitRadius * 0.55);
@@ -81,7 +84,6 @@ export default function MissionControlPreview() {
   );
 
   // Derive live conjunction TCA target for the active spacecraft
-  // Ephemeris orbit intersection cycle (~95 min orbit with satellite-specific phase)
   const orbitCycleMs = 5700 * 1000;
   const satHash = selectedSatelliteId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
   const cycleOffsetMs = (satHash * 480000) % orbitCycleMs;
@@ -98,7 +100,7 @@ export default function MissionControlPreview() {
 
   return (
     <section id="mission-control" className="section-spacing relative overflow-hidden py-20 md:py-28" ref={containerRef}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8">
         {/* Section Header */}
         <motion.div
           className="text-center mb-10"
@@ -115,8 +117,8 @@ export default function MissionControlPreview() {
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
             MISSION CONTROL INTERFACE
           </h2>
-          <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-xl mx-auto">
-            Unified aerospace command console fusing multi-satellite health telemetry, dynamic collision threat radars, and AI anomaly feeds.
+          <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-2xl mx-auto">
+            Unified aerospace command console fusing multi-satellite health telemetry, dynamic collision threat radars, autonomous maneuver planning, and real-time sensor streams.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-cyan-glow/50 to-transparent mx-auto mt-4"
@@ -137,8 +139,8 @@ export default function MissionControlPreview() {
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-glass-border pb-4 mb-6">
             <div className="flex items-center gap-3">
               <div className="w-2.5 h-2.5 rounded-full bg-cyan-glow animate-pulse" />
-              <span className="font-space text-xs tracking-widest text-star-white uppercase font-bold">
-                STARVANTIS MISSION OS — ASSET: {activeSat.name}
+              <span className="font-space text-xs sm:text-sm tracking-widest text-star-white uppercase font-bold">
+                STARVANTIS MISSION OS // ASSET: {activeSat.name} ({activeSat.code})
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs font-space text-muted-gray flex-wrap">
@@ -157,86 +159,126 @@ export default function MissionControlPreview() {
           </div>
 
           {/* Core HUD Metrics Row */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-6">
             {[
-              { label: 'ASSET HEALTH', val: `${activeSat.health}%`, color: activeSat.health > 95 ? '#10b981' : '#f59e0b' },
-              { label: 'ORBIT ALTITUDE', val: activeSat.altitude, color: '#e8edf2' },
-              { label: 'INCLINATION', val: activeSat.inclination, color: '#63c7ff' },
-              { label: 'VELOCITY', val: activeSat.velocity, color: '#40e8ff' },
-              { label: 'CONJUNCTION RISK', val: activeSat.conjunctionTarget.riskLevel, color: activeSat.conjunctionTarget.riskLevel === 'CRITICAL' ? '#ff3b3b' : '#ffd700' },
-              { label: 'GROUND STATION', val: activeSat.groundStation.split(' ')[0], color: '#38bdf8' },
+              { label: 'ASSET HEALTH', val: `${activeSat.health}%`, color: activeSat.health > 95 ? '#10b981' : '#f59e0b', sub: 'Subsystems Nominal' },
+              { label: 'ORBIT ALTITUDE', val: activeSat.altitude, color: '#e8edf2', sub: activeSat.orbitType },
+              { label: 'INCLINATION', val: activeSat.inclination, color: '#63c7ff', sub: 'Sun-Sync Plane' },
+              { label: 'VELOCITY', val: activeSat.velocity, color: '#40e8ff', sub: 'Orbital Kinematics' },
+              { label: 'CONJUNCTION RISK', val: activeSat.conjunctionTarget.riskLevel, color: activeSat.conjunctionTarget.riskLevel === 'CRITICAL' ? '#ff3b3b' : '#ffd700', sub: `Target: ${activeSat.conjunctionTarget.targetId}` },
+              { label: 'GROUND STATION', val: activeSat.groundStation.split(' ')[0], color: '#38bdf8', sub: activeSat.signal },
             ].map((m) => (
-              <div key={m.label} className="glass-panel p-3 rounded-2xl border border-glass-border/70 text-center">
-                <span className="font-inter text-[9px] text-muted-gray uppercase block font-semibold">{m.label}</span>
-                <span className="font-space text-base md:text-lg font-bold mt-0.5 block" style={{ color: m.color }}>
-                  {m.val}
-                </span>
+              <div key={m.label} className="glass-panel p-3.5 rounded-2xl border border-glass-border/70 text-center flex flex-col justify-between">
+                <div>
+                  <span className="font-inter text-[9px] text-muted-gray uppercase block font-semibold">{m.label}</span>
+                  <span className="font-space text-base md:text-lg font-bold mt-0.5 block" style={{ color: m.color }}>
+                    {m.val}
+                  </span>
+                </div>
+                <span className="text-[9px] font-mono text-star-white/60 mt-1 block truncate">{m.sub}</span>
               </div>
             ))}
           </div>
 
           {/* 3-Column Deck Layout */}
           <div className="grid lg:grid-cols-12 gap-6 items-stretch mb-6">
-            {/* Column 1: Fleet Satellites Switcher List (4 cols) */}
-            <div className="lg:col-span-4 space-y-2.5">
-              <span className="font-space text-[10px] tracking-widest text-cyan-glow uppercase block font-semibold">
-                CONSTELLATION ASSETS (CLICK TO SWITCH)
-              </span>
-              <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1 scrollbar-thin">
-                {FLEET_SATELLITES.map((sat) => {
-                  const isSelected = sat.id === selectedSatelliteId;
-                  return (
-                    <div role="button" tabIndex={0} key={sat.id}
-                      
-                      
-                      onClick={() => setSelectedSatelliteId(sat.id)}
-                      className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all cursor-pointer text-left ${
-                        isSelected
-                          ? 'glass-panel border-cyan-glow bg-cyan-glow/15 shadow-[0_0_20px_rgba(99,199,255,0.2)]'
-                          : 'glass-panel border-glass-border hover:border-cyan-glow/40 hover:bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <Satellite size={16} className={isSelected ? 'text-cyan-glow' : 'text-muted-gray'} />
-                        <div>
-                          <span className="font-space text-xs font-bold text-star-white block">{sat.name}</span>
-                          <span className="font-inter text-[10px] text-muted-gray">{sat.type}</span>
+            {/* Column 1: Fleet Satellites Switcher List & Bus Subsystems (4 cols) */}
+            <div className="lg:col-span-4 space-y-4 flex flex-col justify-between">
+              <div>
+                <span className="font-space text-[10px] tracking-widest text-cyan-glow uppercase block font-semibold mb-2">
+                  CONSTELLATION ASSETS (CLICK TO SWITCH)
+                </span>
+                <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1 scrollbar-thin">
+                  {FLEET_SATELLITES.map((sat) => {
+                    const isSelected = sat.id === selectedSatelliteId;
+                    return (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        key={sat.id}
+                        onClick={() => setSelectedSatelliteId(sat.id)}
+                        className={`w-full p-3 rounded-2xl border flex items-center justify-between transition-all cursor-pointer text-left ${
+                          isSelected
+                            ? 'glass-panel border-cyan-glow bg-cyan-glow/15 shadow-[0_0_20px_rgba(99,199,255,0.2)]'
+                            : 'glass-panel border-glass-border hover:border-cyan-glow/40 hover:bg-white/[0.02]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Satellite size={16} className={isSelected ? 'text-cyan-glow shrink-0' : 'text-muted-gray shrink-0'} />
+                          <div className="min-w-0 truncate">
+                            <span className="font-space text-xs font-bold text-star-white block truncate">{sat.name}</span>
+                            <span className="font-inter text-[10px] text-muted-gray truncate block">{sat.type} • {sat.altitude}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0 ml-2">
+                          <span className="font-space text-xs font-bold text-cyan-glow">{sat.health}%</span>
+                          <span className={`font-space text-[9px] uppercase tracking-wider block ${sat.status === 'OPERATIONAL' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {sat.status}
+                          </span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <span className="font-space text-xs font-bold text-cyan-glow">{sat.health}%</span>
-                        <span className={`font-space text-[9px] uppercase tracking-wider block ${sat.status === 'OPERATIONAL' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                          {sat.status}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Spacecraft Avionics & Bus Matrix Card */}
+              <div className="p-4 rounded-2xl bg-black/60 border border-cyan-glow/20 space-y-2.5">
+                <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                  <span className="font-space text-[10px] tracking-wider text-cyan-glow uppercase font-bold">
+                    ACTIVE SATELLITE AVIONICS MATRIX
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-400 font-bold">AOCS LOCKED</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[10px] font-space">
+                  <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-star-white/60 block uppercase">EPS Solar Gen</span>
+                    <span className="text-cyan-glow font-bold font-mono">{activeSat.solarPower}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-star-white/60 block uppercase">Regulated Bus</span>
+                    <span className="text-cyan-glow font-bold font-mono">{activeSat.batteryVoltage}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-star-white/60 block uppercase">Radiator Temp</span>
+                    <span className="text-amber-400 font-bold font-mono">{activeSat.temp}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                    <span className="text-star-white/60 block uppercase">Attitude Pointing</span>
+                    <span className="text-emerald-400 font-bold font-mono">0.008° Nadir</span>
+                  </div>
+                </div>
               </div>
             </div>
 
             {/* Column 2: Center Dynamic Animated Radar Viewport (5 cols, Enlarged) */}
             <div className="lg:col-span-5 space-y-2.5">
-              <span className="font-space text-[10px] tracking-widest text-cyan-glow uppercase block font-semibold">
-                DYNAMIC REAL-TIME SGP4 RADAR [{activeSat.id}]
-              </span>
-              <div className="glass-panel rounded-3xl p-5 border border-cyan-glow/25 aspect-[16/12] min-h-[320px] relative flex items-center justify-center bg-[#030814] overflow-hidden shadow-[0_0_50px_rgba(4,18,34,0.95)]">
+              <div className="flex items-center justify-between">
+                <span className="font-space text-[10px] tracking-widest text-cyan-glow uppercase font-semibold">
+                  DYNAMIC REAL-TIME SGP4 RADAR [{activeSat.code}]
+                </span>
+                <span className="text-[9px] font-mono text-star-white/70">
+                  ECC: 0.0014 // RAAN: 128.4°
+                </span>
+              </div>
+
+              <div className="glass-panel rounded-3xl p-5 border border-cyan-glow/25 aspect-[16/11] min-h-[340px] relative flex items-center justify-center bg-[#030814] overflow-hidden shadow-[0_0_50px_rgba(4,18,34,0.95)]">
                 {/* SVG Radar Grid & Crosshairs */}
                 <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
                   <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(99,199,255,0.2)" strokeWidth="1" strokeDasharray="4,4" />
                   <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(99,199,255,0.2)" strokeWidth="1" strokeDasharray="4,4" />
-                  <ellipse cx="50%" cy="50%" rx="100" ry="56" fill="none" stroke="rgba(99,199,255,0.25)" strokeWidth="1" strokeDasharray="3,3" />
-                  <ellipse cx="50%" cy="50%" rx="125" ry="78" fill="none" stroke="rgba(255,59,59,0.22)" strokeWidth="1" strokeDasharray="3,3" />
+                  <ellipse cx="50%" cy="50%" rx="110" ry="60" fill="none" stroke="rgba(99,199,255,0.25)" strokeWidth="1" strokeDasharray="3,3" />
+                  <ellipse cx="50%" cy="50%" rx="140" ry="85" fill="none" stroke="rgba(255,59,59,0.22)" strokeWidth="1" strokeDasharray="3,3" />
                 </svg>
 
-                {/* Radar Grid Concentric Circles (Enlarged) */}
-                <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-full border border-cyan-glow/25 flex items-center justify-center pointer-events-none relative">
-                  <div className="w-48 h-48 sm:w-54 sm:h-54 rounded-full border border-cyan-glow/20" />
-                  <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border border-dashed border-cyan-glow/15" />
-                  <div className="w-16 h-16 rounded-full border border-cyan-glow/10" />
+                {/* Radar Grid Concentric Circles */}
+                <div className="w-68 h-68 sm:w-80 sm:h-80 rounded-full border border-cyan-glow/25 flex items-center justify-center pointer-events-none relative">
+                  <div className="w-52 h-52 sm:w-60 sm:h-60 rounded-full border border-cyan-glow/20" />
+                  <div className="w-36 h-36 sm:w-42 sm:h-42 rounded-full border border-dashed border-cyan-glow/15" />
+                  <div className="w-18 h-18 rounded-full border border-cyan-glow/10" />
                   {/* Cardinal Range Markings */}
-                  <span className="absolute top-1 text-[8px] font-mono text-cyan-glow/60 font-bold">100 KM</span>
-                  <span className="absolute top-10 text-[8px] font-mono text-cyan-glow/60 font-bold">50 KM</span>
+                  <span className="absolute top-1 text-[8px] font-mono text-cyan-glow/60 font-bold">120 KM</span>
+                  <span className="absolute top-12 text-[8px] font-mono text-cyan-glow/60 font-bold">60 KM</span>
                 </div>
 
                 {/* Rotating Conic Radar Sweep */}
@@ -288,47 +330,58 @@ export default function MissionControlPreview() {
               </div>
             </div>
 
-            {/* Column 3: Mission Risk & Decision Actions (3 cols) */}
-            <div className="lg:col-span-3 space-y-2.5">
-              <span className="font-space text-[10px] tracking-widest text-cyan-glow uppercase block font-semibold">
-                FUSED DECISION ENGINE
-              </span>
-              <div className="glass-panel p-5 rounded-3xl border border-glass-border space-y-3 text-xs shadow-[0_0_40px_rgba(4,18,34,0.8)]">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-gray">Threat Target:</span>
-                  <span className="font-space text-xs text-star-white font-bold">{activeSat.conjunctionTarget.targetId}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-gray">Miss Separation:</span>
-                  <span className="font-space text-sm text-cyan-glow font-bold">{activeSat.conjunctionTarget.missDistanceKm} km</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-gray">Risk Category:</span>
-                  <span
-                    className={`font-space text-xs font-bold ${
-                      activeSat.conjunctionTarget.riskLevel === 'CRITICAL' ? 'text-alert-critical' : 'text-amber-400'
-                    }`}
-                  >
-                    {activeSat.conjunctionTarget.riskLevel}
-                  </span>
-                </div>
-                <div className="w-full h-px bg-glass-border my-2" />
-                <span className="font-space text-[10px] text-star-white uppercase block font-bold">
-                  RECOMMENDED BURN:
+            {/* Column 3: Mission Risk & Autonomous Decision Actions (3 cols) */}
+            <div className="lg:col-span-3 space-y-4 flex flex-col justify-between">
+              <div>
+                <span className="font-space text-[10px] tracking-widest text-cyan-glow uppercase block font-semibold mb-2">
+                  FUSED DECISION ENGINE
                 </span>
-                <p className="font-inter text-[11px] text-muted-gray leading-relaxed">
-                  {activeSat.conjunctionTarget.recommendedBurn}
-                </p>
-
-                <div className="pt-2">
-                  <a
-                    href="#satellite-inspector"
-                    className="w-full py-3 rounded-xl border border-cyan-glow/40 bg-cyan-glow/15 hover:bg-cyan-glow/25 text-star-white text-xs font-space font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all block text-center cursor-pointer shadow-[0_0_15px_rgba(99,199,255,0.2)]"
-                  >
-                    <span>Command Deck</span>
-                    <ArrowRight size={13} className="text-cyan-glow" />
-                  </a>
+                <div className="glass-panel p-4 sm:p-5 rounded-3xl border border-glass-border space-y-2.5 text-xs shadow-[0_0_40px_rgba(4,18,34,0.8)]">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-gray">Threat Target:</span>
+                    <span className="font-space text-xs text-star-white font-bold">{activeSat.conjunctionTarget.targetId}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-gray">Miss Separation:</span>
+                    <span className="font-space text-sm text-cyan-glow font-bold">{activeSat.conjunctionTarget.missDistanceKm} km</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-gray">Risk Category:</span>
+                    <span
+                      className={`font-space text-xs font-bold ${
+                        activeSat.conjunctionTarget.riskLevel === 'CRITICAL' ? 'text-alert-critical' : 'text-amber-400'
+                      }`}
+                    >
+                      {activeSat.conjunctionTarget.riskLevel}
+                    </span>
+                  </div>
+                  <div className="w-full h-px bg-glass-border my-2" />
+                  <span className="font-space text-[10px] text-star-white uppercase block font-bold">
+                    RECOMMENDED BURN:
+                  </span>
+                  <p className="font-inter text-[11px] text-muted-gray leading-relaxed">
+                    {activeSat.conjunctionTarget.recommendedBurn}
+                  </p>
                 </div>
+              </div>
+
+              {/* Propulsion & Delta-V Planning Box */}
+              <div className="p-3.5 rounded-2xl bg-black/60 border border-glass-border space-y-2 text-xs">
+                <div className="flex justify-between items-center font-space text-[10px]">
+                  <span className="text-star-white/60">AUTONOMOUS CAM DELTA-V:</span>
+                  <span className="text-emerald-400 font-bold font-mono">0.24 m/s</span>
+                </div>
+                <div className="flex justify-between items-center font-space text-[10px]">
+                  <span className="text-star-white/60">HYDRAZINE USAGE:</span>
+                  <span className="text-cyan-glow font-bold font-mono">0.12 kg</span>
+                </div>
+                <a
+                  href="#satellite-inspector"
+                  className="w-full py-2.5 rounded-xl border border-cyan-glow/40 bg-cyan-glow/15 hover:bg-cyan-glow/25 text-star-white text-xs font-space font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all block text-center cursor-pointer shadow-[0_0_15px_rgba(99,199,255,0.2)] mt-2"
+                >
+                  <span>Command Operations Deck</span>
+                  <ArrowRight size={13} className="text-cyan-glow" />
+                </a>
               </div>
             </div>
           </div>
@@ -347,8 +400,8 @@ export default function MissionControlPreview() {
                   </span>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                 </div>
-                <div className="h-6 w-full max-w-[280px] flex items-end gap-1 mt-1">
-                  {[40, 65, 30, 85, 45, 95, 60, 75, 50, 90, 35, 70, 80, 55, 100, 65, 45, 80].map((h, i) => {
+                <div className="h-6 w-full max-w-[320px] flex items-end gap-1 mt-1">
+                  {[40, 65, 30, 85, 45, 95, 60, 75, 50, 90, 35, 70, 80, 55, 100, 65, 45, 80, 60, 75].map((h, i) => {
                     const dynamicH = Math.max(15, (h + (radarStep * 4 + i * 8) % 60));
                     return (
                       <div
@@ -381,9 +434,9 @@ export default function MissionControlPreview() {
                 </span>
               </div>
               <div>
-                <span className="text-[10px] text-muted-gray uppercase block font-semibold">TIMESCALEDB STATUS</span>
+                <span className="text-[10px] text-muted-gray uppercase block font-semibold">TIMESCALEDB THROUGHPUT</span>
                 <span className="text-sm font-bold text-cyan-glow">
-                  100% INGESTION
+                  14,820 MSGS/SEC // 100%
                 </span>
               </div>
             </div>

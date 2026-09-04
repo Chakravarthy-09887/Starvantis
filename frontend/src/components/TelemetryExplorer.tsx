@@ -233,7 +233,7 @@ export default function TelemetryExplorer() {
 
   return (
     <section id="telemetry" className="section-spacing relative overflow-hidden py-16 md:py-24 w-full" ref={containerRef}>
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 w-full">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8 w-full">
         {/* Section Heading */}
         <motion.div
           className="text-center mb-10 md:mb-12"

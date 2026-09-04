@@ -195,7 +195,7 @@ export default function DigitalTwinSection() {
       className="section-spacing relative overflow-hidden py-16 md:py-24 w-full flex flex-col items-center justify-center"
       ref={ref}
     >
-      <div className="max-w-7xl w-full mx-auto px-4 md:px-6 flex flex-col items-center justify-center">
+      <div className="max-w-[1600px] w-full mx-auto px-4 md:px-6 lg:px-8 flex flex-col items-center justify-center">
         {/* Title */}
         <motion.div
           className="text-center mb-8 md:mb-10 w-full flex flex-col items-center justify-center"

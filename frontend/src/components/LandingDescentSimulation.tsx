@@ -108,7 +108,7 @@ export default function LandingDescentSimulation() {
 
   return (
     <section id="landing-descent" className="section-spacing relative overflow-hidden py-20" ref={containerRef}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8">
         {/* Title */}
         <motion.div
           className="text-center mb-12"

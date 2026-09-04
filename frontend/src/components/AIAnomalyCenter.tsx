@@ -57,7 +57,7 @@ export default function AIAnomalyCenter() {
 
   return (
     <section id="anomaly-center" className="section-spacing relative overflow-hidden py-20 md:py-28" ref={containerRef}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8">
         {/* Section Title */}
         <motion.div
           className="text-center mb-10"

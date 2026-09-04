@@ -102,11 +102,11 @@ export default function DeepSpaceExplorer() {
 
   // Pragyan Traverse Waypoints (ISRO Official Traverse at Shiv Shakti Point)
   const PRAGYAN_WAYPOINTS = [
-    { id: 'WP1', distM: 0.0, label: 'RAMP ROLLOUT', desc: 'Lander ramp egress & roll onto South Pole soil', x: 195, y: 195, scienceResult: 'Mobility nominal, 6-wheel rocker-bogie deployed' },
-    { id: 'WP2', distM: 12.5, label: 'FIRST TURN & TRACKS', desc: 'Initial maneuver imprinting ISRO & Ashoka emblem on soil', x: 265, y: 215, scienceResult: 'NavCam stereo calibrated, wheel slippage < 1.8%' },
-    { id: 'WP3', distM: 34.8, label: 'APXS & LIBS TARGET', desc: 'Laser breakdown spectroscopy on polar surface boulder', x: 345, y: 205, scienceResult: 'Definitive Sulfur (S), Fe, Ti, Al, Ca, Si elemental detection' },
-    { id: 'WP4', distM: 68.2, label: 'CRATER HAZARD DIVERT', desc: 'Autonomous detour around 4-meter diameter crater rim', x: 420, y: 235, scienceResult: 'Obstacle avoidance verified with 3.2m safety clearance' },
-    { id: 'WP5', distM: 101.4, label: 'FINAL HIBERNATION PARK', desc: 'Solar array oriented toward next sunrise at Shiv Shakti', x: 500, y: 215, scienceResult: '101.4m cumulative traverse completed; battery charged' },
+    { id: 'WP1', distM: 0.0, label: 'RAMP ROLLOUT', desc: 'Lander ramp egress & roll onto South Pole soil', x: 220, y: 200, scienceResult: 'Mobility nominal, 6-wheel rocker-bogie deployed' },
+    { id: 'WP2', distM: 12.5, label: 'FIRST TURN & TRACKS', desc: 'Initial maneuver imprinting ISRO & Ashoka emblem on soil', x: 285, y: 218, scienceResult: 'NavCam stereo calibrated, wheel slippage < 1.8%' },
+    { id: 'WP3', distM: 34.8, label: 'APXS & LIBS TARGET', desc: 'Laser breakdown spectroscopy on polar surface boulder', x: 360, y: 198, scienceResult: 'Definitive Sulfur (S), Fe, Ti, Al, Ca, Si elemental detection' },
+    { id: 'WP4', distM: 68.2, label: 'CRATER HAZARD DIVERT', desc: 'Autonomous detour around 4-meter diameter crater rim', x: 435, y: 232, scienceResult: 'Obstacle avoidance verified with 3.2m safety clearance' },
+    { id: 'WP5', distM: 101.4, label: 'FINAL HIBERNATION PARK', desc: 'Solar array oriented toward next sunrise at Shiv Shakti', x: 520, y: 210, scienceResult: '101.4m cumulative traverse completed; battery charged' },
   ];
 
   const activeWaypoint = PRAGYAN_WAYPOINTS[selectedCh3WaypointIdx] || PRAGYAN_WAYPOINTS[4];
@@ -167,7 +167,7 @@ export default function DeepSpaceExplorer() {
 
   return (
     <section id="deep-space" className="section-spacing relative overflow-hidden" ref={containerRef}>
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
+      <div className="max-w-[1600px] mx-auto px-4 md:px-6 lg:px-8">
         {/* Section Heading */}
         <motion.div
           className="text-center mb-12"
@@ -435,15 +435,36 @@ export default function DeepSpaceExplorer() {
                         <ellipse cx="540" cy="290" rx="55" ry="16" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
                         <ellipse cx="400" cy="325" rx="26" ry="7" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
 
-                        {/* SHIV SHAKTI POINT Touchdown Marker */}
-                        <g transform="translate(150, 195)">
-                          <circle r="10" fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" className="animate-spin" style={{ animationDuration: '12s' }} />
-                          <circle r="3.5" fill="#f59e0b" />
-                          <line x1="0" y1="0" x2="0" y2="-36" stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="2,2" />
-                          <rect x="-60" y="-52" width="120" height="15" rx="3" fill="rgba(0,0,0,0.9)" stroke="#f59e0b" strokeWidth="1" />
-                          <text x="0" y="-42" fill="#fcd34d" fontSize="7" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                            SHIV SHAKTI TOUCHDOWN
-                          </text>
+                        {/* SHIV SHAKTI POINT Lunar Ground Target & Non-Colliding Callout */}
+                        <g>
+                          {/* Concentric Ground Landing Locus directly under Vikram Footpads */}
+                          <g transform="translate(150, 192)">
+                            <ellipse cx="0" cy="0" rx="42" ry="7" fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="4,3" opacity="0.8" />
+                            <ellipse cx="0" cy="0" rx="20" ry="3.5" fill="rgba(245,158,11,0.18)" stroke="#f59e0b" strokeWidth="1.2" />
+                            <circle cx="0" cy="0" r="3" fill="#f59e0b" />
+                            <circle cx="0" cy="0" r="8" fill="none" stroke="#f59e0b" strokeWidth="0.8" className="animate-ping" opacity="0.6" />
+                          </g>
+
+                          {/* Leader Line to Dedicated Non-Colliding Callout Badge */}
+                          <polyline
+                            points="150,192 105,224 50,224"
+                            fill="none"
+                            stroke="#f59e0b"
+                            strokeWidth="1.2"
+                            strokeDasharray="2,2"
+                          />
+                          <circle cx="105" cy="224" r="2" fill="#f59e0b" />
+
+                          {/* Dedicated Shiv Shakti Point Badge */}
+                          <g transform="translate(50, 224)">
+                            <rect x="-42" y="-12" width="84" height="24" rx="5" fill="rgba(2,6,23,0.95)" stroke="#f59e0b" strokeWidth="1.2" />
+                            <text x="0" y="-2" fill="#fcd34d" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                              SHIV SHAKTI POINT
+                            </text>
+                            <text x="0" y="7.5" fill="#94a3b8" fontSize="5.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="600" textAnchor="middle">
+                              69.373° S, 32.319° E
+                            </text>
+                          </g>
                         </g>
 
                         {/* --------------------------------------------------------- */}
@@ -499,8 +520,8 @@ export default function DeepSpaceExplorer() {
                           <path d="M -30 -44 A 8 8 0 0 1 -18 -34" fill="none" stroke="#f59e0b" strokeWidth="1.8" />
                           <circle cx="-24" cy="-38" r="1.2" fill="#f59e0b" />
 
-                          {/* Deployed Pragyan Rover Ramp */}
-                          <line x1="16" y1="12" x2="52" y2="44" stroke="#64748b" strokeWidth="2.2" strokeDasharray="3,2" />
+                          {/* Deployed Pragyan Rover Ramp extending directly toward WP1 */}
+                          <line x1="16" y1="12" x2="65" y2="52" stroke="#64748b" strokeWidth="2.2" strokeDasharray="3,2" />
 
                           {/* Vikram Lander Label */}
                           <text x="0" y="2" fill="#0f172a" fontSize="6.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
@@ -513,14 +534,14 @@ export default function DeepSpaceExplorer() {
                         {/* --------------------------------------------------------- */}
                         {/* Wheel Tracks connecting all 5 waypoints */}
                         <path
-                          d="M 195 195 L 265 215 L 345 205 L 420 235 L 500 215"
+                          d="M 215 197 L 220 200 L 285 218 L 360 198 L 435 232 L 520 210"
                           fill="none"
                           stroke="#0a0e1a"
                           strokeWidth="3.5"
                           strokeDasharray="2,2"
                         />
                         <path
-                          d="M 195 195 L 265 215 L 345 205 L 420 235 L 500 215"
+                          d="M 215 197 L 220 200 L 285 218 L 360 198 L 435 232 L 520 210"
                           fill="none"
                           stroke="#f59e0b"
                           strokeWidth="1.2"

@@ -460,45 +460,50 @@ export default function ConjunctionSection() {
               </div>
             </div>
 
-            {/* Canvas Area: 3D Isometric View or 2D Radar View */}
+            {/* Canvas Area: 3D Isometric View or 2D Radar View (Enlarged for Optimal Visualization) */}
             <div
-              className="relative aspect-[16/9] w-full bg-space-navy/50 rounded-2xl overflow-hidden border border-glass-border/40 select-none cursor-grab active:cursor-grabbing"
+              className="relative w-full aspect-[16/10] min-h-[380px] sm:min-h-[460px] md:min-h-[520px] bg-[#020610] rounded-3xl overflow-hidden border border-cyan-glow/30 select-none cursor-grab active:cursor-grabbing shadow-[inset_0_0_60px_rgba(0,212,255,0.06)]"
               onMouseDown={viewMode === '3d' ? handleMouseDown : undefined}
               onMouseMove={viewMode === '3d' ? handleMouseMove : undefined}
               onMouseUp={viewMode === '3d' ? handleMouseUp : undefined}
             >
-              <svg viewBox="0 0 600 360" className="w-full h-full">
+              <svg viewBox="0 0 700 420" className="w-full h-full">
                 <defs>
                   <linearGradient id="satTrail" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.05" />
-                    <stop offset="100%" stopColor="#00d4ff" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#00d4ff" stopOpacity="0.85" />
                   </linearGradient>
                   <linearGradient id="debTrail" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#ff3b3b" stopOpacity="0.05" />
-                    <stop offset="100%" stopColor="#ff3b3b" stopOpacity="0.8" />
+                    <stop offset="100%" stopColor="#ff3b3b" stopOpacity="0.85" />
                   </linearGradient>
                   <linearGradient id="evasionTrail" x1="0%" y1="0%" x2="100%" y2="0%">
                     <stop offset="0%" stopColor="#10b981" stopOpacity="0.05" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.95" />
                   </linearGradient>
+                  <radialGradient id="radarSweepBackdrop" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stopColor="rgba(0, 212, 255, 0.15)" />
+                    <stop offset="60%" stopColor="rgba(0, 212, 255, 0.04)" />
+                    <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
+                  </radialGradient>
                 </defs>
 
                 {viewMode === '3d' ? (
-                  /* 3D ASTRODYNAMICS ISOMETRIC CANVAS */
-                  <g>
+                  /* 3D ASTRODYNAMICS ISOMETRIC CANVAS (ENLARGED & SCALED TO 700x420) */
+                  <g transform="translate(50, 30)">
                     {/* Central Celestial Body (Earth / Moon / L1 Point) */}
                     {(() => {
                       const pBody = project3D(0, 0, 0);
                       return (
                         <g transform={`translate(${pBody.px}, ${pBody.py})`}>
                           <circle
-                            r={centralBodyRadius * pBody.scale}
+                            r={centralBodyRadius * pBody.scale * 1.15}
                             fill={centralBodyColor}
                             opacity="0.2"
                             className="animate-pulse"
                           />
                           <circle
-                            r={(centralBodyRadius + 4) * pBody.scale}
+                            r={(centralBodyRadius + 4) * pBody.scale * 1.15}
                             fill="none"
                             stroke={centralBodyColor}
                             strokeWidth="1.2"
@@ -506,15 +511,15 @@ export default function ConjunctionSection() {
                             opacity="0.6"
                           />
                           <circle
-                            r={centralBodyRadius * 0.7 * pBody.scale}
+                            r={centralBodyRadius * 0.75 * pBody.scale * 1.15}
                             fill={centralBodyColor}
                             opacity="0.85"
                           />
                           <text
                             x="0"
-                            y={(centralBodyRadius + 14) * pBody.scale}
+                            y={(centralBodyRadius + 16) * pBody.scale}
                             fill={centralBodyColor}
-                            fontSize="8"
+                            fontSize="8.5"
                             fontFamily="'Space Grotesk', sans-serif"
                             fontWeight="bold"
                             textAnchor="middle"
@@ -542,111 +547,154 @@ export default function ConjunctionSection() {
                     {/* 3D XYZ RIC Vector Axes */}
                     {(() => {
                       const o = project3D(0, 0, 0);
-                      const axX = project3D(100, 0, 0);
-                      const axY = project3D(0, -80, 0);
-                      const axZ = project3D(0, 0, 100);
+                      const axX = project3D(110, 0, 0);
+                      const axY = project3D(0, -90, 0);
+                      const axZ = project3D(0, 0, 110);
                       return (
                         <g>
                           <line x1={o.px} y1={o.py} x2={axX.px} y2={axX.py} stroke="#00d4ff" strokeWidth="1.5" />
-                          <text x={axX.px + 4} y={axX.py} fill="#00d4ff" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+V (In-Track)</text>
+                          <text x={axX.px + 4} y={axX.py} fill="#00d4ff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+V (In-Track)</text>
                           <line x1={o.px} y1={o.py} x2={axY.px} y2={axY.py} stroke="#10b981" strokeWidth="1.5" />
-                          <text x={axY.px} y={axY.py - 4} fill="#10b981" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+R (Radial)</text>
+                          <text x={axY.px} y={axY.py - 4} fill="#10b981" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+R (Radial)</text>
                           <line x1={o.px} y1={o.py} x2={axZ.px} y2={axZ.py} stroke="#fbbf24" strokeWidth="1.5" />
-                          <text x={axZ.px + 4} y={axZ.py + 4} fill="#fbbf24" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+W (Cross-Track)</text>
+                          <text x={axZ.px + 4} y={axZ.py + 4} fill="#fbbf24" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">+W (Cross-Track)</text>
                         </g>
                       );
                     })()}
 
                     {/* 3D Pre-Burn Nominal Satellite Trajectory Path */}
-                    <path d={satPath3DPoints.join(' ')} fill="none" stroke="rgba(0, 212, 255, 0.45)" strokeWidth="1.8" strokeDasharray="4,4" />
+                    <path d={satPath3DPoints.join(' ')} fill="none" stroke="rgba(0, 212, 255, 0.5)" strokeWidth="2" strokeDasharray="4,4" />
 
                     {/* 3D Debris Trajectory Path */}
-                    <path d={debPath3DPoints.join(' ')} fill="none" stroke="rgba(255, 59, 59, 0.55)" strokeWidth="1.8" strokeDasharray="3,3" />
+                    <path d={debPath3DPoints.join(' ')} fill="none" stroke="rgba(255, 59, 59, 0.6)" strokeWidth="2" strokeDasharray="3,3" />
 
                     {/* 3D Post-Burn Deflected Evasion Trajectory (Green) */}
-                    <path d={evasionPath3DPoints.join(' ')} fill="none" stroke="#10b981" strokeWidth="2.5" />
+                    <path d={evasionPath3DPoints.join(' ')} fill="none" stroke="#10b981" strokeWidth="2.8" />
 
                     {/* 3D 3-Sigma Covariance Ellipsoids at TCA */}
                     <g transform={`translate(${p3Tca.px}, ${p3Tca.py})`}>
                       {/* Primary Spacecraft Covariance Bubble (Blue) */}
-                      <ellipse rx="38" ry="20" fill="rgba(0, 212, 255, 0.12)" stroke="#00d4ff" strokeWidth="1.2" strokeDasharray="3,3" />
+                      <ellipse rx="42" ry="22" fill="rgba(0, 212, 255, 0.12)" stroke="#00d4ff" strokeWidth="1.2" strokeDasharray="3,3" />
                       {/* Debris Hazard Covariance Bubble (Red) */}
-                      <ellipse rx="52" ry="26" fill="rgba(255, 59, 59, 0.15)" stroke="#ff3b3b" strokeWidth="1.5" className="animate-pulse" />
-                      <circle r="4" fill="#ff3b3b" />
-                      <text x="14" y="-10" fill="#ff3b3b" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                      <ellipse rx="58" ry="28" fill="rgba(255, 59, 59, 0.15)" stroke="#ff3b3b" strokeWidth="1.5" className="animate-pulse" />
+                      <circle r="4.5" fill="#ff3b3b" />
+                      <text x="14" y="-10" fill="#ff3b3b" fontSize="10.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
                         TCA CONJUNCTION EPOCH ({primaryConj.crossingAngleDeg}° CROSSING)
                       </text>
-                      <text x="14" y="6" fill="rgba(232, 237, 242, 0.85)" fontSize="8.5" fontFamily="'Inter', sans-serif">
+                      <text x="14" y="6" fill="rgba(232, 237, 242, 0.85)" fontSize="9" fontFamily="'Inter', sans-serif">
                         Nominal Miss: {primaryConj.miss_distance_km} km ➔ Post-Burn: {postBurnMissKm} km (Pc: {postBurnPc.toExponential(2)})
                       </text>
                     </g>
 
                     {/* 3D Satellite Node */}
                     <g transform={`translate(${p3Sat.px}, ${p3Sat.py})`}>
-                      <circle r="7" fill="#00d4ff" className="animate-pulse" />
-                      <circle r="16" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.7" />
-                      <text x="14" y="-8" fill="#00d4ff" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                      <circle r="8" fill="#00d4ff" className="animate-pulse" />
+                      <circle r="18" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.7" />
+                      <text x="14" y="-8" fill="#00d4ff" fontSize="11.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
                         {primaryConj.primary_code} [{activeSat.agency}]
                       </text>
-                      <text x="14" y="6" fill="#10b981" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                      <text x="14" y="8" fill="#10b981" fontSize="9.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
                         ΔV: {totalDeltaV.toFixed(2)} m/s (Prop: {hydrazineCostKg} kg)
                       </text>
                     </g>
 
                     {/* 3D Debris Node */}
                     <g transform={`translate(${p3Deb.px}, ${p3Deb.py})`}>
-                      <circle r="6" fill="#ff3b3b" className="animate-pulse" />
-                      <circle r="14" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.7" />
-                      <text x="14" y="14" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                      <circle r="7" fill="#ff3b3b" className="animate-pulse" />
+                      <circle r="16" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.7" />
+                      <text x="14" y="14" fill="#ff3b3b" fontSize="11.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
                         {primaryConj.target_object_id} ({primaryConj.risk_level})
                       </text>
                     </g>
 
                     {/* Laser Distance Measuring Line */}
-                    <line x1={p3Sat.px} y1={p3Sat.py} x2={p3Deb.px} y2={p3Deb.py} stroke="rgba(251, 191, 36, 0.7)" strokeWidth="1.2" strokeDasharray="3,2" />
-                    <text x={(p3Sat.px + p3Deb.px) / 2 + 8} y={(p3Sat.py + p3Deb.py) / 2 - 4} fill="#fbbf24" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                    <line x1={p3Sat.px} y1={p3Sat.py} x2={p3Deb.px} y2={p3Deb.py} stroke="rgba(251, 191, 36, 0.75)" strokeWidth="1.5" strokeDasharray="4,2" />
+                    <text x={(p3Sat.px + p3Deb.px) / 2 + 8} y={(p3Sat.py + p3Deb.py) / 2 - 4} fill="#fbbf24" fontSize="9.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
                       SLANT RANGE: {scrubDistKm} km
                     </text>
                   </g>
                 ) : (
-                  /* 2D RADAR VIEW CANVAS */
+                  /* 2D SGP4 RADAR VIEW CANVAS (PROMINENT, ENLARGED & DETAILED) */
                   <g>
-                    <circle cx="300" cy="180" r="140" fill="none" stroke="rgba(0, 212, 255, 0.06)" strokeDasharray="3,6" />
-                    <circle cx="300" cy="180" r="80" fill="none" stroke="rgba(0, 212, 255, 0.1)" strokeDasharray="2,4" />
-                    <circle cx="300" cy="180" r="28" fill="none" stroke="rgba(255, 59, 59, 0.25)" />
-                    <line x1="300" y1="0" x2="300" y2="360" stroke="rgba(0, 212, 255, 0.05)" />
-                    <line x1="0" y1="180" x2="600" y2="180" stroke="rgba(0, 212, 255, 0.05)" />
+                    {/* Background Radial Sweep Glow */}
+                    <circle cx="350" cy="210" r="190" fill="url(#radarSweepBackdrop)" />
 
-                    <path d={satPathD} fill="none" stroke="rgba(0, 212, 255, 0.45)" strokeWidth="2" strokeDasharray="5,4" />
-                    <path d={debPathD} fill="none" stroke="rgba(255, 59, 59, 0.45)" strokeWidth="2" strokeDasharray="4,4" />
+                    {/* Concentric Range Rings (100km, 50km, 25km, 10km) */}
+                    <circle cx="350" cy="210" r="190" fill="none" stroke="rgba(0, 212, 255, 0.18)" strokeWidth="1" strokeDasharray="4,6" />
+                    <circle cx="350" cy="210" r="140" fill="none" stroke="rgba(0, 212, 255, 0.22)" strokeWidth="1" strokeDasharray="3,5" />
+                    <circle cx="350" cy="210" r="90" fill="none" stroke="rgba(0, 212, 255, 0.3)" strokeWidth="1" strokeDasharray="2,4" />
+                    <circle cx="350" cy="210" r="40" fill="rgba(255, 59, 59, 0.08)" stroke="rgba(255, 59, 59, 0.45)" strokeWidth="1.5" />
 
-                    <g transform="translate(300, 180)">
-                      <circle r="36" fill="rgba(255, 59, 59, 0.08)" className="animate-ping" style={{ animationDuration: '2.5s' }} />
-                      <circle r="20" fill="rgba(255, 59, 59, 0.15)" />
-                      <circle r="4" fill="#ff3b3b" />
-                      <line x1="-12" y1="0" x2="12" y2="0" stroke="#ff3b3b" strokeWidth="1.5" />
-                      <line x1="0" y1="-12" x2="0" y2="12" stroke="#ff3b3b" strokeWidth="1.5" />
-                      <text x="14" y="-10" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                        TCA POINT ({primaryConj.crossingAngleDeg}°)
+                    {/* Range Labels */}
+                    <text x="355" y="24" fill="rgba(0, 212, 255, 0.6)" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">100 KM</text>
+                    <text x="355" y="74" fill="rgba(0, 212, 255, 0.6)" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">50 KM</text>
+                    <text x="355" y="124" fill="rgba(0, 212, 255, 0.6)" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">25 KM</text>
+                    <text x="355" y="174" fill="rgba(255, 59, 59, 0.8)" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">10 KM CAM ZONE</text>
+
+                    {/* Azimuth Radials (0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°) */}
+                    <line x1="350" y1="20" x2="350" y2="400" stroke="rgba(0, 212, 255, 0.15)" strokeWidth="1" strokeDasharray="2,4" />
+                    <line x1="160" y1="210" x2="540" y2="210" stroke="rgba(0, 212, 255, 0.15)" strokeWidth="1" strokeDasharray="2,4" />
+                    <line x1="215" y1="75" x2="485" y2="345" stroke="rgba(0, 212, 255, 0.08)" strokeDasharray="2,4" />
+                    <line x1="215" y1="345" x2="485" y2="75" stroke="rgba(0, 212, 255, 0.08)" strokeDasharray="2,4" />
+
+                    {/* Cardinal Degree Markers */}
+                    <text x="350" y="14" fill="#00d4ff" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">000° (N)</text>
+                    <text x="555" y="214" fill="#00d4ff" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">090° (E)</text>
+                    <text x="350" y="414" fill="#00d4ff" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">180° (S)</text>
+                    <text x="145" y="214" fill="#00d4ff" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="end">270° (W)</text>
+
+                    {/* Rotating Surveillance Beam */}
+                    <line
+                      x1="350"
+                      y1="210"
+                      x2={350 + Math.cos(tcaProgress * 30) * 190}
+                      y2={210 + Math.sin(tcaProgress * 30) * 190}
+                      stroke="#00d4ff"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      className="filter drop-shadow-[0_0_8px_#00d4ff]"
+                    />
+
+                    {/* Trajectory Paths */}
+                    <path d={satPathD} fill="none" stroke="rgba(0, 212, 255, 0.55)" strokeWidth="2.5" strokeDasharray="6,4" />
+                    <path d={debPathD} fill="none" stroke="rgba(255, 59, 59, 0.55)" strokeWidth="2.5" strokeDasharray="5,4" />
+
+                    {/* TCA Center Convergence Point */}
+                    <g transform="translate(350, 210)">
+                      <circle r="44" fill="rgba(255, 59, 59, 0.08)" className="animate-ping" style={{ animationDuration: '2.5s' }} />
+                      <circle r="24" fill="rgba(255, 59, 59, 0.18)" />
+                      <circle r="5" fill="#ff3b3b" />
+                      <line x1="-15" y1="0" x2="15" y2="0" stroke="#ff3b3b" strokeWidth="1.5" />
+                      <line x1="0" y1="-15" x2="0" y2="15" stroke="#ff3b3b" strokeWidth="1.5" />
+                      <text x="16" y="-12" fill="#ff3b3b" fontSize="12" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        TCA POINT ({primaryConj.crossingAngleDeg}° INTERSECTION)
                       </text>
-                      <text x="14" y="6" fill="rgba(232, 237, 242, 0.8)" fontSize="9" fontFamily="'Inter', sans-serif">
-                        Δ: {primaryConj.miss_distance_km} km ({primaryConj.risk_level})
+                      <text x="16" y="8" fill="rgba(232, 237, 242, 0.85)" fontSize="10" fontFamily="'Inter', sans-serif">
+                        Δ: {primaryConj.miss_distance_km} km ({primaryConj.risk_level}) • Pc: {primaryConj.collision_probability.toExponential(2)}
                       </text>
                     </g>
 
-                    <g transform={`translate(${satX}, ${satY})`}>
-                      <circle r="6" fill="#00d4ff" className="animate-pulse" />
-                      <circle r="15" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.6" />
-                      <text x="12" y="-8" fill="#00d4ff" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                        {primaryConj.primary_code}
+                    {/* Satellite Radar Blip */}
+                    <g transform={`translate(${satX + 50}, ${satY + 30})`}>
+                      <circle r="8" fill="#00d4ff" className="animate-pulse" />
+                      <circle r="18" fill="none" stroke="#00d4ff" strokeWidth="1.5" opacity="0.7" className="animate-ping" style={{ animationDuration: '3s' }} />
+                      <text x="14" y="-8" fill="#00d4ff" fontSize="12" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        {primaryConj.primary_code} [{activeSat.name}]
+                      </text>
+                      <text x="14" y="8" fill="#10b981" fontSize="9.5" fontFamily="'Inter', sans-serif">
+                        VEL: {activeSat.velocity} • ALT: {activeSat.altitude}
                       </text>
                     </g>
 
-                    <g transform={`translate(${debX}, ${debY})`}>
-                      <circle r="5" fill="#ff3b3b" className="animate-pulse" />
-                      <circle r="13" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.6" />
-                      <text x="12" y="16" fill="#ff3b3b" fontSize="11" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                        {primaryConj.target_object_id}
+                    {/* Debris Hazard Radar Blip */}
+                    <g transform={`translate(${debX + 50}, ${debY + 30})`}>
+                      <circle r="7" fill="#ff3b3b" className="animate-pulse" />
+                      <circle r="16" fill="none" stroke="#ff3b3b" strokeWidth="1.5" opacity="0.7" />
+                      <text x="14" y="16" fill="#ff3b3b" fontSize="12" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                        {primaryConj.target_object_id} ({primaryConj.target_name})
+                      </text>
+                      <text x="14" y="30" fill="rgba(255, 59, 59, 0.8)" fontSize="9.5" fontFamily="'Inter', sans-serif">
+                        RELATIVE VEL: 14.8 km/s • RISK: {primaryConj.risk_level}
                       </text>
                     </g>
                   </g>
@@ -655,8 +703,8 @@ export default function ConjunctionSection() {
 
               {/* 3D Drag Tip Badge */}
               {viewMode === '3d' && (
-                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-black/60 border border-white/10 text-[9px] font-space text-star-white/60 pointer-events-none">
-                  🖱️ CLICK &amp; DRAG TO ROTATE 3D ORBIT PLANE (Pitch: {rotX.toFixed(0)}°, Yaw: {rotY.toFixed(0)}°)
+                <div className="absolute top-3 left-3 px-3 py-1 rounded-xl bg-black/70 border border-cyan-glow/20 text-[10px] font-space text-cyan-glow pointer-events-none flex items-center gap-1.5">
+                  <span>🖱️ CLICK &amp; DRAG TO ROTATE 3D ASTRODYNAMICS ORBIT (Pitch: {rotX.toFixed(0)}°, Yaw: {rotY.toFixed(0)}°)</span>
                 </div>
               )}
             </div>

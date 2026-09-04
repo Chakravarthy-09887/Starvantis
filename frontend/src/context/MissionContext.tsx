@@ -459,24 +459,34 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       const activeSatDef = FLEET_SATELLITES.find((s) => s.id === selectedSatIdRef.current) || FLEET_SATELLITES[0];
       const altNum = activeSatDef.altitudeKm || 700;
       const r_km = 6371.0 + altNum;
-      const mean_motion = Math.sqrt(398600.4418 / Math.pow(r_km, 3));
+      const isDeepSpace = activeSatDef.id === 'ADITYA-L1' || activeSatDef.id === 'JWST';
+      const mean_motion = isDeepSpace ? 0.0001 : Math.sqrt(398600.4418 / Math.pow(r_km, 3));
       const omega = (step * mean_motion * 180.0 / Math.PI) % 360.0;
       const omega_rad = (omega * Math.PI) / 180.0;
       const inc_rad = ((parseFloat(activeSatDef.inclination) || 66.0) * Math.PI) / 180.0;
 
       const lat_val = (Math.asin(Math.sin(inc_rad) * Math.sin(omega_rad)) * 180.0) / Math.PI;
-      const lng_val = (((Math.atan2(Math.cos(inc_rad) * Math.sin(omega_rad), Math.cos(omega_rad)) * 180.0 / Math.PI) - (step * 0.04) + 77.0) % 360.0) - 180.0;
+      const lng_val = (((Math.atan2(Math.cos(inc_rad) * Math.sin(omega_rad), Math.cos(omega_rad)) * 180.0 / Math.PI) - (step * 0.004178 * 180.0 / Math.PI) + 77.0) % 360.0) - 180.0;
 
-      const inSun = Math.sin(omega_rad) > -0.15;
-      const solar_kw = inSun ? (1.8 + Math.sin(omega_rad) * 0.45).toFixed(2) : '0.00';
-      const temp_c = inSun ? (24.0 + Math.sin(omega_rad) * 4.2).toFixed(1) : (8.0 + Math.cos(omega_rad) * 2.1).toFixed(1);
-      const batt_v = inSun ? (28.6 + Math.sin(omega_rad) * 0.4).toFixed(2) : (27.2 + Math.cos(omega_rad) * 0.2).toFixed(2);
-      const roll = (Math.sin(step * 0.2) * 0.25).toFixed(3);
-      const pitch = (Math.cos(step * 0.15) * -0.18).toFixed(3);
-      const yaw = ((omega + Math.sin(step * 0.1) * 0.4) % 360.0).toFixed(2);
-      const rssi = -65 - Math.floor(Math.abs(Math.sin(step * 0.05)) * 12);
+      // Smooth sigmoid sunlight transition
+      const sun_elevation = Math.sin(omega_rad);
+      const sunlight_factor = isDeepSpace ? 1.0 : 1.0 / (1.0 + Math.exp(-8.0 * (sun_elevation + 0.05)));
+      const inSun = sunlight_factor > 0.35;
 
-      // Smoothly propagate live telemetry if server frame is in-flight
+      const baseVolt = parseFloat(activeSatDef.batteryVoltage.replace(' V', '')) || 28.4;
+      const basePower = parseFloat(activeSatDef.solarPower.replace(' kW', '')) || 2.1;
+      const baseTemp = parseFloat(activeSatDef.temp.replace(' °C', '')) || 22.0;
+
+      const solar_kw = (basePower * sunlight_factor * (0.94 + 0.06 * Math.sin(step * 0.05))).toFixed(2);
+      const temp_c = (baseTemp + 4.2 * (sunlight_factor - 0.5) + 0.8 * Math.sin(step * 0.08)).toFixed(1);
+      const batt_v = (baseVolt + 0.3 * (sunlight_factor - 0.5) + 0.02 * Math.sin(step * 0.04)).toFixed(2);
+
+      const roll = (0.08 * Math.sin(step * 0.08 + 0.5) + 0.02 * Math.cos(step * 0.19)).toFixed(3);
+      const pitch = (-0.06 * Math.cos(step * 0.07 + 1.2) + 0.015 * Math.sin(step * 0.14)).toFixed(3);
+      const yaw = ((omega + 0.1 * Math.sin(step * 0.05)) % 360.0).toFixed(2);
+      const rssi = -64 - Math.floor(Math.abs(Math.sin(step * 0.03)) * 6);
+
+      // Smoothly update live telemetry if not in mid-packet overwrite
       setLiveTelemetry((prev) => ({
         battery_voltage: `${batt_v} V`,
         solar_power: `${solar_kw} kW`,
@@ -489,11 +499,11 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
         pitch: `${parseFloat(pitch) >= 0 ? '+' : ''}${pitch}°`,
         yaw: `${yaw}°`,
         signal: `${rssi} dBm`,
-        health: prev.health || activeSatDef.health || 98,
+        health: activeSatDef.health || prev.health || 98,
         tracked_objects: prev.tracked_objects || 128,
         active_alerts: prev.active_alerts || 2,
-        eclipse_status: inSun ? 'SUNLIT' : 'ECLIPSE_SHADOW',
-        pointing_jitter: `${(Math.abs(parseFloat(roll)) * 0.015 + 0.0032).toFixed(4)}° / s`,
+        eclipse_status: inSun ? 'SUNLIT' : 'PENUMBRA_ECLIPSE',
+        pointing_jitter: `${(Math.abs(parseFloat(roll)) * 0.008 + 0.0032).toFixed(4)}° / s`,
       }));
     };
 

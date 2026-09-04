@@ -206,27 +206,35 @@ class TelemetrySimulator:
                     earth_rot_deg = (self._step * 0.004178 * 180.0 / math.pi) % 360.0  # Earth 360° in 24h
                     lng_val = ((math.degrees(math.atan2(math.cos(inc_rad) * math.sin(omega_rad), math.cos(omega_rad))) - earth_rot_deg + hash(sat_id) * 37) % 360.0) - 180.0
 
-                    # 3. Solar Eclipse & Day/Night Thermal-Electrical Cycle
+                    # 3. Solar Eclipse & Day/Night Thermal-Electrical Cycle (Smooth Continuous Sigmoid Blending)
                     # Sun vector angle relative to orbit plane
                     sun_elevation = math.sin(omega_rad)
-                    in_sunlight = sun_elevation > -0.15 or cfg.get("is_lagrange", False)
+                    is_deep_space = cfg.get("is_lagrange", False)
 
-                    if in_sunlight:
-                        solar_incidence = max(0.1, sun_elevation + 0.15) if not cfg.get("is_lagrange") else 1.0
-                        solar_power_kw = round(cfg["max_solar_kw"] * solar_incidence + random.uniform(-0.02, 0.02), 2)
-                        temp_c = round(cfg["nominal_temp"] + 8.5 * math.sin(omega_rad) + random.uniform(-0.1, 0.1), 1)
-                        batt_v = round(cfg["base_batt"] + 0.6 * solar_incidence + random.uniform(-0.02, 0.02), 2)
+                    # Smooth transition factor [0.0 = full umbra, 1.0 = full direct sunlight]
+                    if is_deep_space:
+                        sunlight_factor = 1.0
+                        in_sunlight = True
                     else:
-                        # Eclipse Shadow: Solar generation collapses to 0kW, cooling commences
-                        solar_power_kw = 0.00
-                        temp_c = round(cfg["nominal_temp"] - 16.0 + 3.0 * math.cos(omega_rad) + random.uniform(-0.1, 0.1), 1)
-                        batt_v = round(cfg["base_batt"] - 1.4 + random.uniform(-0.03, 0.03), 2)
+                        # Soft sigmoid curve over penumbra boundary (-0.2 to +0.2)
+                        sunlight_factor = 1.0 / (1.0 + math.exp(-8.0 * (sun_elevation + 0.05)))
+                        in_sunlight = sunlight_factor > 0.35
 
-                    # 4. AOCS Attitude Gyro Stabilization & Reaction Wheel Jitter
-                    roll_jitter = round(0.4 * math.sin(self._step * 0.2 + 1) + random.uniform(-0.02, 0.02), 3)
-                    pitch_jitter = round(-0.3 * math.cos(self._step * 0.15 + 2) + random.uniform(-0.02, 0.02), 3)
-                    yaw_angle = round((omega + 0.2 * math.sin(self._step * 0.1)) % 360.0, 2)
-                    rssi_dbm = -64 - int(abs(math.sin(self._step * 0.05)) * 14) + random.randint(-1, 1)
+                    # Smooth solar power generation
+                    solar_power_kw = round(cfg["max_solar_kw"] * sunlight_factor * (0.92 + 0.08 * math.sin(self._step * 0.05)), 2)
+
+                    # Continuous thermodynamic thermal balance (no sudden 24°C cliff drops)
+                    thermal_delta = 4.5 * (sunlight_factor - 0.5) + 1.2 * math.sin(self._step * 0.08)
+                    temp_c = round(cfg["nominal_temp"] + thermal_delta, 1)
+
+                    # Stable 28V regulated battery bus with gentle charge/discharge curve
+                    batt_v = round(cfg["base_batt"] + (0.35 * sunlight_factor - 0.15) + 0.02 * math.sin(self._step * 0.04), 2)
+
+                    # 4. AOCS Attitude Gyro Stabilization (< 0.005°/s RMS pointing jitter)
+                    roll_jitter = round(0.08 * math.sin(self._step * 0.08 + 0.5) + 0.02 * math.cos(self._step * 0.19), 3)
+                    pitch_jitter = round(-0.06 * math.cos(self._step * 0.07 + 1.2) + 0.015 * math.sin(self._step * 0.14), 3)
+                    yaw_angle = round((omega + 0.1 * math.sin(self._step * 0.05)) % 360.0, 2)
+                    rssi_dbm = -64 - int(abs(math.sin(self._step * 0.03)) * 6)
 
                     pulse = {
                         "type": "LIVE_TELEMETRY_PULSE",
@@ -247,8 +255,8 @@ class TelemetrySimulator:
                             "health": cfg["health"],
                             "tracked_objects": cfg["tracked"],
                             "active_alerts": cfg["alerts"],
-                            "eclipse_status": "SUNLIT" if in_sunlight else "ECLIPSE_SHADOW",
-                            "pointing_jitter": f"{abs(roll_jitter * 0.015 + 0.003):.4f}° / s",
+                            "eclipse_status": "SUNLIT" if in_sunlight else "PENUMBRA_ECLIPSE",
+                            "pointing_jitter": f"{abs(roll_jitter * 0.008 + 0.0032):.4f}° / s",
                         },
                     }
 

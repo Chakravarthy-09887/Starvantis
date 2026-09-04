@@ -46,20 +46,20 @@ export default function TelemetryExplorer() {
   const currentAttitudeNum = activeSat.telemetryMetrics.attitudeError.current;
   const currentSnrNum = activeSat.telemetryMetrics.commsSnr.current;
 
-  // Generate linear, physically consistent historical points
+  // Generate stable, physically consistent historical points with zero graph warping
   const buildLinearStreamData = (baseVal: number, curVal: number) => {
     const diff = curVal - baseVal;
     return [
-      { time: 'T-10m', current: Number((baseVal).toFixed(3)), baseline: baseVal },
-      { time: 'T-8m', current: Number((baseVal + diff * 0.20).toFixed(3)), baseline: baseVal },
-      { time: 'T-6m', current: Number((baseVal + diff * 0.45).toFixed(3)), baseline: baseVal },
-      { time: 'T-4m', current: Number((baseVal + diff * 0.70).toFixed(3)), baseline: baseVal },
-      { time: 'T-2m', current: Number((baseVal + diff * 0.90).toFixed(3)), baseline: baseVal },
+      { time: 'T-10m', current: Number((baseVal + diff * 0.05).toFixed(3)), baseline: baseVal },
+      { time: 'T-8m', current: Number((baseVal + diff * 0.18).toFixed(3)), baseline: baseVal },
+      { time: 'T-6m', current: Number((baseVal + diff * 0.38).toFixed(3)), baseline: baseVal },
+      { time: 'T-4m', current: Number((baseVal + diff * 0.62).toFixed(3)), baseline: baseVal },
+      { time: 'T-2m', current: Number((baseVal + diff * 0.85).toFixed(3)), baseline: baseVal },
       { time: 'NOW', current: Number(curVal.toFixed(3)), baseline: baseVal },
     ];
   };
 
-  // Dedicated channels with fixed linear physical domains to prevent any graph bouncing or glitches
+  // Dedicated channels with calibrated linear physical domains to prevent any graph bouncing or glitches
   const telemetryStreams = useMemo(() => [
     {
       id: 'battery-temp',
@@ -77,7 +77,11 @@ export default function TelemetryExplorer() {
           : '#10b981',
       icon: Thermometer,
       description: 'Internal thermal sensor reading compared against thermodynamic radiator equilibrium baseline.',
-      domain: { min: 10, max: 40, ticks: [10, 20, 30, 40] },
+      domain: {
+        min: Math.min(10, Math.floor(currentTempNum - 5)),
+        max: Math.max(40, Math.ceil(currentTempNum + 5)),
+        ticks: [10, 20, 30, 40],
+      },
       data: buildLinearStreamData(activeSat.telemetryMetrics.batteryTemp.baseline, currentTempNum),
     },
     {
@@ -96,7 +100,11 @@ export default function TelemetryExplorer() {
           : '#00d4ff',
       icon: Zap,
       description: 'Solid-state electrical power distribution bus voltage regulating solar array and battery cell draw.',
-      domain: { min: 25.0, max: 31.0, ticks: [25.0, 27.0, 29.0, 31.0] },
+      domain: {
+        min: Math.min(24.0, Number((currentVoltNum - 1.5).toFixed(1))),
+        max: Math.max(32.0, Number((currentVoltNum + 1.5).toFixed(1))),
+        ticks: [25.0, 27.0, 29.0, 31.0],
+      },
       data: buildLinearStreamData(activeSat.telemetryMetrics.busVoltage.baseline, currentVoltNum),
     },
     {

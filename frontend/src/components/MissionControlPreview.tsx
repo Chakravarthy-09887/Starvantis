@@ -205,32 +205,36 @@ export default function MissionControlPreview() {
               </div>
             </div>
 
-            {/* Column 2: Center Dynamic Animated Radar Viewport (5 cols) */}
+            {/* Column 2: Center Dynamic Animated Radar Viewport (5 cols, Enlarged) */}
             <div className="lg:col-span-5 space-y-2.5">
               <span className="font-space text-[10px] tracking-widest text-cyan-glow uppercase block font-semibold">
-                DYNAMIC REAL-TIME RADAR [{activeSat.id}]
+                DYNAMIC REAL-TIME SGP4 RADAR [{activeSat.id}]
               </span>
-              <div className="glass-panel rounded-3xl p-4 border border-glass-border aspect-[16/11] relative flex items-center justify-center bg-space-navy/50 overflow-hidden shadow-[0_0_40px_rgba(4,18,34,0.9)]">
+              <div className="glass-panel rounded-3xl p-5 border border-cyan-glow/25 aspect-[16/12] min-h-[320px] relative flex items-center justify-center bg-[#030814] overflow-hidden shadow-[0_0_50px_rgba(4,18,34,0.95)]">
                 {/* SVG Radar Grid & Crosshairs */}
                 <svg className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-                  <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(99,199,255,0.15)" strokeWidth="1" strokeDasharray="4,4" />
-                  <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(99,199,255,0.15)" strokeWidth="1" strokeDasharray="4,4" />
-                  <ellipse cx="50%" cy="50%" rx="80" ry="44" fill="none" stroke="rgba(99,199,255,0.2)" strokeWidth="1" strokeDasharray="2,2" />
-                  <ellipse cx="50%" cy="50%" rx="98" ry="63" fill="none" stroke="rgba(255,59,59,0.2)" strokeWidth="1" strokeDasharray="3,3" />
+                  <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(99,199,255,0.2)" strokeWidth="1" strokeDasharray="4,4" />
+                  <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(99,199,255,0.2)" strokeWidth="1" strokeDasharray="4,4" />
+                  <ellipse cx="50%" cy="50%" rx="100" ry="56" fill="none" stroke="rgba(99,199,255,0.25)" strokeWidth="1" strokeDasharray="3,3" />
+                  <ellipse cx="50%" cy="50%" rx="125" ry="78" fill="none" stroke="rgba(255,59,59,0.22)" strokeWidth="1" strokeDasharray="3,3" />
                 </svg>
 
-                {/* Radar Grid Circles */}
-                <div className="w-56 h-56 rounded-full border border-cyan-glow/20 flex items-center justify-center pointer-events-none">
-                  <div className="w-40 h-40 rounded-full border border-cyan-glow/15" />
-                  <div className="w-24 h-24 rounded-full border border-dashed border-cyan-glow/10" />
+                {/* Radar Grid Concentric Circles (Enlarged) */}
+                <div className="w-64 h-64 sm:w-72 sm:h-72 rounded-full border border-cyan-glow/25 flex items-center justify-center pointer-events-none relative">
+                  <div className="w-48 h-48 sm:w-54 sm:h-54 rounded-full border border-cyan-glow/20" />
+                  <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full border border-dashed border-cyan-glow/15" />
+                  <div className="w-16 h-16 rounded-full border border-cyan-glow/10" />
+                  {/* Cardinal Range Markings */}
+                  <span className="absolute top-1 text-[8px] font-mono text-cyan-glow/60 font-bold">100 KM</span>
+                  <span className="absolute top-10 text-[8px] font-mono text-cyan-glow/60 font-bold">50 KM</span>
                 </div>
 
                 {/* Rotating Conic Radar Sweep */}
                 <div
-                  className="absolute inset-4 rounded-full animate-spin pointer-events-none"
+                  className="absolute inset-3 rounded-full animate-spin pointer-events-none"
                   style={{
-                    animationDuration: '4.5s',
-                    background: 'conic-gradient(from 0deg, rgba(0, 212, 255, 0.35) 0deg, rgba(0, 212, 255, 0.0) 60deg, transparent 60deg)',
+                    animationDuration: '4s',
+                    background: 'conic-gradient(from 0deg, rgba(0, 212, 255, 0.4) 0deg, rgba(0, 212, 255, 0.0) 70deg, transparent 70deg)',
                   }}
                 />
 
@@ -238,11 +242,11 @@ export default function MissionControlPreview() {
                 <div
                   className="absolute transition-all duration-75 flex flex-col items-center pointer-events-none z-10"
                   style={{
-                    transform: `translate(${satRadarX}px, ${satRadarY}px)`,
+                    transform: `translate(${satRadarX * 1.15}px, ${satRadarY * 1.15}px)`,
                   }}
                 >
-                  <div className="w-3.5 h-3.5 rounded-full bg-cyan-glow shadow-[0_0_15px_#00d4ff] animate-pulse" />
-                  <span className="font-space text-[10px] text-cyan-glow font-bold mt-1 bg-black/80 px-1.5 py-0.2 rounded border border-cyan-glow/40">
+                  <div className="w-4 h-4 rounded-full bg-cyan-glow shadow-[0_0_15px_#00d4ff] animate-pulse" />
+                  <span className="font-space text-[10px] text-cyan-glow font-bold mt-1 bg-black/85 px-2 py-0.5 rounded border border-cyan-glow/40 shadow">
                     {activeSat.code}
                   </span>
                 </div>
@@ -251,19 +255,25 @@ export default function MissionControlPreview() {
                 <div
                   className="absolute transition-all duration-75 flex flex-col items-center pointer-events-none z-10"
                   style={{
-                    transform: `translate(${debRadarX}px, ${debRadarY}px)`,
+                    transform: `translate(${debRadarX * 1.15}px, ${debRadarY * 1.15}px)`,
                   }}
                 >
-                  <div className="w-3 h-3 rounded-full bg-alert-critical shadow-[0_0_12px_#ff3b3b] animate-ping" />
-                  <span className="font-space text-[9px] text-alert-critical font-bold mt-1 bg-black/80 px-1.5 py-0.2 rounded border border-alert-critical/40">
+                  <div className="w-3.5 h-3.5 rounded-full bg-alert-critical shadow-[0_0_15px_#ff3b3b] animate-ping" />
+                  <span className="font-space text-[9px] text-alert-critical font-bold mt-1 bg-black/85 px-1.5 py-0.5 rounded border border-alert-critical/40 shadow">
                     {activeSat.conjunctionTarget.targetId}
                   </span>
                 </div>
 
                 {/* Live Relative Distance Overlay Top-Right */}
-                <div className="absolute top-3 right-3 bg-black/85 px-2.5 py-1.5 rounded-xl border border-glass-border text-right pointer-events-none">
-                  <span className="font-space text-[9px] text-muted-gray uppercase block">DYNAMIC RANGE</span>
-                  <span className="font-space text-xs text-star-white font-bold">{currentSeparationKm} km</span>
+                <div className="absolute top-3 right-3 bg-black/85 px-3 py-1.5 rounded-xl border border-glass-border text-right pointer-events-none shadow">
+                  <span className="font-space text-[9px] text-muted-gray uppercase block">SGP4 RANGE</span>
+                  <span className="font-space text-xs text-star-white font-bold font-mono">{currentSeparationKm} km</span>
+                </div>
+
+                {/* Tracking Mode Tag Bottom-Left */}
+                <div className="absolute bottom-3 left-3 bg-black/85 px-2.5 py-1 rounded-lg border border-cyan-glow/30 text-left pointer-events-none flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="font-space text-[9px] text-cyan-glow font-bold uppercase">AODCS RADAR LOCKED</span>
                 </div>
               </div>
             </div>

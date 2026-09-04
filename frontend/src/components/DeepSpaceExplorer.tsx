@@ -34,6 +34,9 @@ import {
   AdityaL1DeepSpaceData,
   Chandrayaan3DeepSpaceData,
   JWSTDeepSpaceData,
+  getChandrayaan3DeepSpaceFallback,
+  getAdityaL1DeepSpaceFallback,
+  getJWSTDeepSpaceFallback,
 } from '../lib/api';
 
 // JWST 18-Hex Mirror Segment Definition
@@ -81,9 +84,9 @@ export default function DeepSpaceExplorer() {
   const { formatMissionTime } = useMission();
 
   const [activeTab, setActiveTab] = useState<'aditya' | 'chandrayaan' | 'jwst'>('chandrayaan');
-  const [adityaData, setAdityaData] = useState<AdityaL1DeepSpaceData | null>(null);
-  const [ch3Data, setCh3Data] = useState<Chandrayaan3DeepSpaceData | null>(null);
-  const [jwstData, setJwstData] = useState<JWSTDeepSpaceData | null>(null);
+  const [adityaData, setAdityaData] = useState<AdityaL1DeepSpaceData>(getAdityaL1DeepSpaceFallback);
+  const [ch3Data, setCh3Data] = useState<Chandrayaan3DeepSpaceData>(getChandrayaan3DeepSpaceFallback);
+  const [jwstData, setJwstData] = useState<JWSTDeepSpaceData>(getJWSTDeepSpaceFallback);
   const [coronaPulse, setCoronaPulse] = useState(0);
   const [liveEpochMs, setLiveEpochMs] = useState<number>(Date.now());
 

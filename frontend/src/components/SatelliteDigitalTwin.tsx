@@ -339,7 +339,7 @@ export default function SatelliteDigitalTwin() {
           {activeTab === 'Dashboard' ? (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 w-full">
               {/* LEFT HUD PANELS (3 cols) */}
-              <div className="lg:col-span-3 border-b lg:border-b-0 lg:border-r border-cyan-glow/10 bg-[#050b12]/80 p-4 sm:p-5 space-y-4">
+              <div className="lg:col-span-3 border-b lg:border-b-0 lg:border-r border-cyan-glow/10 bg-[#050b12]/80 p-4 sm:p-5 space-y-4 flex flex-col justify-between">
                 {/* SATELLITE STATUS CARD */}
                 <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-4 space-y-3">
                   <div className="flex items-center justify-between border-b border-cyan-glow/10 pb-2.5">
@@ -347,45 +347,45 @@ export default function SatelliteDigitalTwin() {
                       SPACECRAFT SPECS
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-space bg-emerald-500/10 text-emerald-400 border border-emerald-500/25 font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                       {activeSat.status}
                     </span>
                   </div>
 
                   <div className="space-y-2 text-xs font-space">
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Asset ID</span>
                       <span className="text-star-white font-bold font-mono">{activeSat.name}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Agency</span>
                       <span className="text-cyan-glow font-bold">{activeSat.agency}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Regime</span>
                       <span className="text-star-white/90 font-medium">{activeSat.orbitType}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Mission Altitude</span>
                       <span className="text-cyan-glow font-bold font-mono">{formatAltitude(altKm, activeSat.altitude)}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Inclination</span>
                       <span className="text-star-white font-bold font-mono">{activeSat.inclination}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Velocity</span>
-                      <span className="text-star-white font-bold font-mono">{activeSat.velocity}</span>
+                      <span className="text-emerald-400 font-bold font-mono">{activeSat.velocity}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Launch Date</span>
-                      <span className="text-star-white/75 font-mono">{activeSat.launchDate}</span>
+                      <span className="text-star-white/80 font-mono">{activeSat.launchDate}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* SYSTEM HEALTH CARD */}
-                <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-4 space-y-3.5">
+                <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-4 space-y-3">
                   <div className="flex items-center justify-between border-b border-cyan-glow/10 pb-2.5">
                     <span className="font-space text-xs tracking-[0.2em] text-cyan-glow uppercase font-bold">
                       SUBSYSTEM HEALTH
@@ -394,7 +394,7 @@ export default function SatelliteDigitalTwin() {
                   </div>
 
                   <div className="flex items-center justify-center py-1">
-                    <div className="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" stroke="rgba(99,199,255,0.12)" strokeWidth="7" fill="none" />
                         <circle
@@ -411,8 +411,8 @@ export default function SatelliteDigitalTwin() {
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="font-space text-xl sm:text-2xl font-bold text-star-white">{activeSat.health}%</span>
-                        <span className={`font-space text-[9px] uppercase tracking-widest font-bold ${activeSat.health > 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        <span className="font-space text-lg sm:text-xl font-bold text-star-white">{activeSat.health}%</span>
+                        <span className={`font-space text-[8px] uppercase tracking-widest font-bold ${activeSat.health > 95 ? 'text-emerald-400' : 'text-amber-400'}`}>
                           {activeSat.health > 95 ? 'HEALTHY' : 'DEGRADED'}
                         </span>
                       </div>
@@ -421,19 +421,50 @@ export default function SatelliteDigitalTwin() {
 
                   <div className="space-y-1.5 text-xs font-space">
                     {[
-                      { label: 'EPS Power Bus', status: `${voltVal.toFixed(1)} V`, color: 'text-cyan-glow' },
-                      { label: 'Thermal Loop', status: `${tempVal.toFixed(1)} °C`, color: 'text-amber-400' },
-                      { label: 'TT&C Carrier', status: activeSat.signal, color: 'text-emerald-400' },
-                      { label: 'ADCS Attitude', status: '3-AXIS LOCKED', color: 'text-cyan-glow' },
-                      { label: 'Payload System', status: 'OPERATIONAL', color: 'text-emerald-400' },
+                      { label: 'EPS Power Bus', status: `${voltVal.toFixed(2)} V`, color: 'text-cyan-glow', pct: 98 },
+                      { label: 'Thermal Loop', status: `${tempVal.toFixed(1)} °C`, color: 'text-amber-400', pct: 94 },
+                      { label: 'TT&C Carrier', status: activeSat.signal, color: 'text-emerald-400', pct: 99 },
+                      { label: 'ADCS Attitude', status: '3-AXIS LOCKED', color: 'text-cyan-glow', pct: 97 },
+                      { label: 'Payload System', status: 'OPERATIONAL', color: 'text-emerald-400', pct: 99 },
                     ].map((sub) => (
-                      <div key={sub.label} className="flex items-center justify-between py-1 border-b border-white/5 last:border-0">
-                        <span className="text-star-white/70 font-medium text-[11px]">{sub.label}</span>
-                        <span className={`font-bold font-mono text-[11px] ${sub.color}`}>
-                          {sub.status}
-                        </span>
+                      <div key={sub.label} className="p-1.5 rounded-lg bg-black/25 border border-white/5 space-y-1">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-star-white/70 font-medium">{sub.label}</span>
+                          <span className={`font-bold font-mono ${sub.color}`}>{sub.status}</span>
+                        </div>
+                        <div className="w-full h-1 rounded-full bg-white/10 overflow-hidden">
+                          <div className="h-full rounded-full bg-cyan-glow" style={{ width: `${sub.pct}%` }} />
+                        </div>
                       </div>
                     ))}
+                  </div>
+                </div>
+
+                {/* AVIONICS & ATTITUDE ACTUATION SUMMARY WIDGET */}
+                <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-cyan-glow/10 pb-1.5">
+                    <span className="font-space text-[11px] tracking-wider text-cyan-glow uppercase font-bold">
+                      AOCS &amp; POWER METRICS
+                    </span>
+                    <span className="text-[9px] font-space text-emerald-400 font-mono font-bold">STAR-TRACKER: LOCK</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-space">
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Reaction Wheel #1</span>
+                      <span className="text-cyan-glow font-bold font-mono">12.4 mNm</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Reaction Wheel #2</span>
+                      <span className="text-cyan-glow font-bold font-mono">8.2 mNm</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Solar Array Tilt</span>
+                      <span className="text-emerald-400 font-bold font-mono">98.4° Nadir</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Star Sensor Head</span>
+                      <span className="text-emerald-400 font-bold font-mono">18 Stars Tracked</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -582,7 +613,7 @@ export default function SatelliteDigitalTwin() {
               </div>
 
               {/* RIGHT HUD PANELS (3 cols) */}
-              <div className="lg:col-span-3 border-t lg:border-t-0 lg:border-l border-cyan-glow/10 bg-[#050b12]/80 p-4 sm:p-5 space-y-4">
+              <div className="lg:col-span-3 border-t lg:border-t-0 lg:border-l border-cyan-glow/10 bg-[#050b12]/80 p-4 sm:p-5 space-y-4 flex flex-col justify-between">
                 {/* OBJECT TELEMETRY CARD */}
                 <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-4 space-y-3">
                   <div className="border-b border-cyan-glow/10 pb-2.5">
@@ -595,37 +626,43 @@ export default function SatelliteDigitalTwin() {
                   </div>
 
                   <div className="space-y-2 text-xs font-space">
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Mission Role</span>
                       <span className="text-star-white font-medium truncate max-w-[140px]">{activeSat.type}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Altitude AGL</span>
                       <span className="text-cyan-glow font-bold font-mono">{formatAltitude(altKm, activeSat.altitude)}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Latitude</span>
                       <span className="text-cyan-glow font-bold font-mono">{activeSat.lat}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Longitude</span>
                       <span className="text-cyan-glow font-bold font-mono">{activeSat.lng}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Inclination</span>
                       <span className="text-star-white font-bold font-mono">{activeSat.inclination}</span>
                     </div>
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
+                      <span className="text-star-white/60 font-medium">Orbital Velocity</span>
+                      <span className="text-emerald-400 font-bold font-mono">{activeSat.velocity}</span>
+                    </div>
                   </div>
 
-                  <div className="pt-2 border-t border-cyan-glow/10">
-                    <span className="font-space text-[10px] text-star-white/60 uppercase tracking-widest block mb-0.5">
-                      OPERATIONAL STATUS
-                    </span>
-                    <span className="font-space text-xs text-emerald-400 font-bold block">
-                      ● {activeSat.status}
-                    </span>
-                    <span className="font-inter text-[10px] text-star-white/60 block mt-0.5">
-                      Telemetry frame synchronized
+                  <div className="pt-2 border-t border-cyan-glow/10 flex items-center justify-between">
+                    <div>
+                      <span className="font-space text-[10px] text-star-white/60 uppercase tracking-widest block">
+                        OPERATIONAL STATUS
+                      </span>
+                      <span className="font-space text-xs text-emerald-400 font-bold block mt-0.5">
+                        ● {activeSat.status}
+                      </span>
+                    </div>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-space bg-cyan-glow/15 text-cyan-glow border border-cyan-glow/30 font-bold">
+                      SGP4 SYNC
                     </span>
                   </div>
                 </div>
@@ -639,19 +676,19 @@ export default function SatelliteDigitalTwin() {
                   </div>
 
                   <div className="space-y-2 text-xs font-space">
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Primary Station</span>
                       <span className="text-star-white font-medium text-right truncate max-w-[140px]">{activeSat.groundStation}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
-                      <span className="text-star-white/60 font-medium">Signal Strength</span>
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
+                      <span className="text-star-white/60 font-medium">Carrier Link</span>
                       <span className="text-emerald-400 font-bold font-mono">{activeSat.signal}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Last Contact</span>
                       <span className="text-star-white/80 font-medium font-mono" suppressHydrationWarning>{formatMissionTime(new Date(Date.now() - 480000), 'hms')}</span>
                     </div>
-                    <div className="flex justify-between items-center py-0.5">
+                    <div className="flex justify-between items-center py-1 px-2 rounded-lg bg-black/30 border border-white/5">
                       <span className="text-star-white/60 font-medium">Next AOS Pass</span>
                       <span className="text-cyan-glow font-semibold font-mono" suppressHydrationWarning>{formatMissionTime(new Date(Date.now() + 1620000), 'hms')}</span>
                     </div>
@@ -665,6 +702,34 @@ export default function SatelliteDigitalTwin() {
                     <div className="p-2 sm:p-2.5 rounded-xl bg-black/50 border border-alert-critical/30">
                       <span className="font-space text-[9px] sm:text-[10px] text-alert-critical uppercase block font-semibold">ALERTS</span>
                       <span className="font-space text-lg sm:text-xl font-bold text-alert-critical">{activeSat.activeAlerts}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* GROUND LINK VECTOR & DOPPLER METRICS WIDGET */}
+                <div className="rounded-2xl border border-cyan-glow/15 bg-space-navy/50 p-3.5 space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-cyan-glow/10 pb-1.5">
+                    <span className="font-space text-[11px] tracking-wider text-cyan-glow uppercase font-bold">
+                      RF LINK &amp; DOPPLER VECTOR
+                    </span>
+                    <span className="text-[9px] font-space text-emerald-400 font-mono font-bold">X-BAND 8.4 GHz</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-space">
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Antenna Azimuth</span>
+                      <span className="text-cyan-glow font-bold font-mono">142.8° SE</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Elevation Look</span>
+                      <span className="text-cyan-glow font-bold font-mono">38.4° AGL</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Doppler Offset</span>
+                      <span className="text-emerald-400 font-bold font-mono">+12.4 kHz</span>
+                    </div>
+                    <div className="p-2 rounded-xl bg-black/40 border border-white/5">
+                      <span className="text-star-white/60 block uppercase">Bit Error Rate</span>
+                      <span className="text-emerald-400 font-bold font-mono">&lt; 1.0e-9 (FEC)</span>
                     </div>
                   </div>
                 </div>

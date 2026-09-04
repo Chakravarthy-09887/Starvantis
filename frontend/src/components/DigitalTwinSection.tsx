@@ -19,6 +19,8 @@ import {
   ChevronRight,
   Crosshair,
   Info,
+  Layers,
+  Activity,
 } from 'lucide-react';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
 import { useMission } from '../context/MissionContext';
@@ -49,7 +51,7 @@ export default function DigitalTwinSection() {
       ? liveTelemetry.solar_power
       : activeSat.solarPower;
 
-  // Tailored interactive subsystems for active satellite
+  // Fully tailored, individualized subsystem definitions with exact percentage origins for pixel-perfect zoom
   const subsystems = [
     {
       id: 'antenna',
@@ -57,14 +59,15 @@ export default function DigitalTwinSection() {
       icon: Wifi,
       status: `Downlink ${activeSat.signal}`,
       color: '#00d4ff',
-      zoom: 2.2,
-      pan: { x: 22, y: -40 },
-      desc: `Steerable parabolic reflector tracking primary ground station (${activeSat.groundStation}).`,
+      zoom: 2.3,
+      originX: 68,
+      originY: 28,
+      desc: `High-gain steerable microwave reflector tracking ${activeSat.groundStation} ground station link.`,
       details: [
-        { key: 'Band Frequency', val: '8.45 GHz (X/Ka Band)' },
-        { key: 'Carrier SNR', val: `${activeSat.telemetryMetrics.commsSnr.current} dB` },
-        { key: 'Bit Error Rate', val: '< 1.0e-9 (FEC Viterbi)' },
-        { key: 'Az / El Gimbal', val: 'AZ 142.8° / EL +38.2°' },
+        { key: 'Downlink Frequency', val: '8.45 GHz (X/Ka Band)' },
+        { key: 'Carrier Signal SNR', val: `${activeSat.telemetryMetrics.commsSnr.current} dB` },
+        { key: 'Bit Error Rate (BER)', val: '< 1.0e-9 (FEC Viterbi)' },
+        { key: 'Antenna Gimbal Look', val: 'AZ 142.8° / EL +38.2°' },
       ],
     },
     {
@@ -73,13 +76,14 @@ export default function DigitalTwinSection() {
       icon: Zap,
       status: `${liveSolar} Generation`,
       color: '#63c7ff',
-      zoom: 1.9,
-      pan: { x: -48, y: 0 },
-      desc: 'Triple-junction gallium arsenide articulated photovoltaic panels with automated solar vector tracking.',
+      zoom: 2.0,
+      originX: 24,
+      originY: 28,
+      desc: 'Articulated triple-junction gallium arsenide photovoltaic panels with autonomous solar vector tracking.',
       details: [
-        { key: 'Array Power Output', val: `${liveSolar}` },
-        { key: 'Solar Incident Angle', val: '88.4° Normal' },
-        { key: 'Wing Efficiency', val: '31.2% BOL' },
+        { key: 'Array Electrical Output', val: `${liveSolar}` },
+        { key: 'Sun Vector Angle', val: '88.4° Nadir Normal' },
+        { key: 'Wing Conversion Eff.', val: '31.2% BOL (GaAs)' },
         { key: 'SADA Drive Status', val: 'CONTINUOUS ROTATION' },
       ],
     },
@@ -89,14 +93,15 @@ export default function DigitalTwinSection() {
       icon: Camera,
       status: activeSat.role.split('&')[0].trim(),
       color: '#10b981',
-      zoom: 2.3,
-      pan: { x: -14, y: 35 },
-      desc: `${activeSat.type} sensor suite operating on continuous mission science duty cycle.`,
+      zoom: 2.4,
+      originX: 46,
+      originY: 62,
+      desc: `${activeSat.name} scientific sensor package operating on 100% continuous duty cycle.`,
       details: [
         { key: 'Payload Instrument', val: activeSat.type },
-        { key: 'Duty Cycle', val: '100% Science Active' },
-        { key: 'Sensor CCD Temp', val: '-18.4 °C (Cryocooled)' },
-        { key: 'Data Rate Downlink', val: '320 Mbps Direct' },
+        { key: 'Operating Mode', val: '100% Science Active' },
+        { key: 'Sensor CCD Temperature', val: '-18.4 °C (Cryocooled)' },
+        { key: 'Direct Data Downlink', val: '320 Mbps Stream' },
       ],
     },
     {
@@ -106,29 +111,31 @@ export default function DigitalTwinSection() {
       status: `${liveTemp} (${liveVolt})`,
       color: parseFloat(liveTemp) > 35 ? '#ff3b3b' : '#38bdf8',
       zoom: 2.5,
-      pan: { x: 0, y: 15 },
-      desc: `Li-ion solid-state cell matrix monitored against physical thermodynamic equilibrium models.`,
+      originX: 50,
+      originY: 50,
+      desc: `Solid-state Li-ion cell matrix and heat pipe radiators maintaining thermodynamic equilibrium.`,
       details: [
-        { key: 'Main Power Bus', val: `${liveVolt}` },
-        { key: 'Battery Pack Temp', val: `${liveTemp}` },
-        { key: 'State of Charge (SOC)', val: '94.8%' },
-        { key: 'Thermal Radiator Loop', val: 'Active Fluid Loop 1' },
+        { key: 'Main 28V Power Bus', val: `${liveVolt}` },
+        { key: 'Battery Cell Temperature', val: `${liveTemp}` },
+        { key: 'State of Charge (SOC)', val: '94.8% Nominal' },
+        { key: 'Thermal Radiator Loop', val: 'Active Loop #1 (Closed)' },
       ],
     },
     {
       id: 'adcs',
-      label: 'ADCS Attitude & Star Tracker',
+      label: 'ADCS Reaction Wheels & Stars',
       icon: Compass,
       status: '3-Axis Locked',
       color: '#fbbf24',
-      zoom: 2.2,
-      pan: { x: 35, y: 18 },
+      zoom: 2.3,
+      originX: 62,
+      originY: 58,
       desc: 'High-precision star tracker optical heads and reaction wheels ensuring sub-arcsecond pointing stability.',
       details: [
-        { key: 'Pointing Jitter', val: `${activeSat.telemetryMetrics.attitudeError.current}°` },
-        { key: 'Reaction Wheels', val: '4x RW Active (12 mNm)' },
-        { key: 'Star Catalog Lock', val: '18 Stars Identified' },
-        { key: 'Kalman Gyro Drift', val: '0.002 °/hr' },
+        { key: '3-Axis Pointing Jitter', val: `${activeSat.telemetryMetrics.attitudeError.current}°` },
+        { key: 'Reaction Wheel Torques', val: 'RW-1: 12.4 mNm, RW-2: 8.2 mNm' },
+        { key: 'Star Catalog Head Lock', val: '18 Stars Tracked (Fine Lock)' },
+        { key: 'Kalman Filter Gyro Drift', val: '0.002 °/hr' },
       ],
     },
     {
@@ -138,26 +145,27 @@ export default function DigitalTwinSection() {
       status: 'Standby Ready',
       color: '#f87171',
       zoom: 2.4,
-      pan: { x: 0, y: -45 },
-      desc: 'Monopropellant hydrazine reaction control thrusters for orbit maintenance and collision avoidance burns.',
+      originX: 50,
+      originY: 22,
+      desc: 'Monopropellant hydrazine reaction control thrusters for orbit station-keeping and collision avoidance burns.',
       details: [
-        { key: 'Propellant Mass', val: '48.2 kg N2H4' },
+        { key: 'Hydrazine Propellant Mass', val: '48.2 kg N2H4 Reserve' },
         { key: 'Chamber Pressure', val: '18.4 bar Nominal' },
-        { key: 'Delta-V Capacity', val: '142.5 m/s Margin' },
-        { key: 'Heater Lines A/B', val: 'NOMINAL (+18°C)' },
+        { key: 'Total Delta-V Margin', val: '142.5 m/s Available' },
+        { key: 'Thruster Valve Heaters', val: 'NOMINAL (+18.2 °C)' },
       ],
     },
   ];
 
   const cadContainerRef = useRef<HTMLDivElement>(null);
 
-  // Attach non-passive wheel event listener safely
+  // Safe non-passive wheel event listener
   useEffect(() => {
     const el = cadContainerRef.current;
     if (!el) return;
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      setZoom((z) => Number(Math.min(2.8, Math.max(0.7, z + (e.deltaY < 0 ? 0.15 : -0.15))).toFixed(2)));
+      setZoom((z) => Number(Math.min(3.0, Math.max(0.7, z + (e.deltaY < 0 ? 0.15 : -0.15))).toFixed(2)));
     };
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => {
@@ -169,7 +177,6 @@ export default function DigitalTwinSection() {
 
   const handleSubClick = (sub: (typeof subsystems)[0]) => {
     if (activeSubId === sub.id) {
-      // Toggle off
       resetView();
     } else {
       setActiveSubId(sub.id);
@@ -209,7 +216,7 @@ export default function DigitalTwinSection() {
             OF YOUR MISSION.
           </h2>
           <p className="font-inter text-xs sm:text-sm text-star-white/60 mt-3 max-w-xl mx-auto leading-relaxed font-light text-center">
-            Interactive holographic digital twin synchronized with real-time spacecraft sensor streams. Click any component below or on the 3D model to zoom and inspect telemetry diagnostics.
+            Interactive holographic digital twin synchronized with real-time spacecraft sensor streams. Click any component below or on the 3D model to zoom directly into that component and inspect telemetry diagnostics.
           </p>
           <motion.div
             className="w-24 h-[1px] bg-gradient-to-r from-transparent via-cyan-glow/50 to-transparent mx-auto mt-4"
@@ -270,12 +277,12 @@ export default function DigitalTwinSection() {
             </div>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="font-space text-[10px] sm:text-xs text-star-white/60 font-mono mr-1 sm:mr-2">
-                MAG: {zoom.toFixed(1)}x
+                MAG: {activeSub ? activeSub.zoom.toFixed(1) : zoom.toFixed(1)}x
               </span>
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => setZoom((z) => Math.min(2.8, z + 0.2))}
+                onClick={() => setZoom((z) => Math.min(3.0, z + 0.2))}
                 className="p-1 sm:p-1.5 rounded-lg border border-cyan-glow/20 text-cyan-glow hover:bg-cyan-glow/15 transition-all cursor-pointer"
                 title="Zoom In"
               >
@@ -302,7 +309,7 @@ export default function DigitalTwinSection() {
             </div>
           </div>
 
-          {/* Holographic Satellite CAD Model Viewport with Direct Click Zoom */}
+          {/* Holographic Satellite CAD Model Viewport with Direct Targeted Click-Zoom */}
           <div
             ref={cadContainerRef}
             className="relative w-full h-[340px] sm:h-[420px] md:h-[460px] flex items-center justify-center overflow-hidden rounded-2xl bg-[#030712] my-3 border border-cyan-glow/20 shadow-[inset_0_0_50px_rgba(99,199,255,0.12)] cursor-crosshair mx-auto select-none"
@@ -317,14 +324,16 @@ export default function DigitalTwinSection() {
               <div className="w-[420px] h-[420px] rounded-full border border-cyan-glow/10 border-dotted" />
             </div>
 
+            {/* Precision Focal Zoom Layer with Dynamic Origin Alignment */}
             <motion.div
               className="relative w-full h-full flex items-center justify-center mx-auto"
-              animate={{
-                scale: zoom,
-                x: activeSub ? activeSub.pan.x * 3.2 : 0,
-                y: activeSub ? activeSub.pan.y * 3.2 : 0,
+              style={{
+                transformOrigin: activeSub ? `${activeSub.originX}% ${activeSub.originY}%` : '50% 50%',
               }}
-              transition={{ type: 'spring', stiffness: 75, damping: 16 }}
+              animate={{
+                scale: activeSub ? activeSub.zoom : zoom,
+              }}
+              transition={{ type: 'spring', stiffness: 80, damping: 18 }}
             >
               <img
                 src={activeSat.image || '/images/digital-satellite.jpg'}
@@ -333,45 +342,45 @@ export default function DigitalTwinSection() {
               />
 
               {/* Interactive Subsystem Telemetry Reticle Hotspots */}
-              {/* 1. TT&C Antenna Pin */}
+              {/* 1. TT&C Antenna Pin (Right Upper Dish) */}
               <div
-                className="absolute top-[30%] right-[42%] cursor-pointer group z-30 p-2"
+                className="absolute top-[28%] left-[68%] -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-30 p-2"
                 onClick={() => handleSubClick(subsystems[0])}
               >
-                <div className="w-5 h-5 rounded-full border border-cyan-glow bg-cyan-glow/40 animate-ping absolute" />
+                <div className={`w-5 h-5 rounded-full border border-cyan-glow bg-cyan-glow/40 absolute ${activeSubId === 'antenna' ? 'animate-ping' : ''}`} />
                 <div className="w-5 h-5 rounded-full border-2 border-white bg-cyan-glow relative shadow-[0_0_15px_#63c7ff] flex items-center justify-center">
                   <Wifi size={10} className="text-black" />
                 </div>
-                <div className="absolute -top-7 -left-12 px-2.5 py-0.5 rounded-lg bg-black/90 border border-cyan-glow/50 text-[10px] font-space text-cyan-glow whitespace-nowrap shadow-lg">
+                <div className="absolute -top-7 -left-12 px-2.5 py-0.5 rounded-lg bg-black/90 border border-cyan-glow/50 text-[10px] font-space text-cyan-glow whitespace-nowrap shadow-lg group-hover:scale-105 transition-transform">
                   TT&amp;C Dish ({activeSat.signal})
                 </div>
               </div>
 
-              {/* 2. GaAs Solar Array Left Wing */}
+              {/* 2. GaAs Solar Array Wing (Left Wing) */}
               <div
-                className="absolute top-[28%] left-[20%] cursor-pointer group z-30 p-2"
+                className="absolute top-[28%] left-[24%] -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-30 p-2"
                 onClick={() => handleSubClick(subsystems[1])}
               >
-                <div className="w-4 h-4 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_12px_#63c7ff] animate-pulse" />
-                <div className="absolute -top-7 -left-8 px-2.5 py-0.5 rounded-lg bg-black/90 border border-cyan-glow/40 text-[10px] font-space text-cyan-glow whitespace-nowrap shadow-lg">
+                <div className={`w-4 h-4 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_12px_#63c7ff] ${activeSubId === 'solar' ? 'animate-ping' : 'animate-pulse'}`} />
+                <div className="absolute -top-7 -left-8 px-2.5 py-0.5 rounded-lg bg-black/90 border border-cyan-glow/40 text-[10px] font-space text-cyan-glow whitespace-nowrap shadow-lg group-hover:scale-105 transition-transform">
                   GaAs Solar ({liveSolar})
                 </div>
               </div>
 
-              {/* 3. Primary Payload Sensor Lens */}
+              {/* 3. Primary Payload Sensor Lens (Lower Center-Left) */}
               <div
-                className="absolute bottom-[34%] left-[44%] cursor-pointer group z-30 p-2"
+                className="absolute top-[62%] left-[46%] -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-30 p-2"
                 onClick={() => handleSubClick(subsystems[2])}
               >
-                <div className="w-4 h-4 rounded-full border border-emerald-400 bg-emerald-400 relative shadow-[0_0_12px_#10b981] animate-pulse" />
-                <div className="absolute -bottom-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-emerald-400/50 text-[10px] font-space text-emerald-400 whitespace-nowrap shadow-lg">
+                <div className={`w-4 h-4 rounded-full border border-emerald-400 bg-emerald-400 relative shadow-[0_0_12px_#10b981] ${activeSubId === 'payload' ? 'animate-ping' : 'animate-pulse'}`} />
+                <div className="absolute -bottom-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-emerald-400/50 text-[10px] font-space text-emerald-400 whitespace-nowrap shadow-lg group-hover:scale-105 transition-transform">
                   Payload Imager
                 </div>
               </div>
 
-              {/* 4. Battery & Thermal Storage Bay */}
+              {/* 4. Battery & Thermal Storage Bay (Center Core) */}
               <div
-                className="absolute top-[48%] left-[48%] cursor-pointer group z-30 p-2"
+                className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-30 p-2"
                 onClick={() => handleSubClick(subsystems[3])}
               >
                 <div
@@ -382,7 +391,7 @@ export default function DigitalTwinSection() {
                   }`}
                 />
                 <div
-                  className={`absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border text-[10px] font-space whitespace-nowrap font-bold shadow-lg ${
+                  className={`absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border text-[10px] font-space whitespace-nowrap font-bold shadow-lg group-hover:scale-105 transition-transform ${
                     parseFloat(liveTemp) > 35
                       ? 'border-alert-critical/60 text-alert-critical'
                       : 'border-cyan-glow/50 text-cyan-glow'
@@ -392,24 +401,24 @@ export default function DigitalTwinSection() {
                 </div>
               </div>
 
-              {/* 5. ADCS Star Tracker */}
+              {/* 5. ADCS Star Tracker (Lower Right) */}
               <div
-                className="absolute bottom-[38%] right-[28%] cursor-pointer group z-30 p-2"
+                className="absolute top-[58%] left-[62%] -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-30 p-2"
                 onClick={() => handleSubClick(subsystems[4])}
               >
                 <div className="w-4 h-4 rounded-full border border-amber-400 bg-amber-400 relative shadow-[0_0_12px_#fbbf24]" />
-                <div className="absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-amber-400/50 text-[10px] font-space text-amber-300 whitespace-nowrap shadow-lg">
+                <div className="absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-amber-400/50 text-[10px] font-space text-amber-300 whitespace-nowrap shadow-lg group-hover:scale-105 transition-transform">
                   ADCS Gyro/Stars
                 </div>
               </div>
 
-              {/* 6. Thruster Pod */}
+              {/* 6. Thruster Pod (Top Center) */}
               <div
-                className="absolute top-[20%] left-[48%] cursor-pointer group z-30 p-2"
+                className="absolute top-[22%] left-[50%] -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-30 p-2"
                 onClick={() => handleSubClick(subsystems[5])}
               >
                 <div className="w-3.5 h-3.5 rounded-full border border-rose-400 bg-rose-500 relative shadow-[0_0_12px_#f43f5e]" />
-                <div className="absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-rose-500/50 text-[10px] font-space text-rose-300 whitespace-nowrap shadow-lg">
+                <div className="absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-rose-500/50 text-[10px] font-space text-rose-300 whitespace-nowrap shadow-lg group-hover:scale-105 transition-transform">
                   RCS Thrusters
                 </div>
               </div>
@@ -473,7 +482,7 @@ export default function DigitalTwinSection() {
                     </span>
                     <button
                       onClick={resetView}
-                      className="px-2.5 py-1 rounded-lg bg-cyan-glow/20 border border-cyan-glow/40 text-cyan-glow text-[10px] font-space hover:bg-cyan-glow/30 transition-colors"
+                      className="px-2.5 py-1 rounded-lg bg-cyan-glow/20 border border-cyan-glow/40 text-cyan-glow text-[10px] font-space hover:bg-cyan-glow/30 transition-colors font-bold"
                     >
                       Reset Zoom
                     </button>

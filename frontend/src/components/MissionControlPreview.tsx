@@ -27,11 +27,11 @@ export default function MissionControlPreview() {
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
   const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry, formatMissionTime, currentClock, timezone } = useMission();
   const [radarStep, setRadarStep] = useState(0);
-  const [tcaSecondsRemaining, setTcaSecondsRemaining] = useState(15676); // ~ 4h 21m 16s
+  const [currentEpochMs, setCurrentEpochMs] = useState<number>(Date.now());
 
   useEffect(() => {
     const clockInterval = setInterval(() => {
-      setTcaSecondsRemaining((prev) => (prev > 0 ? prev - 1 : 15676));
+      setCurrentEpochMs(Date.now());
     }, 1000);
 
     const animInterval = setInterval(() => {
@@ -80,11 +80,21 @@ export default function MissionControlPreview() {
     Math.round(Math.sqrt(Math.pow(satRadarX - debRadarX, 2) + Math.pow(satRadarY - debRadarY, 2)) * 0.15 * 10) / 10
   );
 
-  // TCA formatted
+  // Derive live conjunction TCA target for the active spacecraft
+  // Ephemeris orbit intersection cycle (~95 min orbit with satellite-specific phase)
+  const orbitCycleMs = 5700 * 1000;
+  const satHash = selectedSatelliteId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const cycleOffsetMs = (satHash * 480000) % orbitCycleMs;
+  const currentCycleProgress = (currentEpochMs + cycleOffsetMs) % orbitCycleMs;
+  const tcaRemainingMs = orbitCycleMs - currentCycleProgress;
+  const tcaTargetEpochMs = currentEpochMs + tcaRemainingMs;
+
+  const tcaSecondsRemaining = Math.max(0, Math.floor(tcaRemainingMs / 1000));
   const tcaHours = Math.floor(tcaSecondsRemaining / 3600);
   const tcaMins = Math.floor((tcaSecondsRemaining % 3600) / 60);
   const tcaSecs = tcaSecondsRemaining % 60;
   const tcaString = `${String(tcaHours).padStart(2, '0')}:${String(tcaMins).padStart(2, '0')}:${String(tcaSecs).padStart(2, '0')}`;
+  const tcaTargetTimeFormatted = formatMissionTime(new Date(tcaTargetEpochMs), 'hms');
 
   return (
     <section id="mission-control" className="section-spacing relative overflow-hidden py-20 md:py-28" ref={containerRef}>
@@ -361,7 +371,7 @@ export default function MissionControlPreview() {
               <div>
                 <span className="text-[10px] text-muted-gray uppercase block font-semibold">TCA CONJUNCTION COUNTDOWN</span>
                 <span className="text-sm md:text-base font-bold text-alert-critical tracking-wider font-mono" suppressHydrationWarning>
-                  {tcaString} ({formatMissionTime(new Date(Date.now() + tcaSecondsRemaining * 1000), 'hms')})
+                  {tcaString} ({tcaTargetTimeFormatted})
                 </span>
               </div>
               <div>

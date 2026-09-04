@@ -19,7 +19,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
+  Copy,
   RefreshCw,
   Cpu,
   Volume2,
@@ -105,6 +107,22 @@ export default function AeroCopilotHUD() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const satDropdownRef = useRef<HTMLDivElement>(null);
+  const promptsScrollRef = useRef<HTMLDivElement>(null);
+  const categoriesScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollPrompts = (direction: 'left' | 'right') => {
+    if (promptsScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -240 : 240;
+      promptsScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  const scrollCategories = (direction: 'left' | 'right') => {
+    if (categoriesScrollRef.current) {
+      const scrollAmount = direction === 'left' ? -180 : 180;
+      categoriesScrollRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   // Auto-scroll on new message
   useEffect(() => {
@@ -405,12 +423,12 @@ export default function AeroCopilotHUD() {
           </div>
 
           <div className="flex flex-col text-left">
-            <span className="font-space text-[11px] sm:text-xs font-bold tracking-wider text-cyan-glow flex items-center gap-1">
-              <span>COPILOT</span>
-              <Sparkles size={10} className="text-amber-400 animate-pulse" />
+            <span className="font-space text-xs sm:text-sm font-bold tracking-widest text-cyan-glow flex items-center gap-1.5">
+              <span>JARVIS</span>
+              <Sparkles size={11} className="text-amber-400 animate-pulse" />
             </span>
-            <span className="hidden sm:flex font-mono text-[9px] text-star-white/60 tracking-wider items-center gap-1.5">
-              <span>{isOpen ? 'DOCK' : 'JARVIS'}</span>
+            <span className="hidden sm:flex font-mono text-[9px] text-star-white/70 tracking-wider items-center gap-1.5">
+              <span className="font-semibold text-emerald-400">{isOpen ? 'DOCK' : 'COPILOT'}</span>
               <span className="text-cyan-glow font-bold">• {selectedSatelliteId}</span>
             </span>
           </div>
@@ -590,23 +608,49 @@ export default function AeroCopilotHUD() {
             </div>
 
             {/* Category Filter Chips Bar */}
-            <div className="px-3.5 py-1.5 border-b border-white/5 bg-black/40 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none flex-shrink-0">
-              <div className="flex items-center gap-1.5 flex-shrink-0">
-                {['ALL', 'COLLISION & ORBIT', 'DEEP-SPACE & LUNAR', 'CYBER & POWER'].map((cat) => (
-                  <div
-                    key={cat}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-2 py-0.5 rounded-full text-[9px] font-space tracking-wider uppercase transition-all cursor-pointer ${
-                      activeCategory === cat
-                        ? 'bg-cyan-glow/25 text-cyan-glow font-bold border border-cyan-glow/40 shadow-[0_0_10px_rgba(99,199,255,0.2)]'
-                        : 'text-muted-gray hover:text-star-white hover:bg-white/5'
-                    }`}
-                  >
-                    {cat}
-                  </div>
-                ))}
+            <div className="px-3 py-1.5 border-b border-white/5 bg-black/40 flex items-center justify-between gap-1 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-1 overflow-hidden relative">
+                <button
+                  type="button"
+                  onClick={() => scrollCategories('left')}
+                  className="p-1 rounded-md bg-white/5 hover:bg-cyan-glow/20 text-star-white/70 hover:text-cyan-glow transition-all shrink-0 z-10 cursor-pointer"
+                  title="Scroll categories left"
+                >
+                  <ChevronLeft size={11} />
+                </button>
+                <div
+                  ref={categoriesScrollRef}
+                  onWheel={(e) => {
+                    if (e.deltaY !== 0) {
+                      e.currentTarget.scrollLeft += e.deltaY;
+                    }
+                  }}
+                  className="flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-cyan-glow/30 scrollbar-track-transparent py-0.5 px-1 flex-1 select-none"
+                >
+                  {['ALL', 'COLLISION & ORBIT', 'DEEP-SPACE & LUNAR', 'CYBER & POWER'].map((cat) => (
+                    <div
+                      key={cat}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setActiveCategory(cat)}
+                      className={`px-2 py-0.5 rounded-full text-[9px] font-space tracking-wider uppercase transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                        activeCategory === cat
+                          ? 'bg-cyan-glow/25 text-cyan-glow font-bold border border-cyan-glow/40 shadow-[0_0_10px_rgba(99,199,255,0.2)]'
+                          : 'text-muted-gray hover:text-star-white hover:bg-white/5'
+                      }`}
+                    >
+                      {cat}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => scrollCategories('right')}
+                  className="p-1 rounded-md bg-white/5 hover:bg-cyan-glow/20 text-star-white/70 hover:text-cyan-glow transition-all shrink-0 z-10 cursor-pointer"
+                  title="Scroll categories right"
+                >
+                  <ChevronRight size={11} />
+                </button>
               </div>
 
               {isSpeaking && (
@@ -614,31 +658,57 @@ export default function AeroCopilotHUD() {
                   role="button"
                   tabIndex={0}
                   onClick={stopSpeaking}
-                  className="px-2 py-0.5 rounded-full bg-cyan-glow/20 border border-cyan-glow/40 text-[9px] font-space text-cyan-glow font-bold flex items-center gap-1 cursor-pointer animate-pulse shrink-0"
+                  className="px-2 py-0.5 rounded-full bg-cyan-glow/20 border border-cyan-glow/40 text-[9px] font-space text-cyan-glow font-bold flex items-center gap-1 cursor-pointer animate-pulse shrink-0 ml-1"
                   title="Stop voice readout"
                 >
                   <Volume2 size={10} className="animate-bounce" />
-                  <span>SPEAKING (CLICK STOP)</span>
+                  <span className="hidden sm:inline">STOP</span>
                 </div>
               )}
             </div>
 
-            {/* Quick Action Prompt Chips */}
-            <div className="px-3 py-1.5 border-b border-white/5 bg-black/20 flex items-center gap-2 overflow-x-auto scrollbar-none flex-shrink-0">
-              <span className="text-[9px] font-space font-bold uppercase tracking-wider text-cyan-glow flex items-center gap-1 shrink-0">
-                <Sparkles size={10} /> PROMPTS:
+            {/* Quick Action Prompt Chips with Smooth Horizontal Scroll & Arrows */}
+            <div className="px-2.5 py-1.5 border-b border-white/5 bg-black/30 flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-[9px] font-space font-bold uppercase tracking-wider text-cyan-glow flex items-center gap-1 shrink-0 pl-1">
+                <Sparkles size={10} className="text-amber-400" /> PROMPTS:
               </span>
-              {allPrompts.map((q, idx) => (
-                <div
-                  key={idx}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => handleSend(q)}
-                  className="px-2.5 py-1 rounded-full text-[10px] font-space text-star-white/75 hover:text-star-white bg-white/5 hover:bg-cyan-glow/20 border border-white/10 hover:border-cyan-glow/40 transition-all cursor-pointer shrink-0 whitespace-nowrap"
-                >
-                  {q}
-                </div>
-              ))}
+              <button
+                type="button"
+                onClick={() => scrollPrompts('left')}
+                className="p-1 rounded-md bg-white/5 hover:bg-cyan-glow/20 text-star-white/70 hover:text-cyan-glow transition-all shrink-0 cursor-pointer"
+                title="Scroll prompts left"
+              >
+                <ChevronLeft size={12} />
+              </button>
+              <div
+                ref={promptsScrollRef}
+                onWheel={(e) => {
+                  if (e.deltaY !== 0) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                  }
+                }}
+                className="flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-cyan-glow/30 scrollbar-track-transparent py-1 px-1 flex-1 select-none"
+              >
+                {allPrompts.map((q, idx) => (
+                  <div
+                    key={idx}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleSend(q)}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-space text-star-white/80 hover:text-star-white bg-white/5 hover:bg-cyan-glow/20 border border-white/10 hover:border-cyan-glow/40 transition-all cursor-pointer shrink-0 whitespace-nowrap shadow-sm hover:shadow-[0_0_10px_rgba(99,199,255,0.2)]"
+                  >
+                    {q}
+                  </div>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => scrollPrompts('right')}
+                className="p-1 rounded-md bg-white/5 hover:bg-cyan-glow/20 text-star-white/70 hover:text-cyan-glow transition-all shrink-0 cursor-pointer"
+                title="Scroll prompts right"
+              >
+                <ChevronRight size={12} />
+              </button>
             </div>
 
             {/* Chat Messages Feed */}

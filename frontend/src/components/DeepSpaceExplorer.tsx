@@ -85,6 +85,10 @@ export default function DeepSpaceExplorer() {
   const [ch3Data, setCh3Data] = useState<Chandrayaan3DeepSpaceData | null>(null);
   const [jwstData, setJwstData] = useState<JWSTDeepSpaceData | null>(null);
   const [coronaPulse, setCoronaPulse] = useState(0);
+  const [liveEpochMs, setLiveEpochMs] = useState<number>(Date.now());
+
+  // Aditya-L1 Interactive State
+  const [adityaViewMode, setAdityaViewMode] = useState<'VELC_CORONA' | 'L1_HALO_3D'>('L1_HALO_3D');
 
   // Chandrayaan-3 Interactive State
   const [ch3ViewMode, setCh3ViewMode] = useState<'SURFACE_3D' | 'TRAJECTORY' | 'CHASTE_PROFILE'>('SURFACE_3D');
@@ -122,17 +126,20 @@ export default function DeepSpaceExplorer() {
     return () => clearInterval(interval);
   }, []);
 
-  // Solar flare and ray tracing animation loop
+  // Continuous high-precision live simulation clock based on real epoch seconds
   useEffect(() => {
     const cInterval = setInterval(() => {
-      setCoronaPulse((p) => (p + 1) % 360);
-      setJwstRayAnimation((r) => (r + 1) % 100);
-      setCh3LaserScanPulse((s) => (s + 1) % 100);
-    }, 40);
+      const now = Date.now();
+      setLiveEpochMs(now);
+      const sec = now / 1000;
+      setCoronaPulse((sec * 12) % 360);
+      setJwstRayAnimation((sec * 30) % 100);
+      setCh3LaserScanPulse((sec * 45) % 100);
+    }, 50);
     return () => clearInterval(cInterval);
   }, []);
 
-  // Pragyan rover drive simulation odometer
+  // Pragyan rover drive simulation odometer based on live epoch
   useEffect(() => {
     if (!ch3RoverTraverse) return;
     const rInterval = setInterval(() => {
@@ -1191,93 +1198,361 @@ export default function DeepSpaceExplorer() {
                   </div>
                 </div>
 
-                {/* Simulated Solar Corona Visualizer SVG */}
-                <div className="relative aspect-[16/9] w-full bg-[#05020c] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center">
-                  <svg viewBox="0 0 600 360" className="w-full h-full">
-                    <defs>
-                      <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#ffedd5" stopOpacity="1" />
-                        <stop offset="35%" stopColor="#f59e0b" stopOpacity="0.8" />
-                        <stop offset="70%" stopColor="#ea580c" stopOpacity="0.4" />
-                        <stop offset="100%" stopColor="#7c2d12" stopOpacity="0" />
-                      </radialGradient>
-
-                      <radialGradient id="coronaRays" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.6" />
-                        <stop offset="60%" stopColor="#f97316" stopOpacity="0.2" />
-                        <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
-                      </radialGradient>
-                    </defs>
-
-                    {/* Outer Coronal Streamer Rays */}
-                    {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
-                      const rad = ((deg + coronaPulse * 0.2) * Math.PI) / 180;
-                      const x2 = 300 + Math.cos(rad) * 260;
-                      const y2 = 180 + Math.sin(rad) * 160;
+                {/* Sub-View Navigation Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                  <div className="flex items-center gap-1.5">
+                    {[
+                      { id: 'L1_HALO_3D', label: 'SUN-EARTH L1 ORBIT 3D', icon: Orbit },
+                      { id: 'VELC_CORONA', label: 'VELC SOLAR CORONAGRAPH', icon: Sun },
+                    ].map((btn) => {
+                      const Icon = btn.icon;
+                      const isSel = adityaViewMode === btn.id;
                       return (
-                        <line
-                          key={deg}
-                          x1="300"
-                          y1="180"
-                          x2={x2}
-                          y2={y2}
-                          stroke="url(#coronaRays)"
-                          strokeWidth="24"
-                          strokeLinecap="round"
-                          opacity="0.5"
-                        />
+                        <button
+                          type="button"
+                          key={btn.id}
+                          onClick={() => setAdityaViewMode(btn.id as any)}
+                          className={`px-3 py-1.5 rounded-xl text-[11px] font-space tracking-wider border cursor-pointer transition-all flex items-center gap-1.5 ${
+                            isSel
+                              ? 'bg-amber-500/25 border-amber-400 text-amber-300 font-bold shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                              : 'bg-black/40 border-white/10 text-muted-gray hover:text-star-white'
+                          }`}
+                        >
+                          <Icon size={13} />
+                          <span>{btn.label}</span>
+                        </button>
                       );
                     })}
-
-                    {/* Outer Corona Aura */}
-                    <circle cx="300" cy="180" r="140" fill="url(#sunGlow)" />
-
-                    {/* Occulting Disk (VELC Artificial Eclipse Mask) */}
-                    <circle cx="300" cy="180" r="65" fill="#030814" stroke="#fbbf24" strokeWidth="2" />
-                    <circle cx="300" cy="180" r="62" fill="none" stroke="rgba(251, 191, 36, 0.4)" strokeDasharray="3,3" />
-
-                    {/* Solar Magnetic Loops */}
-                    <path
-                      d="M 270 120 Q 300 80 330 120"
-                      fill="none"
-                      stroke="#f59e0b"
-                      strokeWidth="2.5"
-                      className="animate-pulse"
-                    />
-                    <path
-                      d="M 250 240 Q 300 280 350 240"
-                      fill="none"
-                      stroke="#f97316"
-                      strokeWidth="2"
-                    />
-
-                    {/* Center Annotation */}
-                    <text x="300" y="176" fill="#fbbf24" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                      VELC OCCULTER DISK
-                    </text>
-                    <text x="300" y="192" fill="rgba(232, 237, 242, 0.7)" fontSize="8" fontFamily="'Inter', sans-serif" textAnchor="middle">
-                      R_sun = 1.05 - 3.0 R_solar
-                    </text>
-
-                    {/* Aditya-L1 Spacecraft Node */}
-                    <g transform="translate(510, 180)">
-                      <circle r="7" fill="#fbbf24" className="animate-pulse" />
-                      <circle r="16" fill="none" stroke="#fbbf24" strokeWidth="1.5" opacity="0.8" />
-                      <text x="-12" y="-12" fill="#fbbf24" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="end">
-                        ADITYA-L1 [HALO ORBIT]
-                      </text>
-                      <text x="-12" y="4" fill="rgba(232, 237, 242, 0.8)" fontSize="8" fontFamily="'Inter', sans-serif" textAnchor="end">
-                        1.492M km from Earth
-                      </text>
-                    </g>
-                  </svg>
-
-                  {/* Telemetry HUD overlay in canvas */}
-                  <div className="absolute top-3 left-3 px-3 py-1.5 rounded-xl bg-black/70 border border-white/10 text-[10px] font-space text-star-white flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    <span>CME MONITOR: NO CORONAL MASS EJECTION INGRESS</span>
                   </div>
                 </div>
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 1: SUN-EARTH L1 HALO INTERPLANETARY 3D SYSTEM */}
+                {/* ------------------------------------------------------------- */}
+                {adityaViewMode === 'L1_HALO_3D' && (
+                  <div className="relative aspect-[16/9] w-full bg-[#030612] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center select-none shadow-2xl">
+                    <svg viewBox="0 0 640 360" className="w-full h-full">
+                      <defs>
+                        {/* Sun Surface & Flare Radial Gradient */}
+                        <radialGradient id="sunSphereGrad" cx="40%" cy="40%" r="60%">
+                          <stop offset="0%" stopColor="#ffffff" />
+                          <stop offset="30%" stopColor="#fef08a" />
+                          <stop offset="60%" stopColor="#f59e0b" />
+                          <stop offset="85%" stopColor="#ea580c" />
+                          <stop offset="100%" stopColor="#9a3412" />
+                        </radialGradient>
+                        <radialGradient id="sunCoronaGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#fde047" stopOpacity="0.8" />
+                          <stop offset="45%" stopColor="#f97316" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#7c2d12" stopOpacity="0" />
+                        </radialGradient>
+
+                        {/* Earth Atmospheric Rayleigh Shader */}
+                        <radialGradient id="adityaEarthAtmo" cx="35%" cy="35%" r="65%">
+                          <stop offset="0%" stopColor="#bfdbfe" stopOpacity="0.6" />
+                          <stop offset="65%" stopColor="#3b82f6" stopOpacity="0.3" />
+                          <stop offset="90%" stopColor="#1d4ed8" stopOpacity="0.7" />
+                          <stop offset="100%" stopColor="#60a5fa" stopOpacity="0" />
+                        </radialGradient>
+                        <radialGradient id="adityaEarthOcean" cx="30%" cy="30%" r="70%">
+                          <stop offset="0%" stopColor="#60a5fa" />
+                          <stop offset="30%" stopColor="#2563eb" />
+                          <stop offset="70%" stopColor="#1e3a8a" />
+                          <stop offset="100%" stopColor="#0f172a" />
+                        </radialGradient>
+
+                        {/* Solar Wind Particle Beam */}
+                        <linearGradient id="solarWindBeam" x1="0%" y1="0%" x2="100%" y2="0%">
+                          <stop offset="0%" stopColor="#fde047" stopOpacity="0.8" />
+                          <stop offset="50%" stopColor="#fb923c" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.1" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Deep Interplanetary Starfield */}
+                      <rect width="640" height="360" fill="#030612" />
+                      {[
+                        { x: 30, y: 40, r: 0.9 }, { x: 90, y: 310, r: 1.1 }, { x: 160, y: 60, r: 0.8 },
+                        { x: 230, y: 320, r: 1.2 }, { x: 340, y: 35, r: 1.0 }, { x: 420, y: 330, r: 0.9 },
+                        { x: 520, y: 50, r: 1.3 }, { x: 590, y: 300, r: 0.8 }, { x: 610, y: 80, r: 1.1 },
+                      ].map((st, i) => (
+                        <circle key={i} cx={st.x} cy={st.y} r={st.r} fill="#f8fafc" opacity="0.7" />
+                      ))}
+
+                      {/* Sun-Earth Orbital Baseline Axis */}
+                      <line x1="70" y1="180" x2="600" y2="180" stroke="rgba(255,255,255,0.12)" strokeDasharray="4,4" />
+                      <text x="270" y="195" fill="rgba(255,255,255,0.3)" fontSize="8" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                        SUN-EARTH INTERPLANETARY AXIS (1.000 AU = 149.6M km)
+                      </text>
+
+                      {/* Dynamic Solar Wind Plasma Stream Vectors */}
+                      {[140, 160, 180, 200, 220].map((yLine, idx) => {
+                        const streamOffset = ((liveEpochMs / 25 + idx * 40) % 280);
+                        return (
+                          <g key={idx}>
+                            <line
+                              x1="110"
+                              y1={yLine}
+                              x2="450"
+                              y2={180 + (yLine - 180) * 0.4}
+                              stroke="url(#solarWindBeam)"
+                              strokeWidth="1.2"
+                              strokeDasharray="6,8"
+                              strokeDashoffset={-streamOffset}
+                            />
+                            {/* Fast CME particle */}
+                            <circle
+                              cx={110 + streamOffset * 1.2}
+                              cy={yLine + (180 - yLine) * (streamOffset / 350)}
+                              r="1.8"
+                              fill="#fde047"
+                              opacity="0.8"
+                            />
+                          </g>
+                        );
+                      })}
+
+                      {/* ------------------------------------------------------------- */}
+                      {/* SUN (Photosphere + Dynamic Coronal Flares) */}
+                      {/* ------------------------------------------------------------- */}
+                      <g transform="translate(60, 180)">
+                        {/* Outer Solar Aura */}
+                        <circle r="75" fill="url(#sunCoronaGlow)" className="animate-pulse" />
+                        <circle r="48" fill="url(#sunSphereGrad)" />
+                        
+                        {/* Coronal prominence flares */}
+                        <path d="M 40 -20 Q 55 -30 46 -5 Q 52 10 38 25" fill="none" stroke="#f97316" strokeWidth="2.5" />
+                        <path d="M 35 25 Q 50 40 40 48" fill="none" stroke="#ea580c" strokeWidth="2" />
+                        
+                        <text x="0" y="4" fill="#ffffff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          SUN
+                        </text>
+                        <text x="0" y="65" fill="#fde047" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                          1.39M km Dia
+                        </text>
+                      </g>
+
+                      {/* ------------------------------------------------------------- */}
+                      {/* SUN-EARTH L1 LAGRANGE POINT (1.5M km Sunward of Earth) */}
+                      {/* ------------------------------------------------------------- */}
+                      <g transform="translate(360, 180)">
+                        {/* 3D Halo Orbit Ellipse Path */}
+                        <ellipse
+                          rx="24"
+                          ry="52"
+                          fill="none"
+                          stroke="rgba(251, 191, 36, 0.6)"
+                          strokeWidth="1.5"
+                          strokeDasharray="4,3"
+                          transform="rotate(-15)"
+                        />
+                        
+                        {/* L1 Gravitational Saddle Point Cross */}
+                        <line x1="-8" y1="0" x2="8" y2="0" stroke="#f59e0b" strokeWidth="1" />
+                        <line x1="0" y1="-8" x2="0" y2="8" stroke="#f59e0b" strokeWidth="1" />
+                        <circle r="3" fill="none" stroke="#f59e0b" strokeWidth="1" />
+                        
+                        {/* Aditya-L1 Spacecraft in Halo Orbit */}
+                        {(() => {
+                          const haloAngle = ((liveEpochMs / 1000) * 0.8) % (Math.PI * 2);
+                          const hx = Math.cos(haloAngle) * 22;
+                          const hy = Math.sin(haloAngle) * 48;
+                          return (
+                            <g transform={`translate(${hx}, ${hy})`}>
+                              {/* Solar Array Wings */}
+                              <rect x="-14" y="-3.5" width="28" height="7" rx="1" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.8" />
+                              {/* Central Bus */}
+                              <rect x="-5" y="-5" width="10" height="10" rx="1.5" fill="#f59e0b" stroke="#fbbf24" strokeWidth="1" />
+                              {/* VELC Boresight Vector towards Sun */}
+                              <line x1="-5" y1="0" x2="-22" y2="0" stroke="#fde047" strokeWidth="1.5" strokeDasharray="2,2" />
+                              {/* Spacecraft Pulse */}
+                              <circle cx="0" cy="0" r="10" fill="none" stroke="#f59e0b" strokeWidth="1" className="animate-ping" opacity="0.6" />
+                              
+                              <text x="0" y="-12" fill="#fde047" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                                ADITYA-L1
+                              </text>
+                            </g>
+                          );
+                        })()}
+
+                        <text x="0" y="74" fill="#fbbf24" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          L1 HALO (1.5M km)
+                        </text>
+                      </g>
+
+                      {/* ------------------------------------------------------------- */}
+                      {/* PHOTOREALISTIC 3D EARTH SPHERE & MOON */}
+                      {/* ------------------------------------------------------------- */}
+                      <g transform="translate(480, 180)">
+                        {/* Lunar Orbit Ring */}
+                        <circle r="36" fill="none" stroke="rgba(203, 213, 225, 0.25)" strokeDasharray="3,3" />
+
+                        {/* Moon in Orbit */}
+                        {(() => {
+                          const mAngle = ((liveEpochMs / 1000) * 0.4) % (Math.PI * 2);
+                          const mx = Math.cos(mAngle) * 36;
+                          const my = Math.sin(mAngle) * 36;
+                          return (
+                            <g transform={`translate(${mx}, ${my})`}>
+                              <circle r="4.5" fill="#475569" stroke="#94a3b8" strokeWidth="0.8" />
+                              <circle r="1.5" fill="#cbd5e1" />
+                            </g>
+                          );
+                        })()}
+
+                        {/* Outer Atmospheric Rayleigh Scattering Glow */}
+                        <circle r="26" fill="url(#adityaEarthAtmo)" />
+                        <circle r="22" fill="none" stroke="rgba(147, 197, 253, 0.55)" strokeWidth="2.5" />
+
+                        {/* 3D Ocean Sphere Base */}
+                        <circle r="20" fill="url(#adityaEarthOcean)" />
+
+                        {/* 3D Continental Landmasses (Asia, Africa, India) */}
+                        <path d="M -10 -8 Q -3 -15 8 -10 Q 14 -3 9 8 Q -1 15 -12 8 Z" fill="#15803d" opacity="0.95" />
+                        <path d="M -3 -4 L 3 6 L -6 7 Z" fill="#ca8a04" opacity="0.9" />
+                        <path d="M 7 -14 Q 14 -11 13 -3 Q 7 2 5 -8 Z" fill="#166534" opacity="0.9" />
+
+                        {/* Swirling 3D Cloud Cover */}
+                        <path d="M -14 -6 Q -4 -11 10 -4 Q 14 5 5 12 Q -7 8 -14 3 Z" fill="#ffffff" opacity="0.6" />
+                        <path d="M -8 5 Q 3 10 11 6" stroke="#ffffff" strokeWidth="1.8" fill="none" opacity="0.75" />
+
+                        {/* 3D Curved Terminator Shadow (Day side sunlit on Left, Night on Right) */}
+                        <path d="M 0 -20 A 20 20 0 0 1 0 20 Q 9 0 0 -20 Z" fill="#020617" opacity="0.72" />
+
+                        {/* Night-Side City Lights */}
+                        <circle cx="6" cy="-3" r="0.7" fill="#fef08a" opacity="0.9" />
+                        <circle cx="10" cy="5" r="0.9" fill="#fde047" opacity="0.8" />
+
+                        {/* Specular Limb Edge */}
+                        <circle r="20" fill="none" stroke="rgba(255, 255, 255, 0.45)" strokeWidth="0.8" />
+
+                        <text x="0" y="32" fill="#93c5fd" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          EARTH
+                        </text>
+                      </g>
+
+                      {/* ------------------------------------------------------------- */}
+                      {/* SUN-EARTH L2 (JWST Space Telescope at 1.5M km Anti-Sun) */}
+                      {/* ------------------------------------------------------------- */}
+                      <g transform="translate(580, 180)">
+                        <ellipse rx="12" ry="28" fill="none" stroke="rgba(236, 72, 153, 0.5)" strokeWidth="1" strokeDasharray="3,2" />
+                        <line x1="-5" y1="0" x2="5" y2="0" stroke="#ec4899" strokeWidth="1" />
+                        <line x1="0" y1="-5" x2="0" y2="5" stroke="#ec4899" strokeWidth="1" />
+                        <circle cx="0" cy="-14" r="3.5" fill="#ec4899" className="animate-pulse" />
+                        
+                        <text x="0" y="36" fill="#f472b6" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          L2 (JWST)
+                        </text>
+                      </g>
+
+                      {/* Bottom Distance Legend Scale */}
+                      <g transform="translate(20, 315)">
+                        <rect width="600" height="30" rx="6" fill="rgba(0,0,0,0.75)" stroke="rgba(255,255,255,0.1)" />
+                        <text x="15" y="19" fill="#94a3b8" fontSize="8" fontFamily="'Space Grotesk', sans-serif">
+                          ISRO ADITYA-L1 TELEMETRY // VELC + SUIT + ASPEX // CONTINUOUS SUN-EARTH L1 EQUILIBRIUM
+                        </text>
+                      </g>
+                    </svg>
+
+                    {/* HUD Status Overlay */}
+                    <div className="absolute top-3 left-3 px-3 py-1.5 rounded-xl bg-black/80 border border-amber-400/30 text-[10px] font-space text-star-white flex items-center gap-2 backdrop-blur-md">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span>SOLAR WIND VELOCITY: <strong className="text-amber-400">438.2 km/s</strong> // IMF Bz: <strong className="text-cyan-glow">-3.8 nT</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* SUB-VIEW 2: VELC SOLAR CORONAGRAPH SVG CANVAS */}
+                {/* ------------------------------------------------------------- */}
+                {adityaViewMode === 'VELC_CORONA' && (
+                  <div className="relative aspect-[16/9] w-full bg-[#05020c] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center">
+                    <svg viewBox="0 0 600 360" className="w-full h-full">
+                      <defs>
+                        <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#ffedd5" stopOpacity="1" />
+                          <stop offset="35%" stopColor="#f59e0b" stopOpacity="0.8" />
+                          <stop offset="70%" stopColor="#ea580c" stopOpacity="0.4" />
+                          <stop offset="100%" stopColor="#7c2d12" stopOpacity="0" />
+                        </radialGradient>
+
+                        <radialGradient id="coronaRays" cx="50%" cy="50%" r="50%">
+                          <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.6" />
+                          <stop offset="60%" stopColor="#f97316" stopOpacity="0.2" />
+                          <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+                        </radialGradient>
+                      </defs>
+
+                      {/* Outer Coronal Streamer Rays */}
+                      {[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map((deg) => {
+                        const rad = ((deg + coronaPulse * 0.2) * Math.PI) / 180;
+                        const x2 = 300 + Math.cos(rad) * 260;
+                        const y2 = 180 + Math.sin(rad) * 160;
+                        return (
+                          <line
+                            key={deg}
+                            x1="300"
+                            y1="180"
+                            x2={x2}
+                            y2={y2}
+                            stroke="url(#coronaRays)"
+                            strokeWidth="24"
+                            strokeLinecap="round"
+                            opacity="0.5"
+                          />
+                        );
+                      })}
+
+                      {/* Outer Corona Aura */}
+                      <circle cx="300" cy="180" r="140" fill="url(#sunGlow)" />
+
+                      {/* Occulting Disk (VELC Artificial Eclipse Mask) */}
+                      <circle cx="300" cy="180" r="65" fill="#030814" stroke="#fbbf24" strokeWidth="2" />
+                      <circle cx="300" cy="180" r="62" fill="none" stroke="rgba(251, 191, 36, 0.4)" strokeDasharray="3,3" />
+
+                      {/* Solar Magnetic Loops */}
+                      <path
+                        d="M 270 120 Q 300 80 330 120"
+                        fill="none"
+                        stroke="#f59e0b"
+                        strokeWidth="2.5"
+                        className="animate-pulse"
+                      />
+                      <path
+                        d="M 250 240 Q 300 280 350 240"
+                        fill="none"
+                        stroke="#f97316"
+                        strokeWidth="2"
+                      />
+
+                      {/* Center Annotation */}
+                      <text x="300" y="176" fill="#fbbf24" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                        VELC OCCULTER DISK
+                      </text>
+                      <text x="300" y="192" fill="rgba(232, 237, 242, 0.7)" fontSize="8" fontFamily="'Inter', sans-serif" textAnchor="middle">
+                        R_sun = 1.05 - 3.0 R_solar
+                      </text>
+
+                      {/* Aditya-L1 Spacecraft Node */}
+                      <g transform="translate(510, 180)">
+                        <circle r="7" fill="#fbbf24" className="animate-pulse" />
+                        <circle r="16" fill="none" stroke="#fbbf24" strokeWidth="1.5" opacity="0.8" />
+                        <text x="-12" y="-12" fill="#fbbf24" fontSize="10" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="end">
+                          ADITYA-L1 [HALO ORBIT]
+                        </text>
+                        <text x="-12" y="4" fill="rgba(232, 237, 242, 0.8)" fontSize="8" fontFamily="'Inter', sans-serif" textAnchor="end">
+                          1.492M km from Earth
+                        </text>
+                      </g>
+                    </svg>
+
+                    {/* Telemetry HUD overlay in canvas */}
+                    <div className="absolute top-3 left-3 px-3 py-1.5 rounded-xl bg-black/70 border border-white/10 text-[10px] font-space text-star-white flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      <span>CME MONITOR: NO CORONAL MASS EJECTION INGRESS</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Subsystem Metric Sliders */}
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">

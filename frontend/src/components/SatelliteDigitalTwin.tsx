@@ -175,7 +175,7 @@ export default function SatelliteDigitalTwin() {
     ? parseFloat(liveTelemetry.yaw.replace(/[+°]/g, '')) || 142.5
     : 142.5;
 
-  // Interactive component configs with 3D pan/zoom offsets and deep live telemetry
+  // Interactive component configs with exact transform origins and deep live telemetry
   const missionComponents = useMemo(() => [
     {
       id: 'solar',
@@ -184,7 +184,8 @@ export default function SatelliteDigitalTwin() {
       icon: Zap,
       color: '#63c7ff',
       zoom: 2.0,
-      pan: { x: -45, y: 0 },
+      originX: 24,
+      originY: 28,
       status: `${powerVal.toFixed(2)} kW Generation`,
       desc: 'Articulated triple-junction gallium arsenide photovoltaic arrays with automated solar vector nadir tracking.',
       metrics: [
@@ -201,7 +202,8 @@ export default function SatelliteDigitalTwin() {
       icon: Wifi,
       color: '#10b981',
       zoom: 2.3,
-      pan: { x: 25, y: -35 },
+      originX: 68,
+      originY: 28,
       status: `Carrier ${activeSat.signal}`,
       desc: `High-gain steerable microwave reflector maintaining telemetry downlink with ${activeSat.groundStation}.`,
       metrics: [
@@ -218,7 +220,8 @@ export default function SatelliteDigitalTwin() {
       icon: Camera,
       color: '#f59e0b',
       zoom: 2.4,
-      pan: { x: -15, y: 35 },
+      originX: 46,
+      originY: 62,
       status: activeSat.type,
       desc: `${activeSat.name} mission scientific optical/radar sensor package configured for continuous duty.`,
       metrics: [
@@ -235,7 +238,8 @@ export default function SatelliteDigitalTwin() {
       icon: Thermometer,
       color: '#00d4ff',
       zoom: 2.5,
-      pan: { x: 0, y: 15 },
+      originX: 50,
+      originY: 50,
       status: `${tempVal.toFixed(1)} °C (${voltVal.toFixed(2)} V)`,
       desc: 'Solid-state battery cell matrix and thermal radiator heat pipes balancing orbital sun/eclipse cycles.',
       metrics: [
@@ -251,8 +255,9 @@ export default function SatelliteDigitalTwin() {
       tag: 'ATTITUDE / ADCS',
       icon: Compass,
       color: '#a78bfa',
-      zoom: 2.2,
-      pan: { x: 35, y: 18 },
+      zoom: 2.3,
+      originX: 62,
+      originY: 58,
       status: '3-Axis Lock',
       desc: 'Autonomous attitude determination and control subsystem with star trackers and momentum exchange wheels.',
       metrics: [
@@ -623,12 +628,16 @@ export default function SatelliteDigitalTwin() {
                     <div className="w-[440px] h-[440px] sm:w-[500px] sm:h-[500px] rounded-full border border-cyan-glow/15 border-dotted" />
                   </div>
 
-                  {/* High-Resolution Unique Satellite Hologram Model with Spring Zoom/Pan */}
-                  <div
-                    className="relative w-full h-full flex items-center justify-center mx-auto transition-transform duration-500 ease-out"
+                  {/* High-Resolution Unique Satellite Hologram Model with Precision Focal Zoom */}
+                  <motion.div
+                    className="relative w-full h-full flex items-center justify-center mx-auto"
                     style={{
-                      transform: `scale(${zoomLevel}) translate(${activeComponent ? activeComponent.pan.x : 0}px, ${activeComponent ? activeComponent.pan.y : 0}px)`,
+                      transformOrigin: activeComponent ? `${activeComponent.originX}% ${activeComponent.originY}%` : '50% 50%',
                     }}
+                    animate={{
+                      scale: activeComponent ? activeComponent.zoom : zoomLevel,
+                    }}
+                    transition={{ type: 'spring', stiffness: 80, damping: 18 }}
                   >
                     <img
                       src={activeSat.image || '/images/satellites/sentinel6a.jpg'}
@@ -639,10 +648,10 @@ export default function SatelliteDigitalTwin() {
                     {/* Subsystem Telemetry Interactive Callouts */}
                     {/* 1. Solar Array Pin */}
                     <div
-                      className="absolute top-[25%] left-[18%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      className="absolute top-[28%] left-[24%] -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto cursor-pointer group p-2"
                       onClick={() => handleComponentSelect(missionComponents[0])}
                     >
-                      <div className="w-4 h-4 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_12px_#63c7ff] animate-pulse" />
+                      <div className={`w-4 h-4 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_12px_#63c7ff] ${selectedComponentId === 'solar' ? 'animate-ping' : 'animate-pulse'}`} />
                       <div className="absolute -top-7 -left-10 px-2 py-0.5 rounded bg-black/90 border border-cyan-glow/40 text-[9px] font-space text-cyan-glow whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
                         GaAs Solar: {powerVal.toFixed(2)} kW
                       </div>
@@ -650,10 +659,10 @@ export default function SatelliteDigitalTwin() {
 
                     {/* 2. TT&C Reflector Antenna Pin */}
                     <div
-                      className="absolute top-[28%] right-[18%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      className="absolute top-[28%] left-[68%] -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto cursor-pointer group p-2"
                       onClick={() => handleComponentSelect(missionComponents[1])}
                     >
-                      <div className="w-4 h-4 rounded-full border border-emerald-400 bg-emerald-400 relative shadow-[0_0_12px_#10b981] animate-pulse" />
+                      <div className={`w-4 h-4 rounded-full border border-emerald-400 bg-emerald-400 relative shadow-[0_0_12px_#10b981] ${selectedComponentId === 'antenna' ? 'animate-ping' : 'animate-pulse'}`} />
                       <div className="absolute -top-7 -right-6 px-2 py-0.5 rounded bg-black/90 border border-emerald-400/40 text-[9px] font-space text-emerald-400 whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
                         TT&amp;C Link ({activeSat.signal})
                       </div>
@@ -661,10 +670,10 @@ export default function SatelliteDigitalTwin() {
 
                     {/* 3. Primary Payload Sensor Pin */}
                     <div
-                      className="absolute bottom-[30%] left-[45%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      className="absolute top-[62%] left-[46%] -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto cursor-pointer group p-2"
                       onClick={() => handleComponentSelect(missionComponents[2])}
                     >
-                      <div className="w-4 h-4 rounded-full border border-amber-400 bg-amber-400 relative shadow-[0_0_12px_#f59e0b] animate-pulse" />
+                      <div className={`w-4 h-4 rounded-full border border-amber-400 bg-amber-400 relative shadow-[0_0_12px_#f59e0b] ${selectedComponentId === 'payload' ? 'animate-ping' : 'animate-pulse'}`} />
                       <div className="absolute -bottom-7 -left-8 px-2 py-0.5 rounded bg-black/90 border border-amber-400/40 text-[9px] font-space text-amber-400 whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
                         Payload Sensor // Active
                       </div>
@@ -672,7 +681,7 @@ export default function SatelliteDigitalTwin() {
 
                     {/* 4. Power EPS Bus Pin */}
                     <div
-                      className="absolute top-[48%] left-[48%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto cursor-pointer group p-2"
                       onClick={() => handleComponentSelect(missionComponents[3])}
                     >
                       <div className="w-4 h-4 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_12px_#00d4ff]" />
@@ -683,7 +692,7 @@ export default function SatelliteDigitalTwin() {
 
                     {/* 5. ADCS Star Tracker Pin */}
                     <div
-                      className="absolute bottom-[38%] right-[28%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      className="absolute top-[58%] left-[62%] -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-auto cursor-pointer group p-2"
                       onClick={() => handleComponentSelect(missionComponents[4])}
                     >
                       <div className="w-4 h-4 rounded-full border border-purple-400 bg-purple-400 relative shadow-[0_0_12px_#c084fc]" />
@@ -691,7 +700,7 @@ export default function SatelliteDigitalTwin() {
                         ADCS Tracker
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
 
                   {/* Corner HUD Overlays */}
                   <div className="absolute top-3 left-3 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-black/70 border border-cyan-glow/20 text-[9px] sm:text-[10px] font-space text-cyan-glow pointer-events-none flex items-center gap-1.5">

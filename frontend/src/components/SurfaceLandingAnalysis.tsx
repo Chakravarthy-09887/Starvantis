@@ -303,26 +303,134 @@ export default function SurfaceLandingAnalysis() {
                 ))}
 
                 {/* ------------------------------------------------------------- */}
-                {/* INDIVIDUALIZED ENVIRONMENT 1: SHIV SHAKTI POINT (LUNAR HIGHLAND) */}
+                {/* MODE 1: LIDAR DEM SLOPE HEATMAP OVERLAY */}
+                {/* ------------------------------------------------------------- */}
+                {reconViewMode === 'LIDAR_DEM' && (
+                  <g>
+                    {/* DEM False-Color Elevation Slope Matrix */}
+                    <rect width="640" height="400" fill="url(#lidarSlopeGrad)" opacity="0.35" />
+                    
+                    {/* Iso-Elevation Contour Lines with Elevation Markers */}
+                    {[80, 140, 200, 260, 320].map((cy, idx) => (
+                      <g key={idx} fill="none" stroke="#10b981" strokeWidth="1.2" opacity="0.65">
+                        <path d={`M 20 ${cy} Q 180 ${cy - 40} 340 ${cy + 15} T 620 ${cy - 10}`} />
+                        <text x="35" y={cy - 4} fill="#10b981" fontSize="7" fontFamily="'Space Grotesk', sans-serif">
+                          {(parseFloat(selectedSite.elevation) + idx * 0.3).toFixed(2)} km
+                        </text>
+                      </g>
+                    ))}
+
+                    {/* Slope Hazard Zones (< 5° Safe Green, 5-12° Warning Amber, >12° Critical Red) */}
+                    <circle cx="210" cy="140" r="42" fill="none" stroke="#fbbf24" strokeWidth="1.5" strokeDasharray="4,2" />
+                    <circle cx="490" cy="160" r="50" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeDasharray="3,2" />
+                    <circle cx="330" cy="270" r="60" fill="none" stroke="#10b981" strokeWidth="2" />
+                  </g>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* MODE 2: OHRC 0.25M HIGH-RESOLUTION OPTICAL RECON */}
+                {/* ------------------------------------------------------------- */}
+                {reconViewMode === 'OPTICAL_OHRC' && (
+                  <g>
+                    {/* Optical Monochromatic Regolith Surface Texture */}
+                    <rect width="640" height="400" fill="#0b0f19" />
+
+                    {/* High-Contrast Crater Shadows & Ejecta Blankets */}
+                    <ellipse cx="210" cy="140" rx="36" ry="24" fill="#020408" stroke="#cbd5e1" strokeWidth="1.5" />
+                    <ellipse cx="490" cy="160" rx="48" ry="32" fill="#020408" stroke="#cbd5e1" strokeWidth="1.5" />
+                    <ellipse cx="330" cy="300" rx="28" ry="18" fill="#020408" stroke="#94a3b8" strokeWidth="1" />
+
+                    {/* AI Autonomous Boulder Detection Bounding Boxes */}
+                    {[
+                      { x: 180, y: 120, w: 22, h: 22, tag: 'B-01: 0.18m (SAFE)', ok: true },
+                      { x: 260, y: 220, w: 28, h: 28, tag: 'B-02: 0.24m (SAFE)', ok: true },
+                      { x: 460, y: 130, w: 42, h: 42, tag: 'B-03: 0.85m (HAZARD)', ok: false },
+                      { x: 380, y: 240, w: 18, h: 18, tag: 'B-04: 0.12m (SAFE)', ok: true },
+                    ].map((b, i) => (
+                      <g key={i}>
+                        <rect
+                          x={b.x}
+                          y={b.y}
+                          width={b.w}
+                          height={b.h}
+                          fill={b.ok ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.25)'}
+                          stroke={b.ok ? '#10b981' : '#ef4444'}
+                          strokeWidth="1.2"
+                          rx="2"
+                        />
+                        <text
+                          x={b.x}
+                          y={b.y - 4}
+                          fill={b.ok ? '#10b981' : '#ef4444'}
+                          fontSize="7"
+                          fontFamily="'Space Grotesk', sans-serif"
+                          fontWeight="bold"
+                        >
+                          {b.tag}
+                        </text>
+                      </g>
+                    ))}
+
+                    {/* Camera Focal Reticle */}
+                    <circle cx="320" cy="200" r="70" fill="none" stroke="rgba(255, 255, 255, 0.3)" strokeWidth="1" strokeDasharray="6,4" />
+                    <line x1="320" y1="110" x2="320" y2="290" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="1" />
+                    <line x1="230" y1="200" x2="410" y2="200" stroke="rgba(255, 255, 255, 0.2)" strokeWidth="1" />
+                  </g>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* MODE 3: 3D CONTOUR WIREFRAME PERSPECTIVE & LASER SCAN */}
+                {/* ------------------------------------------------------------- */}
+                {reconViewMode === 'CONTOUR_3D' && (
+                  <g>
+                    {/* 3D Perspective Wireframe Mesh */}
+                    <g fill="none" stroke="#00d4ff" strokeWidth="1" opacity="0.55">
+                      {[100, 140, 180, 220, 260, 300, 340, 380].map((yLine, idx) => (
+                        <path
+                          key={idx}
+                          d={`M 20 ${yLine} C 180 ${yLine - 25 * Math.sin(idx)}, 360 ${yLine + 20 * Math.cos(idx)}, 620 ${yLine}`}
+                        />
+                      ))}
+                      {[60, 120, 180, 240, 300, 360, 420, 480, 540, 600].map((xLine, idx) => (
+                        <line
+                          key={idx}
+                          x1={xLine}
+                          y1="60"
+                          x2={xLine + (xLine - 320) * 0.15}
+                          y2="380"
+                        />
+                      ))}
+                    </g>
+
+                    {/* Dynamic 3D Laser Altimeter Grid Sweep */}
+                    <rect
+                      x="220"
+                      y="140"
+                      width="200"
+                      height="120"
+                      rx="8"
+                      fill="rgba(0, 212, 255, 0.12)"
+                      stroke="#00d4ff"
+                      strokeWidth="1.5"
+                      strokeDasharray="5,3"
+                    />
+                    <text x="320" y="195" fill="#00d4ff" fontSize="9" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                      4.0 KM x 2.4 KM LANDING ENVELOPE
+                    </text>
+                    <text x="320" y="210" fill="#38bdf8" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" textAnchor="middle">
+                      MEAN SLOPE: {selectedSite.slope}
+                    </text>
+                  </g>
+                )}
+
+                {/* ------------------------------------------------------------- */}
+                {/* INDIVIDUALIZED ENVIRONMENT BACKDROPS */}
                 {/* ------------------------------------------------------------- */}
                 {selectedSite.id === 'SITE-SHIV-SHAKTI' && (
                   <g>
                     {/* Soft highland regolith hills */}
-                    <path d="M 0 260 Q 140 180 320 250 T 640 230 L 640 400 L 0 400 Z" fill="#0f172a" opacity="0.7" />
-                    <path d="M 0 310 Q 180 260 360 300 T 640 280 L 640 400 L 0 400 Z" fill="#1e293b" opacity="0.8" />
-                    {/* Low-slope elevation contour lines */}
-                    <g fill="none" stroke="#10b981" strokeWidth="1.2" opacity="0.65">
-                      <path d="M 40 290 Q 200 230 380 280 T 600 270" />
-                      <path d="M 60 260 Q 220 200 400 250 T 580 240" />
-                      <path d="M 80 230 Q 240 170 420 220 T 560 210" />
-                      <path d="M 120 190 Q 280 140 440 180 T 520 170" />
-                    </g>
-                    {/* Gentle micro-craters */}
-                    <circle cx="210" cy="140" r="32" fill="url(#craterShade)" stroke="#475569" strokeWidth="1" />
-                    <circle cx="490" cy="160" r="44" fill="url(#craterShade)" stroke="#475569" strokeWidth="1" />
-                    <circle cx="150" cy="320" r="22" fill="url(#craterShade)" stroke="#475569" strokeWidth="1" />
-                    <circle cx="530" cy="310" r="28" fill="url(#craterShade)" stroke="#475569" strokeWidth="1" />
-                    {/* Chandrayaan-3 Touchdown Marker Flag */}
+                    <path d="M 0 260 Q 140 180 320 250 T 640 230 L 640 400 L 0 400 Z" fill="#0f172a" opacity="0.6" />
+                    <path d="M 0 310 Q 180 260 360 300 T 640 280 L 640 400 L 0 400 Z" fill="#1e293b" opacity="0.7" />
                     <g transform="translate(332, 304)">
                       <circle r="14" fill="#10b981" opacity="0.25" className="animate-ping" />
                       <circle r="6" fill="#10b981" />
@@ -334,26 +442,9 @@ export default function SurfaceLandingAnalysis() {
                   </g>
                 )}
 
-                {/* ------------------------------------------------------------- */}
-                {/* INDIVIDUALIZED ENVIRONMENT 2: MALAPERT MOUNTAIN PEAK OF LIGHT */}
-                {/* ------------------------------------------------------------- */}
                 {selectedSite.id === 'SITE-MALAPERT' && (
                   <g>
-                    {/* Mountain Ridge Backdrop */}
                     <polygon points="120,400 310,90 480,400" fill="url(#eternalLightGrad)" stroke="#38bdf8" strokeWidth="1.5" />
-                    <polygon points="0,400 160,180 340,400" fill="#0b172a" stroke="rgba(255,255,255,0.15)" />
-                    <polygon points="320,400 490,160 640,400" fill="#0f172a" stroke="rgba(255,255,255,0.15)" />
-                    {/* Sunlight Rays of Eternal Light (98% Solar Illumination) */}
-                    <line x1="310" y1="90" x2="160" y2="0" stroke="#fde047" strokeWidth="2" opacity="0.7" strokeDasharray="5,3" />
-                    <line x1="310" y1="90" x2="310" y2="0" stroke="#fde047" strokeWidth="2" opacity="0.7" strokeDasharray="5,3" />
-                    <line x1="310" y1="90" x2="460" y2="0" stroke="#fde047" strokeWidth="2" opacity="0.7" strokeDasharray="5,3" />
-                    {/* Peak Contour Rings */}
-                    <g fill="none" stroke="#00d4ff" strokeWidth="1.2" opacity="0.75">
-                      <ellipse cx="310" cy="180" rx="60" ry="24" />
-                      <ellipse cx="310" cy="230" rx="110" ry="42" />
-                      <ellipse cx="310" cy="290" rx="170" ry="65" />
-                      <ellipse cx="310" cy="350" rx="240" ry="90" />
-                    </g>
                     <g transform="translate(307, 352)">
                       <circle r="12" fill="#00d4ff" opacity="0.3" className="animate-ping" />
                       <circle r="6" fill="#00d4ff" />
@@ -365,24 +456,10 @@ export default function SurfaceLandingAnalysis() {
                   </g>
                 )}
 
-                {/* ------------------------------------------------------------- */}
-                {/* INDIVIDUALIZED ENVIRONMENT 3: SHACKLETON CRATER COLD TRAP */}
-                {/* ------------------------------------------------------------- */}
                 {selectedSite.id === 'SITE-SHACKLETON' && (
                   <g>
-                    {/* Deep Crater Abyss (Pitch Black Interior with Shimmering Ice Deposits) */}
-                    <ellipse cx="320" cy="220" rx="260" ry="150" fill="#000000" stroke="#f59e0b" strokeWidth="2" />
+                    <ellipse cx="320" cy="220" rx="260" ry="150" fill="#000000" stroke="#f59e0b" strokeWidth="2" opacity="0.7" />
                     <ellipse cx="320" cy="220" rx="180" ry="100" fill="url(#coldTrapIce)" stroke="#0284c7" strokeWidth="1.5" />
-                    <ellipse cx="320" cy="220" rx="90" ry="50" fill="#000000" />
-                    {/* Ice Crystal Deposits Shimmer */}
-                    <circle cx="280" cy="210" r="12" fill="#67e8f9" opacity="0.6" className="animate-pulse" />
-                    <circle cx="350" cy="235" r="16" fill="#67e8f9" opacity="0.6" className="animate-pulse" />
-                    <circle cx="310" cy="245" r="8" fill="#38bdf8" opacity="0.8" />
-                    {/* Rim Crest Slope Contours */}
-                    <g fill="none" stroke="#f59e0b" strokeWidth="1.2" opacity="0.7">
-                      <ellipse cx="320" cy="220" rx="285" ry="165" strokeDasharray="4,3" />
-                      <ellipse cx="320" cy="220" rx="310" ry="180" strokeDasharray="3,3" />
-                    </g>
                     <g transform="translate(320, 372)">
                       <circle r="14" fill="#f59e0b" opacity="0.3" className="animate-ping" />
                       <circle r="6" fill="#f59e0b" />
@@ -394,27 +471,9 @@ export default function SurfaceLandingAnalysis() {
                   </g>
                 )}
 
-                {/* ------------------------------------------------------------- */}
-                {/* INDIVIDUALIZED ENVIRONMENT 4: JEZERO CRATER RIVER DELTA */}
-                {/* ------------------------------------------------------------- */}
                 {selectedSite.id === 'SITE-JEZERO' && (
                   <g>
-                    {/* Martian Lacustrine Alluvial Delta Fan */}
-                    <path
-                      d="M 120 40 Q 280 180 320 280 T 520 380 L 120 380 Z"
-                      fill="url(#jezeroDeltaGrad)"
-                      opacity="0.8"
-                    />
-                    {/* Ancient Braided River Tributary Channels */}
-                    <path d="M 120 40 Q 180 110 240 180 Q 280 230 320 320" fill="none" stroke="#fdba74" strokeWidth="3" opacity="0.85" />
-                    <path d="M 240 180 Q 340 220 410 320" fill="none" stroke="#fdba74" strokeWidth="2.2" opacity="0.75" />
-                    <path d="M 190 140 Q 150 220 180 320" fill="none" stroke="#fdba74" strokeWidth="1.8" opacity="0.65" />
-                    {/* Martian Clay Terraces */}
-                    <g fill="none" stroke="#ea580c" strokeWidth="1.4" opacity="0.7">
-                      <path d="M 160 210 Q 280 250 420 210" />
-                      <path d="M 140 250 Q 280 290 460 250" />
-                      <path d="M 120 290 Q 280 330 500 290" />
-                    </g>
+                    <path d="M 120 40 Q 280 180 320 280 T 520 380 L 120 380 Z" fill="url(#jezeroDeltaGrad)" opacity="0.75" />
                     <g transform="translate(281, 144)">
                       <circle r="14" fill="#38bdf8" opacity="0.3" className="animate-ping" />
                       <circle r="6" fill="#38bdf8" />
@@ -426,28 +485,9 @@ export default function SurfaceLandingAnalysis() {
                   </g>
                 )}
 
-                {/* ------------------------------------------------------------- */}
-                {/* INDIVIDUALIZED ENVIRONMENT 5: SYRTIS MAJOR VOLCANIC CALDERA */}
-                {/* ------------------------------------------------------------- */}
                 {selectedSite.id === 'SITE-SYRTIS' && (
                   <g>
-                    {/* Rugged Volcanic Caldera & Basalt Lava Flows */}
-                    <ellipse cx="320" cy="200" rx="250" ry="140" fill="url(#syrtisVolcanoGrad)" stroke="#ff3b3b" strokeWidth="2" />
-                    <ellipse cx="320" cy="200" rx="160" ry="85" fill="#1a0404" stroke="#dc2626" strokeWidth="1.5" />
-                    <ellipse cx="320" cy="200" rx="75" ry="40" fill="#000000" />
-                    {/* Jagged Lava Escarpment Fault Lines */}
-                    <path d="M 80 180 L 140 195 L 200 170 L 280 210 L 360 180 L 440 220 L 540 190" fill="none" stroke="#ff3b3b" strokeWidth="2.2" strokeDasharray="6,2" />
-                    {/* High-density Boulder Scatter Points (0.45/m² Hazard) */}
-                    {[
-                      { x: 140, y: 150, r: 4 },
-                      { x: 190, y: 240, r: 5 },
-                      { x: 250, y: 130, r: 3.5 },
-                      { x: 380, y: 260, r: 4.5 },
-                      { x: 440, y: 140, r: 4 },
-                      { x: 490, y: 230, r: 5.5 },
-                    ].map((b, i) => (
-                      <circle key={i} cx={b.x} cy={b.y} r={b.r} fill="#ff3b3b" opacity="0.8" />
-                    ))}
+                    <ellipse cx="320" cy="200" rx="250" ry="140" fill="url(#syrtisVolcanoGrad)" stroke="#ff3b3b" strokeWidth="2" opacity="0.8" />
                     {/* Autonomous Divert Vector Arrow */}
                     <line x1="153" y1="192" x2="380" y2="80" stroke="#ff3b3b" strokeWidth="2.5" strokeDasharray="5,3" markerEnd="url(#arrow)" />
                     <g transform="translate(153, 192)">

@@ -394,10 +394,21 @@ export default function GroundStationNetwork() {
                     );
                   })()}
 
-                  {/* Ground Station Nodes (Clean, Non-overlapping UI) */}
+                  {/* Ground Station Nodes (Clean, Non-overlapping Quadrant UI) */}
                   {stations.map((st) => {
                     const pos = getMapCoords(st.latitude, st.longitude);
                     const isSel = st.id === selectedStationId;
+
+                    // Compute smart non-overlapping badge offset
+                    let badgeOffset = { x: 14, y: -24 };
+                    if (st.id === 'GS-MCF-HASSAN') badgeOffset = { x: -145, y: 14 };
+                    else if (st.id === 'GS-SHADNAGAR') badgeOffset = { x: -145, y: -34 };
+                    else if (st.id === 'GS-ISTRAC-BLR') badgeOffset = { x: 14, y: -34 };
+                    else if (st.id === 'GS-SVALBARD') badgeOffset = { x: -145, y: 14 };
+                    else if (st.id === 'GS-CANBERRA') badgeOffset = { x: -145, y: -34 };
+                    else if (pos.x > 520) badgeOffset = { x: -145, y: -24 };
+                    else if (pos.y < 60) badgeOffset = { x: 14, y: 14 };
+
                     return (
                       <g
                         key={st.id}
@@ -418,9 +429,22 @@ export default function GroundStationNetwork() {
                           opacity={isSel ? 0.9 : 0.35}
                         />
 
+                        {/* Leader line connecting node to callout */}
+                        {isSel && (
+                          <line
+                            x1="0"
+                            y1="0"
+                            x2={badgeOffset.x > 0 ? badgeOffset.x : badgeOffset.x + 140}
+                            y2={badgeOffset.y + 16}
+                            stroke="#10b981"
+                            strokeWidth="1.2"
+                            strokeDasharray="2,2"
+                          />
+                        )}
+
                         {/* Station Callout HUD Badge */}
                         {isSel && (
-                          <g transform="translate(14, -20)">
+                          <g transform={`translate(${badgeOffset.x}, ${badgeOffset.y})`}>
                             <rect
                               x="0"
                               y="0"
@@ -456,42 +480,73 @@ export default function GroundStationNetwork() {
                     );
                   })}
 
-                  {/* Satellite Marker with Sub-Satellite Point (SSP) Callout */}
-                  <g transform={`translate(${satPos.x}, ${satPos.y})`}>
-                    <circle r="8" fill="#fbbf24" className="animate-pulse" />
-                    <circle r="22" fill="none" stroke="#fbbf24" strokeWidth="1.8" opacity="0.9" />
-                    <g transform="translate(14, -24)">
-                      <rect
-                        x="0"
-                        y="0"
-                        width="155"
-                        height="34"
-                        rx="6"
-                        fill="rgba(4, 18, 34, 0.95)"
-                        stroke="#fbbf24"
-                        strokeWidth="1.2"
-                      />
-                      <text
-                        x="8"
-                        y="14"
-                        fill="#fbbf24"
-                        fontSize="10"
-                        fontFamily="'Space Grotesk', sans-serif"
-                        fontWeight="bold"
-                      >
-                        {activeSat.name.split(' ')[0]} [SSP ORBIT]
-                      </text>
-                      <text
-                        x="8"
-                        y="26"
-                        fill="rgba(232, 237, 242, 0.85)"
-                        fontSize="8.5"
-                        fontFamily="'Inter', sans-serif"
-                      >
-                        Slant: {activeLink.slant_range_km} km | Az: {activeLink.azimuth_deg}°
-                      </text>
-                    </g>
-                  </g>
+                  {/* Satellite Marker with Dynamic Anti-Collision Offset */}
+                  {(() => {
+                    const dx = satPos.x - stPos.x;
+                    const dy = satPos.y - stPos.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    let satBadgeOffset = { x: 14, y: -24 };
+                    if (dist < 110) {
+                      // Flip badge in opposite quadrant from ground station badge
+                      satBadgeOffset = {
+                        x: dx >= 0 ? 18 : -165,
+                        y: dy >= 0 ? 14 : -38,
+                      };
+                    } else if (satPos.x > 520) {
+                      satBadgeOffset = { x: -165, y: -24 };
+                    }
+
+                    return (
+                      <g transform={`translate(${satPos.x}, ${satPos.y})`}>
+                        <circle r="8" fill="#fbbf24" className="animate-pulse" />
+                        <circle r="22" fill="none" stroke="#fbbf24" strokeWidth="1.8" opacity="0.9" />
+
+                        {/* Leader line */}
+                        <line
+                          x1="0"
+                          y1="0"
+                          x2={satBadgeOffset.x > 0 ? satBadgeOffset.x : satBadgeOffset.x + 155}
+                          y2={satBadgeOffset.y + 17}
+                          stroke="#fbbf24"
+                          strokeWidth="1.2"
+                          strokeDasharray="2,2"
+                        />
+
+                        <g transform={`translate(${satBadgeOffset.x}, ${satBadgeOffset.y})`}>
+                          <rect
+                            x="0"
+                            y="0"
+                            width="155"
+                            height="34"
+                            rx="6"
+                            fill="rgba(4, 18, 34, 0.95)"
+                            stroke="#fbbf24"
+                            strokeWidth="1.2"
+                          />
+                          <text
+                            x="8"
+                            y="14"
+                            fill="#fbbf24"
+                            fontSize="10"
+                            fontFamily="'Space Grotesk', sans-serif"
+                            fontWeight="bold"
+                          >
+                            {activeSat.name.split(' ')[0]} [SSP ORBIT]
+                          </text>
+                          <text
+                            x="8"
+                            y="26"
+                            fill="rgba(232, 237, 242, 0.85)"
+                            fontSize="8.5"
+                            fontFamily="'Inter', sans-serif"
+                          >
+                            Slant: {activeLink.slant_range_km} km | Az: {activeLink.azimuth_deg}°
+                          </text>
+                        </g>
+                      </g>
+                    );
+                  })()}
                 </svg>
 
                 {/* Station Quick Selector Pills at Bottom */}

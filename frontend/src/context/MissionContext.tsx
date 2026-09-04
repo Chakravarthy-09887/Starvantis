@@ -395,10 +395,32 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedSatIdRef = useRef(selectedSatelliteId);
-  const localTickRef = useRef(0);
+  const lastWsMessageTimeRef = useRef<number>(0);
 
   useEffect(() => {
     selectedSatIdRef.current = selectedSatelliteId;
+    const satDef = FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
+    
+    // Immediately calibrate initial telemetry state on asset switch to avoid cross-satellite flickering
+    setLiveTelemetry({
+      battery_voltage: satDef.batteryVoltage,
+      solar_power: satDef.solarPower,
+      temp: satDef.temp,
+      lat: satDef.lat,
+      lng: satDef.lng,
+      altitude: satDef.altitude,
+      velocity: satDef.velocity,
+      roll: satDef.roll,
+      pitch: satDef.pitch,
+      yaw: satDef.yaw,
+      signal: satDef.signal,
+      health: satDef.health,
+      tracked_objects: satDef.trackedObjects,
+      active_alerts: satDef.activeAlerts,
+      eclipse_status: 'SUNLIT',
+      pointing_jitter: '< 0.0038° / s RMS',
+    });
+
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(JSON.stringify({ action: 'SUBSCRIBE_SATELLITE', satellite_id: selectedSatelliteId }));
@@ -452,23 +474,28 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       const timeStr = now.toLocaleTimeString('en-GB', { timeZone, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
       setCurrentClock(`${timeStr} ${opt.code}`);
 
-      localTickRef.current += 1;
-      const step = localTickRef.current;
+      // If active WebSocket is delivering live telemetry packets, yield to the live server stream
+      if (Date.now() - lastWsMessageTimeRef.current < 2200) {
+        return;
+      }
 
-      // Always maintain 1Hz high-precision physics calculations
+      // Continuous Keplerian physics propagation synchronized to UTC epoch seconds
+      const t_sec = now.getTime() / 1000;
       const activeSatDef = FLEET_SATELLITES.find((s) => s.id === selectedSatIdRef.current) || FLEET_SATELLITES[0];
       const altNum = activeSatDef.altitudeKm || 700;
       const r_km = 6371.0 + altNum;
       const isDeepSpace = activeSatDef.id === 'ADITYA-L1' || activeSatDef.id === 'JWST';
       const mean_motion = isDeepSpace ? 0.0001 : Math.sqrt(398600.4418 / Math.pow(r_km, 3));
-      const omega = (step * mean_motion * 180.0 / Math.PI) % 360.0;
+      const omega = (t_sec * mean_motion * 180.0 / Math.PI) % 360.0;
       const omega_rad = (omega * Math.PI) / 180.0;
       const inc_rad = ((parseFloat(activeSatDef.inclination) || 66.0) * Math.PI) / 180.0;
 
       const lat_val = (Math.asin(Math.sin(inc_rad) * Math.sin(omega_rad)) * 180.0) / Math.PI;
-      const lng_val = (((Math.atan2(Math.cos(inc_rad) * Math.sin(omega_rad), Math.cos(omega_rad)) * 180.0 / Math.PI) - (step * 0.004178 * 180.0 / Math.PI) + 77.0) % 360.0) - 180.0;
+      const sat_hash_offset = (Math.abs(activeSatDef.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 360);
+      const earth_rot_deg = (t_sec * 0.004178 * 180.0 / Math.PI) % 360.0;
+      const lng_val = (((Math.atan2(Math.cos(inc_rad) * Math.sin(omega_rad), Math.cos(omega_rad)) * 180.0 / Math.PI) - earth_rot_deg + sat_hash_offset) % 360.0) - 180.0;
 
-      // Smooth sigmoid sunlight transition
+      // Smooth continuous sigmoid sunlight transition
       const sun_elevation = Math.sin(omega_rad);
       const sunlight_factor = isDeepSpace ? 1.0 : 1.0 / (1.0 + Math.exp(-8.0 * (sun_elevation + 0.05)));
       const inSun = sunlight_factor > 0.35;
@@ -477,16 +504,15 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
       const basePower = parseFloat(activeSatDef.solarPower.replace(' kW', '')) || 2.1;
       const baseTemp = parseFloat(activeSatDef.temp.replace(' °C', '')) || 22.0;
 
-      const solar_kw = (basePower * sunlight_factor * (0.94 + 0.06 * Math.sin(step * 0.05))).toFixed(2);
-      const temp_c = (baseTemp + 4.2 * (sunlight_factor - 0.5) + 0.8 * Math.sin(step * 0.08)).toFixed(1);
-      const batt_v = (baseVolt + 0.3 * (sunlight_factor - 0.5) + 0.02 * Math.sin(step * 0.04)).toFixed(2);
+      const solar_kw = (basePower * sunlight_factor * (0.95 + 0.05 * Math.sin(t_sec * 0.05))).toFixed(2);
+      const temp_c = (baseTemp + 3.5 * (sunlight_factor - 0.5) + 0.4 * Math.sin(t_sec * 0.04)).toFixed(1);
+      const batt_v = (baseVolt + (0.25 * sunlight_factor - 0.12) + 0.01 * Math.sin(t_sec * 0.02)).toFixed(2);
 
-      const roll = (0.08 * Math.sin(step * 0.08 + 0.5) + 0.02 * Math.cos(step * 0.19)).toFixed(3);
-      const pitch = (-0.06 * Math.cos(step * 0.07 + 1.2) + 0.015 * Math.sin(step * 0.14)).toFixed(3);
-      const yaw = ((omega + 0.1 * Math.sin(step * 0.05)) % 360.0).toFixed(2);
-      const rssi = -64 - Math.floor(Math.abs(Math.sin(step * 0.03)) * 6);
+      const roll = (0.035 * Math.sin(t_sec * 0.08) + 0.01 * Math.cos(t_sec * 0.15)).toFixed(3);
+      const pitch = (-0.028 * Math.cos(t_sec * 0.07) + 0.01 * Math.sin(t_sec * 0.12)).toFixed(3);
+      const yaw = ((omega + 0.05 * Math.sin(t_sec * 0.05)) % 360.0).toFixed(2);
+      const rssi = -64 - Math.floor(Math.abs(Math.sin(t_sec * 0.03)) * 6);
 
-      // Smoothly update live telemetry if not in mid-packet overwrite
       setLiveTelemetry((prev) => ({
         battery_voltage: `${batt_v} V`,
         solar_power: `${solar_kw} kW`,
@@ -503,7 +529,7 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
         tracked_objects: prev.tracked_objects || 128,
         active_alerts: prev.active_alerts || 2,
         eclipse_status: inSun ? 'SUNLIT' : 'PENUMBRA_ECLIPSE',
-        pointing_jitter: `${(Math.abs(parseFloat(roll)) * 0.008 + 0.0032).toFixed(4)}° / s`,
+        pointing_jitter: '< 0.0038° / s RMS',
       }));
     };
 
@@ -683,10 +709,12 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
               if (data.database_engine) setDatabaseEngine(data.database_engine);
               setWsConnected(true);
             } else if (data.type === 'LIVE_TELEMETRY_PULSE') {
+              lastWsMessageTimeRef.current = Date.now();
               if (data.satellite_id === selectedSatIdRef.current || !data.satellite_id) {
                 setLiveTelemetry(data.telemetry);
               }
             } else if (data.type === 'TELEMETRY_UPDATE') {
+              lastWsMessageTimeRef.current = Date.now();
               if (data.telemetry) {
                 setLiveTelemetry((prev) => ({
                   ...prev,

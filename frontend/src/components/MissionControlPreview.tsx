@@ -55,7 +55,7 @@ export default function MissionControlPreview() {
     temp: liveTelemetry.temp || selectedSat.temp,
     lat: liveTelemetry.lat || selectedSat.lat,
     lng: liveTelemetry.lng || selectedSat.lng,
-    altitude: liveTelemetry.altitude || selectedSat.altitude,
+    altitude: selectedSat.altitude,
     velocity: liveTelemetry.velocity || selectedSat.velocity,
     roll: liveTelemetry.roll || selectedSat.roll,
     pitch: liveTelemetry.pitch || selectedSat.pitch,

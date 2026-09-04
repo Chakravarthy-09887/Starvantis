@@ -175,8 +175,9 @@ class TelemetrySimulator:
         while self._running:
             try:
                 await asyncio.sleep(1.0)
-                self._step += 1
                 now = datetime.now(timezone.utc)
+                t_sec = now.timestamp()
+                self._step += 1
 
                 for sat_id, cfg in FLEET_CONFIG.items():
                     alt_km = cfg["alt_km"]
@@ -185,56 +186,54 @@ class TelemetrySimulator:
 
                     # 1. True Keplerian Orbital Velocity v = sqrt(mu / r)
                     if cfg.get("is_lagrange"):
-                        vel_kms = 0.28 + 0.02 * math.sin(self._step * 0.01)
+                        vel_kms = 0.28 + 0.02 * math.sin(t_sec * 0.01)
                         alt_str = "1.5M km (Sun-Earth L1/L2)"
                     elif cfg.get("is_lunar"):
-                        vel_kms = 1.63 + 0.01 * math.sin(self._step * 0.05)
+                        vel_kms = 1.63 + 0.01 * math.sin(t_sec * 0.05)
                         alt_str = "100.0 km (Polar Lunar Orbit)"
                     else:
                         vel_kms = math.sqrt(EARTH_MU / r_km)
-                        alt_str = f"{alt_km + 0.5 * math.sin(self._step * 0.08):.2f} km"
+                        alt_str = f"{alt_km:.2f} km"
 
-                    # 2. Orbital Ground Track Kinematics
-                    # Mean motion n = sqrt(mu / a^3) rad/s
+                    # 2. Orbital Ground Track Kinematics (Epoch-Second Continuous Phase)
                     mean_motion = math.sqrt(EARTH_MU / (r_km ** 3)) if not cfg.get("is_lagrange") else 0.0001
-                    omega = (self._step * mean_motion * 180.0 / math.pi) % 360.0
+                    omega = (t_sec * mean_motion * 180.0 / math.pi) % 360.0
                     omega_rad = math.radians(omega)
                     inc_rad = math.radians(inc_deg)
 
                     # Spherical sub-satellite latitude & longitude
                     lat_val = math.degrees(math.asin(math.sin(inc_rad) * math.sin(omega_rad)))
-                    earth_rot_deg = (self._step * 0.004178 * 180.0 / math.pi) % 360.0  # Earth 360° in 24h
-                    lng_val = ((math.degrees(math.atan2(math.cos(inc_rad) * math.sin(omega_rad), math.cos(omega_rad))) - earth_rot_deg + hash(sat_id) * 37) % 360.0) - 180.0
+                    earth_rot_deg = (t_sec * 0.004178 * 180.0 / math.pi) % 360.0  # Earth 360° in 24h
+                    sat_hash_offset = (abs(hash(sat_id)) % 360)
+                    lng_val = ((math.degrees(math.atan2(math.cos(inc_rad) * math.sin(omega_rad), math.cos(omega_rad))) - earth_rot_deg + sat_hash_offset) % 360.0) - 180.0
 
                     # 3. Solar Eclipse & Day/Night Thermal-Electrical Cycle (Smooth Continuous Sigmoid Blending)
-                    # Sun vector angle relative to orbit plane
                     sun_elevation = math.sin(omega_rad)
                     is_deep_space = cfg.get("is_lagrange", False)
 
-                    # Smooth transition factor [0.0 = full umbra, 1.0 = full direct sunlight]
                     if is_deep_space:
                         sunlight_factor = 1.0
                         in_sunlight = True
                     else:
-                        # Soft sigmoid curve over penumbra boundary (-0.2 to +0.2)
+                        # Soft continuous sigmoid curve across penumbra transition
                         sunlight_factor = 1.0 / (1.0 + math.exp(-8.0 * (sun_elevation + 0.05)))
                         in_sunlight = sunlight_factor > 0.35
 
-                    # Smooth solar power generation
-                    solar_power_kw = round(cfg["max_solar_kw"] * sunlight_factor * (0.92 + 0.08 * math.sin(self._step * 0.05)), 2)
+                    # Continuous solar power generation
+                    solar_power_kw = round(cfg["max_solar_kw"] * sunlight_factor * (0.95 + 0.05 * math.sin(t_sec * 0.05)), 2)
 
-                    # Continuous thermodynamic thermal balance (no sudden 24°C cliff drops)
-                    thermal_delta = 4.5 * (sunlight_factor - 0.5) + 1.2 * math.sin(self._step * 0.08)
+                    # Continuous thermodynamic thermal balance (smooth physical dissipation / solar heating)
+                    thermal_delta = 3.5 * (sunlight_factor - 0.5) + 0.4 * math.sin(t_sec * 0.04)
                     temp_c = round(cfg["nominal_temp"] + thermal_delta, 1)
 
                     # Stable 28V regulated battery bus with gentle charge/discharge curve
-                    batt_v = round(cfg["base_batt"] + (0.35 * sunlight_factor - 0.15) + 0.02 * math.sin(self._step * 0.04), 2)
+                    batt_v = round(cfg["base_batt"] + (0.25 * sunlight_factor - 0.12) + 0.01 * math.sin(t_sec * 0.02), 2)
 
-                    # 4. AOCS Attitude Gyro Stabilization (< 0.005°/s RMS pointing jitter)
-                    roll_jitter = round(0.08 * math.sin(self._step * 0.08 + 0.5) + 0.02 * math.cos(self._step * 0.19), 3)
-                    pitch_jitter = round(-0.06 * math.cos(self._step * 0.07 + 1.2) + 0.015 * math.sin(self._step * 0.14), 3)
-                    yaw_angle = round((omega + 0.1 * math.sin(self._step * 0.05)) % 360.0, 2)
-                    rssi_dbm = -64 - int(abs(math.sin(self._step * 0.03)) * 6)
+                    # 4. AOCS Attitude Gyro Stabilization (< 0.0038°/s RMS fine pointing jitter)
+                    roll_jitter = round(0.035 * math.sin(t_sec * 0.08) + 0.01 * math.cos(t_sec * 0.15), 3)
+                    pitch_jitter = round(-0.028 * math.cos(t_sec * 0.07) + 0.01 * math.sin(t_sec * 0.12), 3)
+                    yaw_angle = round((omega + 0.05 * math.sin(t_sec * 0.05)) % 360.0, 2)
+                    rssi_dbm = -64 - int(abs(math.sin(t_sec * 0.03)) * 6)
 
                     pulse = {
                         "type": "LIVE_TELEMETRY_PULSE",
@@ -256,7 +255,7 @@ class TelemetrySimulator:
                             "tracked_objects": cfg["tracked"],
                             "active_alerts": cfg["alerts"],
                             "eclipse_status": "SUNLIT" if in_sunlight else "PENUMBRA_ECLIPSE",
-                            "pointing_jitter": f"{abs(roll_jitter * 0.008 + 0.0032):.4f}° / s",
+                            "pointing_jitter": "< 0.0038° / s RMS",
                         },
                     }
 

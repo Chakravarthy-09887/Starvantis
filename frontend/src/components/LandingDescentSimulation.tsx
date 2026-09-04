@@ -217,7 +217,7 @@ export default function LandingDescentSimulation() {
 
             {/* Trajectory Canvas SVG with High-Fidelity Lunar Topography & Multi-Phase EDL Mechanics */}
             <div className="relative aspect-[16/9] w-full bg-[#020510] rounded-2xl overflow-hidden p-3 border border-cyan-glow/30 shadow-2xl select-none">
-              <svg viewBox="0 0 600 320" className="w-full h-full">
+              <svg viewBox="0 0 620 330" className="w-full h-full">
                 <defs>
                   {/* Space Sky Gradient */}
                   <linearGradient id="lunarDescentSky" x1="0%" y1="0%" x2="0%" y2="100%">
@@ -256,66 +256,75 @@ export default function LandingDescentSimulation() {
                 </defs>
 
                 {/* Sky Base & Starfield */}
-                <rect width="600" height="320" fill="url(#lunarDescentSky)" />
+                <rect width="620" height="330" fill="url(#lunarDescentSky)" />
                 {[
-                  { x: 35, y: 25 }, { x: 95, y: 40 }, { x: 170, y: 20 },
-                  { x: 260, y: 35 }, { x: 380, y: 22 }, { x: 490, y: 30 }, { x: 550, y: 45 }
+                  { x: 35, y: 25 }, { x: 95, y: 35 }, { x: 170, y: 18 },
+                  { x: 260, y: 30 }, { x: 380, y: 20 }, { x: 490, y: 25 }, { x: 570, y: 35 }
                 ].map((st, i) => (
                   <circle key={i} cx={st.x} cy={st.y} r="1" fill="#e2e8f0" opacity="0.8" />
                 ))}
 
                 {/* Distant Lunar South Pole Crater Rim Horizon */}
                 <path
-                  d="M 0 220 Q 90 190 190 210 T 380 200 T 600 195 L 600 320 L 0 320 Z"
+                  d="M 0 230 Q 90 200 190 220 T 380 210 T 620 205 L 620 330 L 0 330 Z"
                   fill="url(#edlMountainGrad)"
                   opacity="0.8"
                 />
                 <path
-                  d="M 0 245 Q 120 230 250 245 T 500 240 T 600 245 L 600 320 L 0 320 Z"
+                  d="M 0 255 Q 120 240 250 255 T 500 250 T 620 255 L 620 330 L 0 330 Z"
                   fill="url(#edlSoilGrad)"
                 />
 
                 {/* Craters in Polar Regolith */}
-                <ellipse cx="140" cy="275" rx="35" ry="9" fill="#04060b" stroke="#334155" strokeWidth="1" />
-                <ellipse cx="330" cy="285" rx="24" ry="7" fill="#04060b" stroke="#334155" strokeWidth="1" />
+                <ellipse cx="140" cy="285" rx="35" ry="9" fill="#04060b" stroke="#334155" strokeWidth="1" />
+                <ellipse cx="330" cy="295" rx="24" ry="7" fill="#04060b" stroke="#334155" strokeWidth="1" />
 
-                {/* Altitude Guide Reference Lines */}
-                <line x1="30" y1="50" x2="570" y2="50" stroke="rgba(0, 212, 255, 0.2)" strokeDasharray="3,3" />
-                <text x="35" y="44" fill="rgba(147, 197, 253, 0.85)" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                  30 KM ALTITUDE // ROUGH BRAKING COMMENCE (1,680 m/s)
-                </text>
+                {/* Left-Aligned Clean Altitude Stage Markers (Never hidden by lander) */}
+                <g transform="translate(15, 30)">
+                  <rect width="130" height="18" rx="4" fill="rgba(0,0,0,0.85)" stroke="rgba(0, 212, 255, 0.4)" strokeWidth="1" />
+                  <text x="8" y="12" fill="#38bdf8" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                    ALT 30 KM // 1,680 m/s
+                  </text>
+                  <line x1="130" y1="9" x2="600" y2="9" stroke="rgba(0, 212, 255, 0.15)" strokeDasharray="3,3" />
+                </g>
 
-                <line x1="30" y1="95" x2="570" y2="95" stroke="rgba(0, 212, 255, 0.2)" strokeDasharray="3,3" />
-                <text x="35" y="89" fill="rgba(147, 197, 253, 0.85)" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                  7.4 KM ALTITUDE // ATTITUDE HOLD &amp; LDV DOPPLER LOCK
-                </text>
+                <g transform="translate(15, 80)">
+                  <rect width="130" height="18" rx="4" fill="rgba(0,0,0,0.85)" stroke="rgba(0, 212, 255, 0.4)" strokeWidth="1" />
+                  <text x="8" y="12" fill="#38bdf8" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                    ALT 7.4 KM // LDV LOCK
+                  </text>
+                  <line x1="130" y1="9" x2="600" y2="9" stroke="rgba(0, 212, 255, 0.15)" strokeDasharray="3,3" />
+                </g>
 
-                <line x1="30" y1="185" x2="570" y2="185" stroke="rgba(251, 191, 36, 0.25)" strokeDasharray="3,3" />
-                <text x="35" y="179" fill="rgba(251, 191, 36, 0.85)" fontSize="8.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                  2.1 KM ALTITUDE // FINE BRAKING &amp; HAZARD SCAN
-                </text>
+                <g transform="translate(15, 155)">
+                  <rect width="130" height="18" rx="4" fill="rgba(0,0,0,0.85)" stroke="rgba(251, 191, 36, 0.4)" strokeWidth="1" />
+                  <text x="8" y="12" fill="#f59e0b" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                    ALT 2.1 KM // FINE BRAKE
+                  </text>
+                  <line x1="130" y1="9" x2="600" y2="9" stroke="rgba(251, 191, 36, 0.15)" strokeDasharray="3,3" />
+                </g>
 
                 {/* Safe Landing Zone Box Indicator */}
-                <g transform="translate(430, 260)">
+                <g transform="translate(460, 265)">
                   <rect
                     x="0"
                     y="0"
-                    width="120"
-                    height="18"
-                    fill="rgba(16, 185, 129, 0.2)"
+                    width="140"
+                    height="20"
+                    fill="rgba(16, 185, 129, 0.25)"
                     stroke="#10b981"
                     strokeWidth="1.2"
-                    rx="3"
+                    rx="4"
                   />
-                  <text x="60" y="12" fill="#10b981" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                  <text x="70" y="13" fill="#10b981" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
                     SHIV SHAKTI (4.0 x 2.4 KM)
                   </text>
-                  <circle cx="60" cy="9" r="14" fill="none" stroke="#10b981" strokeWidth="1" opacity="0.4" className="animate-ping" />
+                  <circle cx="70" cy="10" r="12" fill="none" stroke="#10b981" strokeWidth="1" opacity="0.4" className="animate-ping" />
                 </g>
 
                 {/* Chandrayaan-3 Success Curve (Cyan Glow) */}
                 <path
-                  d="M 60 50 C 200 50, 280 160, 490 270"
+                  d="M 160 39 C 260 39, 320 120, 520 265"
                   fill="none"
                   stroke="#00d4ff"
                   strokeWidth="3.5"
@@ -325,7 +334,7 @@ export default function LandingDescentSimulation() {
                 {/* Chandrayaan-2 Divergence Path (Red dashed) */}
                 {compareMode === 'CH2_FAILURE_ANALYSIS' && (
                   <path
-                    d="M 60 50 C 200 50, 260 150, 360 270"
+                    d="M 160 39 C 260 39, 300 120, 390 270"
                     fill="none"
                     stroke="#ff3b3b"
                     strokeWidth="2.5"
@@ -333,12 +342,12 @@ export default function LandingDescentSimulation() {
                   />
                 )}
 
-                {/* Stage Interactive Waypoints on Trajectory */}
+                {/* Stage Interactive Waypoints on Trajectory (Dedicated Positions with Non-Overlapping Labels) */}
                 {[
-                  { idx: 0, x: 60, y: 50, name: 'Rough Braking' },
-                  { idx: 1, x: 200, y: 95, name: 'Attitude Hold' },
-                  { idx: 2, x: 330, y: 185, name: 'Fine Braking' },
-                  { idx: 3, x: 490, y: 270, name: 'Shiv Shakti' },
+                  { idx: 0, x: 160, y: 39, label: 'P01: ROUGH BRAKING', alt: '30km', vel: '1,680 m/s', tagX: 160, tagY: 18 },
+                  { idx: 1, x: 275, y: 89, label: 'P02: ATTITUDE HOLD', alt: '7.4km', vel: '358 m/s', tagX: 275, tagY: 65 },
+                  { idx: 2, x: 380, y: 164, label: 'P03: FINE BRAKING', alt: '2.1km', vel: '60 m/s', tagX: 380, tagY: 140 },
+                  { idx: 3, x: 520, y: 265, label: 'P04: TOUCHDOWN', alt: '0km', vel: '0.8 m/s', tagX: 520, tagY: 240 },
                 ].map((wp) => {
                   const isCurrent = wp.idx === activeStageIdx;
                   return (
@@ -346,25 +355,39 @@ export default function LandingDescentSimulation() {
                       <circle
                         cx={wp.x}
                         cy={wp.y}
-                        r={isCurrent ? 10 : 5}
+                        r={isCurrent ? 9 : 5}
                         fill={isCurrent ? '#00d4ff' : '#04182e'}
-                        stroke="#00d4ff"
+                        stroke={isCurrent ? '#ffffff' : '#00d4ff'}
                         strokeWidth={isCurrent ? 2.5 : 1.5}
                       />
                       {isCurrent && (
-                        <circle cx={wp.x} cy={wp.y} r={18} fill="none" stroke="#00d4ff" strokeWidth="1.2" className="animate-ping" opacity="0.6" />
+                        <circle cx={wp.x} cy={wp.y} r={16} fill="none" stroke="#00d4ff" strokeWidth="1.2" className="animate-ping" opacity="0.6" />
                       )}
-                      <text
-                        x={wp.x}
-                        y={wp.y - 14}
-                        textAnchor="middle"
-                        fill={isCurrent ? '#ffffff' : '#6b7b8d'}
-                        fontSize={isCurrent ? '10' : '8'}
-                        fontFamily="'Space Grotesk', sans-serif"
-                        fontWeight={isCurrent ? 'bold' : 'normal'}
-                      >
-                        P0{wp.idx + 1}
-                      </text>
+                      
+                      {/* Waypoint Phase Callout Badge (Offset above flight track) */}
+                      <g transform={`translate(${wp.tagX}, ${wp.tagY})`}>
+                        <rect
+                          x="-50"
+                          y="-10"
+                          width="100"
+                          height="16"
+                          rx="3"
+                          fill={isCurrent ? 'rgba(0, 212, 255, 0.9)' : 'rgba(4, 18, 34, 0.85)'}
+                          stroke={isCurrent ? '#ffffff' : 'rgba(0, 212, 255, 0.4)'}
+                          strokeWidth="1"
+                        />
+                        <text
+                          x="0"
+                          y="1.5"
+                          textAnchor="middle"
+                          fill={isCurrent ? '#020617' : '#93c5fd'}
+                          fontSize="7"
+                          fontFamily="'Space Grotesk', sans-serif"
+                          fontWeight="bold"
+                        >
+                          {wp.label}
+                        </text>
+                      </g>
                     </g>
                   );
                 })}
@@ -374,82 +397,92 @@ export default function LandingDescentSimulation() {
                 {/* ------------------------------------------------------------- */}
                 {(() => {
                   const stageTransforms = [
-                    { x: 90, y: 50, pitch: -85, scale: 1.0 }, // Phase 1: Horizontal retro-fire
-                    { x: 210, y: 100, pitch: -52, scale: 1.0 }, // Phase 2: Attitude Slew
-                    { x: 340, y: 190, pitch: -14, scale: 1.05 }, // Phase 3: Fine Braking & Divert
-                    { x: 490, y: 260, pitch: 0, scale: 1.1 },   // Phase 4: Vertical Touchdown
+                    { x: 195, y: 44, pitch: -85, scale: 0.95 },  // Phase 1: Horizontal retro-fire
+                    { x: 300, y: 98, pitch: -52, scale: 0.95 },  // Phase 2: Attitude Slew
+                    { x: 410, y: 178, pitch: -14, scale: 1.0 },  // Phase 3: Fine Braking & Divert
+                    { x: 520, y: 252, pitch: 0, scale: 1.05 },   // Phase 4: Vertical Touchdown
                   ];
                   const st = stageTransforms[activeStageIdx] || stageTransforms[0];
 
                   return (
-                    <g transform={`translate(${st.x}, ${st.y}) rotate(${st.pitch}) scale(${st.scale})`}>
-                      {/* Phase 1: Heavy Retrograde 4x 800N Thruster Exhaust Plumes */}
-                      {activeStageIdx === 0 && (
-                        <g transform="translate(0, 16)">
-                          <polygon points="-14,0 -35,-8 -35,8" fill="url(#edlPlumeFlame)" className="animate-pulse" />
-                          <polygon points="0,0 -42,-12 -42,12" fill="url(#edlPlumeFlame)" className="animate-pulse" />
-                          <polygon points="14,0 -35,-8 -35,8" fill="url(#edlPlumeFlame)" className="animate-pulse" />
-                          <line x1="0" y1="0" x2="35" y2="0" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="3,2" />
-                        </g>
-                      )}
+                    <g transform={`translate(${st.x}, ${st.y})`}>
+                      {/* Floating Active Lander Telemetry Callout */}
+                      <g transform="translate(25, -28)">
+                        <rect width="105" height="22" rx="4" fill="rgba(0,0,0,0.9)" stroke="#00d4ff" strokeWidth="1" />
+                        <line x1="-15" y1="11" x2="0" y2="11" stroke="#00d4ff" strokeWidth="1" strokeDasharray="2,2" />
+                        <text x="6" y="9" fill="#00d4ff" fontSize="6.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                          VIKRAM ATTITUDE: {st.pitch}°
+                        </text>
+                        <text x="6" y="17" fill="#cbd5e1" fontSize="6" fontFamily="'Space Grotesk', sans-serif">
+                          {curStage.thrust.split(' ')[0]} THROTTLE
+                        </text>
+                      </g>
 
-                      {/* Phase 2: Laser Doppler Velocimeter (LDV) 4-Beam Cluster */}
-                      {activeStageIdx === 1 && (
-                        <g transform="translate(0, 14)">
-                          <line x1="-12" y1="0" x2="-28" y2="90" stroke="#00d4ff" strokeWidth="1.8" strokeDasharray="4,2" className="animate-pulse" />
-                          <line x1="-4" y1="0" x2="-10" y2="90" stroke="#00d4ff" strokeWidth="1.8" strokeDasharray="4,2" className="animate-pulse" />
-                          <line x1="4" y1="0" x2="10" y2="90" stroke="#00d4ff" strokeWidth="1.8" strokeDasharray="4,2" className="animate-pulse" />
-                          <line x1="12" y1="0" x2="28" y2="90" stroke="#00d4ff" strokeWidth="1.8" strokeDasharray="4,2" className="animate-pulse" />
-                          {/* Throttle plume */}
-                          <polygon points="-8,0 -8,22 8,22 8,0" fill="url(#edlPlumeFlame)" opacity="0.75" />
-                        </g>
-                      )}
+                      {/* Rotated Lander Body & Thrust Vector */}
+                      <g transform={`rotate(${st.pitch}) scale(${st.scale})`}>
+                        {/* Phase 1: Heavy Retrograde 4x 800N Thruster Exhaust Plumes */}
+                        {activeStageIdx === 0 && (
+                          <g transform="translate(0, 14)">
+                            <polygon points="-12,0 -30,-6 -30,6" fill="url(#edlPlumeFlame)" className="animate-pulse" />
+                            <polygon points="0,0 -36,-10 -36,10" fill="url(#edlPlumeFlame)" className="animate-pulse" />
+                            <polygon points="12,0 -30,-6 -30,6" fill="url(#edlPlumeFlame)" className="animate-pulse" />
+                            <line x1="0" y1="0" x2="28" y2="0" stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="2,2" />
+                          </g>
+                        )}
 
-                      {/* Phase 3: LHDAC Laser Hazard Scan Conical Beam & Divert Vector */}
-                      {activeStageIdx === 2 && (
-                        <g transform="translate(0, 14)">
-                          <polygon points="0,0 -50,85 50,85" fill="url(#edlLhdacCone)" stroke="#10b981" strokeWidth="1" strokeDasharray="4,3" />
-                          {/* Throttle plume */}
-                          <polygon points="-12,0 -16,30 -6,30" fill="url(#edlPlumeFlame)" className="animate-pulse" />
-                          <polygon points="12,0 16,30 6,30" fill="url(#edlPlumeFlame)" className="animate-pulse" />
-                          {/* Real-time Divert Vector Arrow */}
-                          <line x1="0" y1="-10" x2="28" y2="-28" stroke="#10b981" strokeWidth="2" strokeDasharray="2,2" />
-                          <polygon points="28,-28 20,-24 24,-20" fill="#10b981" />
-                        </g>
-                      )}
+                        {/* Phase 2: Laser Doppler Velocimeter (LDV) 4-Beam Cluster */}
+                        {activeStageIdx === 1 && (
+                          <g transform="translate(0, 12)">
+                            <line x1="-10" y1="0" x2="-22" y2="70" stroke="#00d4ff" strokeWidth="1.5" strokeDasharray="4,2" className="animate-pulse" />
+                            <line x1="-3" y1="0" x2="-7" y2="70" stroke="#00d4ff" strokeWidth="1.5" strokeDasharray="4,2" className="animate-pulse" />
+                            <line x1="3" y1="0" x2="7" y2="70" stroke="#00d4ff" strokeWidth="1.5" strokeDasharray="4,2" className="animate-pulse" />
+                            <line x1="10" y1="0" x2="22" y2="70" stroke="#00d4ff" strokeWidth="1.5" strokeDasharray="4,2" className="animate-pulse" />
+                            <polygon points="-6,0 -6,18 6,18 6,0" fill="url(#edlPlumeFlame)" opacity="0.75" />
+                          </g>
+                        )}
 
-                      {/* Phase 4: Touchdown Shock Compression & Pragyan Deployment */}
-                      {activeStageIdx === 3 && (
-                        <g transform="translate(0, 14)">
-                          {/* Touchdown ground aura */}
-                          <ellipse cx="0" cy="10" rx="35" ry="6" fill="rgba(16, 185, 129, 0.3)" />
-                          {/* Pragyan Rover Ramp */}
-                          <line x1="12" y1="0" x2="42" y2="10" stroke="#94a3b8" strokeWidth="2" strokeDasharray="2,1" />
-                        </g>
-                      )}
+                        {/* Phase 3: LHDAC Laser Hazard Scan Conical Beam & Divert Vector */}
+                        {activeStageIdx === 2 && (
+                          <g transform="translate(0, 12)">
+                            <polygon points="0,0 -40,65 40,65" fill="url(#edlLhdacCone)" stroke="#10b981" strokeWidth="0.8" strokeDasharray="4,3" />
+                            <polygon points="-10,0 -13,24 -5,24" fill="url(#edlPlumeFlame)" className="animate-pulse" />
+                            <polygon points="10,0 13,24 5,24" fill="url(#edlPlumeFlame)" className="animate-pulse" />
+                            <line x1="0" y1="-8" x2="22" y2="-22" stroke="#10b981" strokeWidth="1.8" strokeDasharray="2,2" />
+                            <polygon points="22,-22 16,-19 19,-16" fill="#10b981" />
+                          </g>
+                        )}
 
-                      {/* 4 Shock-Absorbing Landing Legs */}
-                      <line x1="-15" y1="8" x2="-28" y2="24" stroke="#94a3b8" strokeWidth="2" />
-                      <circle cx="-28" cy="24" r="2.5" fill="#cbd5e1" />
-                      <line x1="15" y1="8" x2="28" y2="24" stroke="#94a3b8" strokeWidth="2" />
-                      <circle cx="28" cy="24" r="2.5" fill="#cbd5e1" />
+                        {/* Phase 4: Touchdown Shock Compression */}
+                        {activeStageIdx === 3 && (
+                          <g transform="translate(0, 12)">
+                            <ellipse cx="0" cy="8" rx="28" ry="5" fill="rgba(16, 185, 129, 0.3)" />
+                            <line x1="10" y1="0" x2="35" y2="8" stroke="#94a3b8" strokeWidth="1.8" strokeDasharray="2,1" />
+                          </g>
+                        )}
 
-                      {/* Octagonal Lander Body with Gold Foil MLI */}
-                      <polygon
-                        points="-16,-10 16,-10 22,8 -22,8"
-                        fill="#f59e0b"
-                        stroke="#fbbf24"
-                        strokeWidth="1.2"
-                      />
+                        {/* 4 Shock-Absorbing Landing Legs */}
+                        <line x1="-12" y1="6" x2="-22" y2="20" stroke="#94a3b8" strokeWidth="1.8" />
+                        <circle cx="-22" cy="20" r="2" fill="#cbd5e1" />
+                        <line x1="12" y1="6" x2="22" y2="20" stroke="#94a3b8" strokeWidth="1.8" />
+                        <circle cx="22" cy="20" r="2" fill="#cbd5e1" />
 
-                      {/* Top Deck Solar Panel & Avionics */}
-                      <rect x="-18" y="-15" width="36" height="5" rx="1" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.8" />
-                      <circle cx="0" cy="-18" r="2" fill="#10b981" />
+                        {/* Octagonal Lander Body with Gold Foil MLI */}
+                        <polygon
+                          points="-14,-8 14,-8 18,6 -18,6"
+                          fill="#f59e0b"
+                          stroke="#fbbf24"
+                          strokeWidth="1"
+                        />
 
-                      {/* Vikram Callout */}
-                      <text x="0" y="2" fill="#020617" fontSize="6.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                        VIKRAM
-                      </text>
+                        {/* Top Deck Solar Panel & Avionics */}
+                        <rect x="-15" y="-12" width="30" height="4" rx="1" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.8" />
+                        <circle cx="0" cy="-14" r="1.5" fill="#10b981" />
+
+                        {/* Vikram Callout */}
+                        <text x="0" y="2" fill="#020617" fontSize="5.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                          VIKRAM
+                        </text>
+                      </g>
                     </g>
                   );
                 })()}

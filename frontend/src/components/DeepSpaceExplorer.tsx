@@ -94,9 +94,20 @@ export default function DeepSpaceExplorer() {
   const [ch3ViewMode, setCh3ViewMode] = useState<'SURFACE_3D' | 'TRAJECTORY' | 'CHASTE_PROFILE'>('SURFACE_3D');
   const [ch3ThrustersActive, setCh3ThrustersActive] = useState<boolean>(true);
   const [ch3LaserScanner, setCh3LaserScanner] = useState<boolean>(true);
-  const [ch3RoverTraverse, setCh3RoverTraverse] = useState<boolean>(true);
-  const [ch3RoverDistance, setCh3RoverDistance] = useState<number>(101.4);
+  const [selectedCh3WaypointIdx, setSelectedCh3WaypointIdx] = useState<number>(4);
   const [ch3LaserScanPulse, setCh3LaserScanPulse] = useState<number>(0);
+
+  // Pragyan Traverse Waypoints (ISRO Official Traverse at Shiv Shakti Point)
+  const PRAGYAN_WAYPOINTS = [
+    { id: 'WP1', distM: 0.0, label: 'RAMP ROLLOUT', desc: 'Lander ramp egress & roll onto South Pole soil', x: 195, y: 195, scienceResult: 'Mobility nominal, 6-wheel rocker-bogie deployed' },
+    { id: 'WP2', distM: 12.5, label: 'FIRST TURN & TRACKS', desc: 'Initial maneuver imprinting ISRO & Ashoka emblem on soil', x: 265, y: 215, scienceResult: 'NavCam stereo calibrated, wheel slippage < 1.8%' },
+    { id: 'WP3', distM: 34.8, label: 'APXS & LIBS TARGET', desc: 'Laser breakdown spectroscopy on polar surface boulder', x: 345, y: 205, scienceResult: 'Definitive Sulfur (S), Fe, Ti, Al, Ca, Si elemental detection' },
+    { id: 'WP4', distM: 68.2, label: 'CRATER HAZARD DIVERT', desc: 'Autonomous detour around 4-meter diameter crater rim', x: 420, y: 235, scienceResult: 'Obstacle avoidance verified with 3.2m safety clearance' },
+    { id: 'WP5', distM: 101.4, label: 'FINAL HIBERNATION PARK', desc: 'Solar array oriented toward next sunrise at Shiv Shakti', x: 500, y: 215, scienceResult: '101.4m cumulative traverse completed; battery charged' },
+  ];
+
+  const activeWaypoint = PRAGYAN_WAYPOINTS[selectedCh3WaypointIdx] || PRAGYAN_WAYPOINTS[4];
+  const roverDistance = ch3Data?.rover_pragyan_distance_traversed_m ?? 101.4;
 
   // JWST Interactive State
   const [jwstViewMode, setJwstViewMode] = useState<'MIRROR_OPTICS' | 'SUNSHIELD_L2' | 'DEEP_FIELD_IR'>('MIRROR_OPTICS');
@@ -138,15 +149,6 @@ export default function DeepSpaceExplorer() {
     }, 50);
     return () => clearInterval(cInterval);
   }, []);
-
-  // Pragyan rover drive simulation odometer based on live epoch
-  useEffect(() => {
-    if (!ch3RoverTraverse) return;
-    const rInterval = setInterval(() => {
-      setCh3RoverDistance((d) => parseFloat((d + 0.05).toFixed(2)));
-    }, 1500);
-    return () => clearInterval(rInterval);
-  }, [ch3RoverTraverse]);
 
   // Helper function to create SVG hexagon points
   const getHexPoints = (cx: number, cy: number, r: number = 24) => {
@@ -245,7 +247,7 @@ export default function DeepSpaceExplorer() {
                         SHIV SHAKTI POINT // CHANDRAYAAN-3 DEEP SPACE VISUALIZER
                       </span>
                       <span className="font-space text-[10px] text-amber-400/80">
-                        COORDINATES: 69.373° S, 32.319° E // POLAR REGOLITH &amp; EDL DYNAMICS
+                        {ch3Data?.landing_site ?? 'SHIV SHAKTI POINT [69.373° S, 32.319° E]'} // POLAR REGOLITH TELEMETRY
                       </span>
                     </div>
                   </div>
@@ -253,7 +255,7 @@ export default function DeepSpaceExplorer() {
                   <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 border border-amber-500/30">
                     <Radio size={13} className="text-amber-500 animate-pulse" />
                     <span className="font-mono text-[10px] text-star-white">
-                      RADIO DELAY: <strong className="text-amber-400">1.28s</strong> (384,400 km)
+                      RADIO DELAY: <strong className="text-amber-400">{ch3Data?.light_time_delay_sec ?? 1.28}s</strong> ({Math.round(ch3Data?.distance_from_earth_km ?? 384400).toLocaleString()} km)
                     </span>
                   </div>
                 </div>
@@ -314,19 +316,6 @@ export default function DeepSpaceExplorer() {
                         <Radar size={12} className={ch3LaserScanner ? 'text-emerald-400 animate-spin' : ''} />
                         <span>LHDAC LASER: {ch3LaserScanner ? 'SWEEPING' : 'OFF'}</span>
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setCh3RoverTraverse(!ch3RoverTraverse)}
-                        className={`px-2.5 py-1 rounded-lg text-[10px] font-mono border transition-all flex items-center gap-1.5 cursor-pointer ${
-                          ch3RoverTraverse
-                            ? 'bg-cyan-500/20 border-cyan-400 text-cyan-300'
-                            : 'bg-black/40 border-white/10 text-muted-gray'
-                        }`}
-                      >
-                        {ch3RoverTraverse ? <Pause size={12} /> : <Play size={12} />}
-                        <span>ROVER DRIVE: {ch3RoverTraverse ? 'ACTIVE' : 'PAUSED'}</span>
-                      </button>
                     </div>
                   )}
                 </div>
@@ -335,248 +324,297 @@ export default function DeepSpaceExplorer() {
                 {/* SUB-VIEW 1: 3D-STYLED LUNAR SOUTH POLE & PRAGYAN ROVER SVG */}
                 {/* ------------------------------------------------------------- */}
                 {ch3ViewMode === 'SURFACE_3D' && (
-                  <div className="relative aspect-[16/9] w-full bg-[#05060d] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center select-none shadow-inner">
-                    <svg viewBox="0 0 640 360" className="w-full h-full">
-                      <defs>
-                        {/* Space Sky Gradient */}
-                        <linearGradient id="lunarSky" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#020308" />
-                          <stop offset="60%" stopColor="#080c16" />
-                          <stop offset="100%" stopColor="#141824" />
-                        </linearGradient>
+                  <div className="space-y-3">
+                    <div className="relative aspect-[16/9] w-full bg-[#05060d] rounded-2xl overflow-hidden border border-glass-border/60 flex items-center justify-center select-none shadow-inner">
+                      <svg viewBox="0 0 640 360" className="w-full h-full">
+                        <defs>
+                          {/* Space Sky Gradient */}
+                          <linearGradient id="lunarSky" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#020308" />
+                            <stop offset="60%" stopColor="#080c16" />
+                            <stop offset="100%" stopColor="#141824" />
+                          </linearGradient>
 
-                        {/* Lunar Mountain Gradient */}
-                        <linearGradient id="craterRim" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#2b3240" />
-                          <stop offset="50%" stopColor="#1e2330" />
-                          <stop offset="100%" stopColor="#0e121a" />
-                        </linearGradient>
+                          {/* Lunar Mountain Gradient */}
+                          <linearGradient id="craterRim" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#2b3240" />
+                            <stop offset="50%" stopColor="#1e2330" />
+                            <stop offset="100%" stopColor="#0e121a" />
+                          </linearGradient>
 
-                        {/* Lunar Ground Gradient */}
-                        <linearGradient id="lunarGround" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#252a36" />
-                          <stop offset="30%" stopColor="#1a1e28" />
-                          <stop offset="100%" stopColor="#0d0f15" />
-                        </linearGradient>
+                          {/* Lunar Ground Gradient */}
+                          <linearGradient id="lunarGround" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#252a36" />
+                            <stop offset="30%" stopColor="#1a1e28" />
+                            <stop offset="100%" stopColor="#0d0f15" />
+                          </linearGradient>
 
-                        {/* Gold Lander Hull MLI Gradient */}
-                        <linearGradient id="goldMli" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#fde047" />
-                          <stop offset="30%" stopColor="#f59e0b" />
-                          <stop offset="70%" stopColor="#d97706" />
-                          <stop offset="100%" stopColor="#78350f" />
-                        </linearGradient>
+                          {/* Gold Lander Hull MLI Gradient */}
+                          <linearGradient id="goldMli" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#fde047" />
+                            <stop offset="30%" stopColor="#f59e0b" />
+                            <stop offset="70%" stopColor="#d97706" />
+                            <stop offset="100%" stopColor="#78350f" />
+                          </linearGradient>
 
-                        {/* Thruster Flame Gradient */}
-                        <linearGradient id="thrustFlame" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.9" />
-                          <stop offset="30%" stopColor="#38bdf8" stopOpacity="0.7" />
-                          <stop offset="70%" stopColor="#f97316" stopOpacity="0.8" />
-                          <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
-                        </linearGradient>
+                          {/* Thruster Flame Gradient */}
+                          <linearGradient id="thrustFlame" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stopColor="#67e8f9" stopOpacity="0.9" />
+                            <stop offset="30%" stopColor="#38bdf8" stopOpacity="0.7" />
+                            <stop offset="70%" stopColor="#f97316" stopOpacity="0.8" />
+                            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+                          </linearGradient>
 
-                        {/* Laser Scan Conical Mesh */}
-                        <radialGradient id="laserMesh" cx="50%" cy="0%" r="100%">
-                          <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
-                          <stop offset="60%" stopColor="#10b981" stopOpacity="0.15" />
-                          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-                        </radialGradient>
-                      </defs>
+                          {/* Laser Scan Conical Mesh */}
+                          <radialGradient id="laserMesh" cx="50%" cy="0%" r="100%">
+                            <stop offset="0%" stopColor="#10b981" stopOpacity="0.5" />
+                            <stop offset="60%" stopColor="#10b981" stopOpacity="0.15" />
+                            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+                          </radialGradient>
+                        </defs>
 
-                      {/* Deep Space Sky */}
-                      <rect width="640" height="360" fill="url(#lunarSky)" />
+                        {/* Deep Space Sky */}
+                        <rect width="640" height="360" fill="url(#lunarSky)" />
 
-                      {/* Stars in lunar sky */}
-                      {[
-                        { x: 30, y: 30, r: 1 }, { x: 75, y: 70, r: 1.2 }, { x: 140, y: 25, r: 0.8 },
-                        { x: 190, y: 80, r: 1 }, { x: 280, y: 40, r: 1.5 }, { x: 350, y: 20, r: 0.9 },
-                        { x: 420, y: 65, r: 1.1 }, { x: 510, y: 35, r: 1.3 }, { x: 590, y: 75, r: 1 },
-                      ].map((st, i) => (
-                        <circle key={i} cx={st.x} cy={st.y} r={st.r} fill="#e2e8f0" opacity="0.8" />
-                      ))}
-
-                      {/* Photorealistic 3D Earth visible in the black sky above South Pole Horizon */}
-                      <g transform="translate(90, 60)">
-                        {/* Outer Atmospheric Rayleigh Scattering Glow */}
-                        <circle r="22" fill="none" stroke="rgba(96, 165, 250, 0.4)" strokeWidth="3.5" />
-                        <circle r="20" fill="none" stroke="rgba(147, 197, 253, 0.7)" strokeWidth="1.5" />
-                        
-                        {/* 3D Ocean Sphere */}
-                        <circle r="19" fill="#1e3a8a" />
-                        
-                        {/* Continent Landmasses (Asia, India, Africa, Australia) */}
-                        <path d="M -9 -7 Q -3 -13 5 -9 Q 11 -3 7 7 Q -1 13 -11 7 Z" fill="#15803d" opacity="0.9" />
-                        <path d="M -2 -3 L 2 5 L -4 6 Z" fill="#ca8a04" opacity="0.85" />
-                        <path d="M 6 -11 Q 12 -9 11 -3 Q 6 1 4 -6 Z" fill="#166534" opacity="0.9" />
-                        
-                        {/* Atmospheric Cloud Formations */}
-                        <path d="M -12 -5 Q -4 -9 8 -3 Q 12 4 4 10 Q -6 6 -12 2 Z" fill="#ffffff" opacity="0.6" />
-                        <path d="M -6 4 Q 2 8 9 5" stroke="#ffffff" strokeWidth="1.5" fill="none" opacity="0.75" />
-                        
-                        {/* 3D Curved Terminator Shadow & Night Lights */}
-                        <path d="M 0 -19 A 19 19 0 0 1 0 19 Q 8 0 0 -19 Z" fill="#020617" opacity="0.65" />
-                        <circle cx="5" cy="-2" r="0.6" fill="#fef08a" opacity="0.9" />
-                        <circle cx="8" cy="4" r="0.8" fill="#fde047" opacity="0.8" />
-                        
-                        {/* Limb Specular Edge */}
-                        <circle r="19" fill="none" stroke="rgba(255, 255, 255, 0.5)" strokeWidth="0.8" />
-                        
-                        <text x="0" y="30" fill="#93c5fd" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                          EARTH (384,400 km)
-                        </text>
-                      </g>
-
-                      {/* Distant Lunar South Pole Crater Ridges (Manzinus / Boguslawsky rims) */}
-                      <path
-                        d="M 0 180 Q 80 150 160 170 T 320 155 T 480 165 T 640 150 L 640 220 L 0 220 Z"
-                        fill="url(#craterRim)"
-                        opacity="0.9"
-                      />
-                      <path
-                        d="M 0 195 Q 120 175 240 190 T 460 180 T 640 195 L 640 360 L 0 360 Z"
-                        fill="url(#lunarGround)"
-                      />
-
-                      {/* Regolith Craters & Shadow Formations */}
-                      <ellipse cx="140" cy="270" rx="45" ry="14" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
-                      <ellipse cx="500" cy="300" rx="70" ry="18" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
-                      <ellipse cx="360" cy="335" rx="30" ry="8" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
-
-                      {/* SHIV SHAKTI POINT Landing Beacon Coordinates Marker */}
-                      <g transform="translate(240, 205)">
-                        <circle r="12" fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" className="animate-spin" style={{ animationDuration: '12s' }} />
-                        <circle r="4" fill="#f59e0b" />
-                        <line x1="0" y1="0" x2="0" y2="-45" stroke="#f59e0b" strokeWidth="1.5" strokeDasharray="2,2" />
-                        <rect x="-65" y="-62" width="130" height="16" rx="4" fill="rgba(0,0,0,0.85)" stroke="#f59e0b" strokeWidth="1" />
-                        <text x="0" y="-50" fill="#fcd34d" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                          SHIV SHAKTI (69.373°S, 32.319°E)
-                        </text>
-                      </g>
-
-                      {/* --------------------------------------------------------- */}
-                      {/* VIKRAM LANDER GRAPHICAL MODEL (Centered on landing pad) */}
-                      {/* --------------------------------------------------------- */}
-                      <g transform="translate(240, 155)">
-                        {/* LHDAC Laser Hazard Scan Cone */}
-                        {ch3LaserScanner && (
-                          <polygon
-                            points="0,25 -65,115 65,115"
-                            fill="url(#laserMesh)"
-                            stroke="#10b981"
-                            strokeWidth="0.8"
-                            strokeDasharray="4,4"
-                          />
-                        )}
-
-                        {/* Dual Laser Doppler Velocimeter / Altimeter Beams */}
-                        {ch3LaserScanner && (
-                          <>
-                            <line x1="-15" y1="20" x2="-25" y2="105" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.8" />
-                            <line x1="15" y1="20" x2="25" y2="105" stroke="#06b6d4" strokeWidth="1.5" strokeDasharray="3,3" opacity="0.8" />
-                          </>
-                        )}
-
-                        {/* Throttleable 800N Thruster Exhaust Plumes */}
-                        {ch3ThrustersActive && (
-                          <g>
-                            <polygon points="-18,22 -22,48 -14,48" fill="url(#thrustFlame)" className="animate-pulse" />
-                            <polygon points="-6,22 -9,52 -3,52" fill="url(#thrustFlame)" className="animate-pulse" />
-                            <polygon points="6,22 3,52 9,52" fill="url(#thrustFlame)" className="animate-pulse" />
-                            <polygon points="18,22 14,48 22,48" fill="url(#thrustFlame)" className="animate-pulse" />
-                          </g>
-                        )}
-
-                        {/* 4 Shock-Absorbing Landing Legs */}
-                        <line x1="-22" y1="15" x2="-45" y2="50" stroke="#94a3b8" strokeWidth="2.5" />
-                        <line x1="-45" y1="50" x2="-55" y2="52" stroke="#64748b" strokeWidth="3" />
-                        <circle cx="-50" cy="51" r="3" fill="#cbd5e1" />
-
-                        <line x1="22" y1="15" x2="45" y2="50" stroke="#94a3b8" strokeWidth="2.5" />
-                        <line x1="45" y1="50" x2="55" y2="52" stroke="#64748b" strokeWidth="3" />
-                        <circle cx="50" cy="51" r="3" fill="#cbd5e1" />
-
-                        {/* Central Octagonal Lander Hull with Gold Foil */}
-                        <polygon
-                          points="-24,-15 24,-15 32,15 -32,15"
-                          fill="url(#goldMli)"
-                          stroke="#fbbf24"
-                          strokeWidth="1.5"
-                        />
-
-                        {/* Upper Avionics Deck & Top Solar Panels */}
-                        <rect x="-26" y="-22" width="52" height="7" rx="1.5" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
-                        <line x1="-24" y1="-26" x2="-24" y2="-22" stroke="#38bdf8" strokeWidth="1.5" />
-                        <line x1="24" y1="-26" x2="24" y2="-22" stroke="#38bdf8" strokeWidth="1.5" />
-                        <rect x="-32" y="-30" width="64" height="4" rx="1" fill="#0284c7" stroke="#bae6fd" strokeWidth="0.8" />
-
-                        {/* High-Gain Deep Space Antenna */}
-                        <line x1="-12" y1="-22" x2="-28" y2="-42" stroke="#e2e8f0" strokeWidth="1.5" />
-                        <path d="M -34 -48 A 10 10 0 0 1 -22 -36" fill="none" stroke="#f59e0b" strokeWidth="2" />
-                        <circle cx="-28" cy="-42" r="1.5" fill="#f59e0b" />
-
-                        {/* Deployed Pragyan Rover Ramp */}
-                        <line x1="18" y1="15" x2="70" y2="52" stroke="#64748b" strokeWidth="2.5" strokeDasharray="3,2" />
-
-                        {/* Vikram Lander Label */}
-                        <text x="0" y="2" fill="#0f172a" fontSize="7" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                          VIKRAM
-                        </text>
-                      </g>
-
-                      {/* --------------------------------------------------------- */}
-                      {/* PRAGYAN ROVER 6-WHEEL ROCKER-BOGIE MOBILITY SYSTEM */}
-                      {/* --------------------------------------------------------- */}
-                      <g transform={`translate(${330 + Math.sin(ch3LaserScanPulse * 0.05) * 15}, 225)`}>
-                        {/* Wheel Tracks in Lunar Regolith */}
-                        <line x1="-60" y1="16" x2="0" y2="16" stroke="#0f1420" strokeWidth="3" strokeDasharray="2,2" />
-                        <line x1="-60" y1="20" x2="0" y2="20" stroke="#0f1420" strokeWidth="3" strokeDasharray="2,2" />
-
-                        {/* Rover Body Gold MLI */}
-                        <rect x="-16" y="-6" width="32" height="14" rx="2" fill="url(#goldMli)" stroke="#fbbf24" strokeWidth="1" />
-
-                        {/* Solar Panel Wing angled towards Polar Sun */}
-                        <polygon points="-14,-6 14,-6 18,-18 -10,-18" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.8" />
-
-                        {/* NavCam Mast & Antenna */}
-                        <line x1="8" y1="-6" x2="10" y2="-22" stroke="#e2e8f0" strokeWidth="1.2" />
-                        <circle cx="10" cy="-22" r="2" fill="#10b981" />
-
-                        {/* 6 Rocker-Bogie Wheels */}
-                        {[-14, -2, 10].map((wx, idx) => (
-                          <g key={idx} transform={`translate(${wx}, 10)`}>
-                            <circle r="4.5" fill="#1e293b" stroke="#94a3b8" strokeWidth="1.2" />
-                            <circle r="2" fill="#475569" />
-                          </g>
+                        {/* Stars in lunar sky */}
+                        {[
+                          { x: 30, y: 30, r: 1 }, { x: 75, y: 70, r: 1.2 }, { x: 140, y: 25, r: 0.8 },
+                          { x: 190, y: 80, r: 1 }, { x: 280, y: 40, r: 1.5 }, { x: 350, y: 20, r: 0.9 },
+                          { x: 420, y: 65, r: 1.1 }, { x: 510, y: 35, r: 1.3 }, { x: 590, y: 75, r: 1 },
+                        ].map((st, i) => (
+                          <circle key={i} cx={st.x} cy={st.y} r={st.r} fill="#e2e8f0" opacity="0.8" />
                         ))}
 
-                        {/* LIBS Laser pulse firing at surface rock */}
-                        <line x1="10" y1="-22" x2="70" y2="18" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4,2" className="animate-pulse" />
-                        <circle cx="70" cy="18" r="6" fill="#334155" stroke="#64748b" strokeWidth="1" />
-                        <circle cx="70" cy="18" r="2" fill="#10b981" className="animate-ping" />
+                        {/* Photorealistic 3D Earth in sky */}
+                        <g transform="translate(85, 55)">
+                          <circle r="22" fill="none" stroke="rgba(96, 165, 250, 0.4)" strokeWidth="3.5" />
+                          <circle r="20" fill="none" stroke="rgba(147, 197, 253, 0.7)" strokeWidth="1.5" />
+                          <circle r="19" fill="#1e3a8a" />
+                          <path d="M -9 -7 Q -3 -13 5 -9 Q 11 -3 7 7 Q -1 13 -11 7 Z" fill="#15803d" opacity="0.9" />
+                          <path d="M -2 -3 L 2 5 L -4 6 Z" fill="#ca8a04" opacity="0.85" />
+                          <path d="M 6 -11 Q 12 -9 11 -3 Q 6 1 4 -6 Z" fill="#166534" opacity="0.9" />
+                          <path d="M -12 -5 Q -4 -9 8 -3 Q 12 4 4 10 Q -6 6 -12 2 Z" fill="#ffffff" opacity="0.6" />
+                          <path d="M -6 4 Q 2 8 9 5" stroke="#ffffff" strokeWidth="1.5" fill="none" opacity="0.75" />
+                          <path d="M 0 -19 A 19 19 0 0 1 0 19 Q 8 0 0 -19 Z" fill="#020617" opacity="0.65" />
+                          <circle cx="5" cy="-2" r="0.6" fill="#fef08a" opacity="0.9" />
+                          <circle cx="8" cy="4" r="0.8" fill="#fde047" opacity="0.8" />
+                          <circle r="19" fill="none" stroke="rgba(255, 255, 255, 0.5)" strokeWidth="0.8" />
+                          <text x="0" y="28" fill="#93c5fd" fontSize="7" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                            EARTH // DSN LINK
+                          </text>
+                        </g>
 
-                        {/* Pragyan Label & Odometer */}
-                        <text x="0" y="32" fill="#38bdf8" fontSize="7.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
-                          PRAGYAN ({ch3RoverDistance}m)
-                        </text>
-                      </g>
+                        {/* Top Clean HUD Bar */}
+                        <g transform="translate(180, 20)">
+                          <rect width="440" height="24" rx="6" fill="rgba(0,0,0,0.8)" stroke="rgba(245,158,11,0.3)" strokeWidth="1" />
+                          <circle cx="14" cy="12" r="4" fill="#10b981" className="animate-pulse" />
+                          <text x="26" y="15" fill="#f8fafc" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
+                            SHIV SHAKTI POINT // 69.373° S, 32.319° E // TELEMETRY LINK LOCKED
+                          </text>
+                          <text x="425" y="15" fill="#f59e0b" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="end">
+                            TOTAL TRAVERSE: {roverDistance}m
+                          </text>
+                        </g>
 
-                      {/* Top HUD Badge Overlay */}
-                      <g transform="translate(15, 20)">
-                        <rect width="180" height="24" rx="6" fill="rgba(0,0,0,0.75)" stroke="rgba(245,158,11,0.4)" strokeWidth="1" />
-                        <circle cx="12" cy="12" r="4" fill="#10b981" className="animate-pulse" />
-                        <text x="24" y="15" fill="#f8fafc" fontSize="8" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold">
-                          LUNAR SOUTH POLE // NOMINAL
-                        </text>
-                      </g>
-                    </svg>
+                        {/* Distant Lunar South Pole Crater Ridges */}
+                        <path
+                          d="M 0 170 Q 80 140 160 160 T 320 145 T 480 155 T 640 140 L 640 220 L 0 220 Z"
+                          fill="url(#craterRim)"
+                          opacity="0.9"
+                        />
+                        <path
+                          d="M 0 185 Q 120 165 240 180 T 460 170 T 640 185 L 640 360 L 0 360 Z"
+                          fill="url(#lunarGround)"
+                        />
 
-                    {/* HUD Status Card inside Canvas */}
-                    <div className="absolute bottom-3 left-3 px-3 py-1.5 rounded-xl bg-black/80 border border-white/10 text-[10px] font-space text-star-white flex items-center gap-3 backdrop-blur-md">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                        <span>EDL DESCENT: TOUCHDOWN COMPLETE</span>
-                      </div>
-                      <span className="text-amber-400 font-mono font-bold">ΔV EXPENDED: 1,842 m/s</span>
+                        {/* Regolith Craters */}
+                        <ellipse cx="290" cy="270" rx="35" ry="12" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
+                        <ellipse cx="540" cy="290" rx="55" ry="16" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
+                        <ellipse cx="400" cy="325" rx="26" ry="7" fill="#08090e" stroke="#2a3040" strokeWidth="1" />
+
+                        {/* SHIV SHAKTI POINT Touchdown Marker */}
+                        <g transform="translate(150, 195)">
+                          <circle r="10" fill="none" stroke="#f59e0b" strokeWidth="1" strokeDasharray="3,3" className="animate-spin" style={{ animationDuration: '12s' }} />
+                          <circle r="3.5" fill="#f59e0b" />
+                          <line x1="0" y1="0" x2="0" y2="-36" stroke="#f59e0b" strokeWidth="1.2" strokeDasharray="2,2" />
+                          <rect x="-60" y="-52" width="120" height="15" rx="3" fill="rgba(0,0,0,0.9)" stroke="#f59e0b" strokeWidth="1" />
+                          <text x="0" y="-42" fill="#fcd34d" fontSize="7" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                            SHIV SHAKTI TOUCHDOWN
+                          </text>
+                        </g>
+
+                        {/* --------------------------------------------------------- */}
+                        {/* VIKRAM LANDER GRAPHICAL MODEL */}
+                        {/* --------------------------------------------------------- */}
+                        <g transform="translate(150, 145)">
+                          {/* LHDAC Laser Hazard Scan Cone */}
+                          {ch3LaserScanner && (
+                            <polygon
+                              points="0,25 -55,100 55,100"
+                              fill="url(#laserMesh)"
+                              stroke="#10b981"
+                              strokeWidth="0.8"
+                              strokeDasharray="4,4"
+                            />
+                          )}
+
+                          {/* Throttleable 800N Thruster Exhaust Plumes */}
+                          {ch3ThrustersActive && (
+                            <g>
+                              <polygon points="-16,20 -19,42 -12,42" fill="url(#thrustFlame)" className="animate-pulse" />
+                              <polygon points="-5,20 -7,46 -2,46" fill="url(#thrustFlame)" className="animate-pulse" />
+                              <polygon points="5,20 2,46 7,46" fill="url(#thrustFlame)" className="animate-pulse" />
+                              <polygon points="16,20 12,42 19,42" fill="url(#thrustFlame)" className="animate-pulse" />
+                            </g>
+                          )}
+
+                          {/* 4 Shock-Absorbing Landing Legs */}
+                          <line x1="-20" y1="12" x2="-40" y2="44" stroke="#94a3b8" strokeWidth="2.2" />
+                          <line x1="-40" y1="44" x2="-48" y2="46" stroke="#64748b" strokeWidth="2.5" />
+                          <circle cx="-44" cy="45" r="2.5" fill="#cbd5e1" />
+
+                          <line x1="20" y1="12" x2="40" y2="44" stroke="#94a3b8" strokeWidth="2.2" />
+                          <line x1="40" y1="44" x2="48" y2="46" stroke="#64748b" strokeWidth="2.5" />
+                          <circle cx="44" cy="45" r="2.5" fill="#cbd5e1" />
+
+                          {/* Central Octagonal Lander Hull */}
+                          <polygon
+                            points="-22,-14 22,-14 28,12 -28,12"
+                            fill="url(#goldMli)"
+                            stroke="#fbbf24"
+                            strokeWidth="1.2"
+                          />
+
+                          {/* Top Avionics Deck & Solar Panels */}
+                          <rect x="-24" y="-20" width="48" height="6" rx="1.5" fill="#1e293b" stroke="#38bdf8" strokeWidth="1" />
+                          <line x1="-22" y1="-24" x2="-22" y2="-20" stroke="#38bdf8" strokeWidth="1.2" />
+                          <line x1="22" y1="-24" x2="22" y2="-20" stroke="#38bdf8" strokeWidth="1.2" />
+                          <rect x="-28" y="-27" width="56" height="3.5" rx="1" fill="#0284c7" stroke="#bae6fd" strokeWidth="0.8" />
+
+                          {/* High-Gain Deep Space Antenna */}
+                          <line x1="-10" y1="-20" x2="-24" y2="-38" stroke="#e2e8f0" strokeWidth="1.2" />
+                          <path d="M -30 -44 A 8 8 0 0 1 -18 -34" fill="none" stroke="#f59e0b" strokeWidth="1.8" />
+                          <circle cx="-24" cy="-38" r="1.2" fill="#f59e0b" />
+
+                          {/* Deployed Pragyan Rover Ramp */}
+                          <line x1="16" y1="12" x2="52" y2="44" stroke="#64748b" strokeWidth="2.2" strokeDasharray="3,2" />
+
+                          {/* Vikram Lander Label */}
+                          <text x="0" y="2" fill="#0f172a" fontSize="6.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                            VIKRAM
+                          </text>
+                        </g>
+
+                        {/* --------------------------------------------------------- */}
+                        {/* AUTHENTIC PRAGYAN ROVER TRAVERSE PATH & TRACKS */}
+                        {/* --------------------------------------------------------- */}
+                        {/* Wheel Tracks connecting all 5 waypoints */}
+                        <path
+                          d="M 195 195 L 265 215 L 345 205 L 420 235 L 500 215"
+                          fill="none"
+                          stroke="#0a0e1a"
+                          strokeWidth="3.5"
+                          strokeDasharray="2,2"
+                        />
+                        <path
+                          d="M 195 195 L 265 215 L 345 205 L 420 235 L 500 215"
+                          fill="none"
+                          stroke="#f59e0b"
+                          strokeWidth="1.2"
+                          strokeDasharray="4,3"
+                          opacity="0.75"
+                        />
+
+                        {/* Interactive Waypoint Nodes along Traverse */}
+                        {PRAGYAN_WAYPOINTS.map((wp, idx) => {
+                          const isSel = idx === selectedCh3WaypointIdx;
+                          return (
+                            <g
+                              key={wp.id}
+                              transform={`translate(${wp.x}, ${wp.y})`}
+                              className="cursor-pointer"
+                              onClick={() => setSelectedCh3WaypointIdx(idx)}
+                            >
+                              <circle
+                                r={isSel ? 7 : 4}
+                                fill={isSel ? '#f59e0b' : '#1e293b'}
+                                stroke={isSel ? '#ffffff' : '#f59e0b'}
+                                strokeWidth={isSel ? 2 : 1}
+                              />
+                              {isSel && (
+                                <circle r={14} fill="none" stroke="#f59e0b" strokeWidth="1" className="animate-ping" opacity="0.6" />
+                              )}
+                              <text
+                                x="0"
+                                y={idx % 2 === 0 ? -10 : 18}
+                                fill={isSel ? '#ffffff' : '#94a3b8'}
+                                fontSize="7"
+                                fontFamily="'Space Grotesk', sans-serif"
+                                fontWeight={isSel ? 'bold' : 'normal'}
+                                textAnchor="middle"
+                              >
+                                {wp.distM}m
+                              </text>
+                            </g>
+                          );
+                        })}
+
+                        {/* --------------------------------------------------------- */}
+                        {/* PRAGYAN ROVER 6-WHEEL MODEL AT ACTIVE WAYPOINT */}
+                        {/* --------------------------------------------------------- */}
+                        <g transform={`translate(${activeWaypoint.x}, ${activeWaypoint.y - 10})`}>
+                          {/* Rover Body Gold MLI */}
+                          <rect x="-14" y="-5" width="28" height="12" rx="2" fill="url(#goldMli)" stroke="#fbbf24" strokeWidth="1" />
+
+                          {/* Solar Panel Wing angled towards Sun */}
+                          <polygon points="-12,-5 12,-5 16,-16 -8,-16" fill="#0284c7" stroke="#38bdf8" strokeWidth="0.8" />
+
+                          {/* NavCam Mast */}
+                          <line x1="6" y1="-5" x2="8" y2="-18" stroke="#e2e8f0" strokeWidth="1.2" />
+                          <circle cx="8" cy="-18" r="1.8" fill="#10b981" />
+
+                          {/* 6 Rocker-Bogie Wheels */}
+                          {[-12, -1, 10].map((wx, idx) => (
+                            <g key={idx} transform={`translate(${wx}, 9)`}>
+                              <circle r="4" fill="#1e293b" stroke="#94a3b8" strokeWidth="1" />
+                              <circle r="1.5" fill="#475569" />
+                            </g>
+                          ))}
+
+                          {/* LIBS Laser pulse firing at surface rock */}
+                          <line x1="8" y1="-18" x2="45" y2="12" stroke="#10b981" strokeWidth="1.2" strokeDasharray="3,2" className="animate-pulse" />
+                          <circle cx="45" cy="12" r="5" fill="#334155" stroke="#64748b" strokeWidth="0.8" />
+                          <circle cx="45" cy="12" r="1.5" fill="#10b981" className="animate-ping" />
+
+                          {/* Pragyan Active Callout Tag */}
+                          <rect x="-35" y="-32" width="70" height="12" rx="3" fill="rgba(0,0,0,0.85)" stroke="#38bdf8" strokeWidth="0.8" />
+                          <text x="0" y="-23" fill="#38bdf8" fontSize="6.5" fontFamily="'Space Grotesk', sans-serif" fontWeight="bold" textAnchor="middle">
+                            PRAGYAN [{activeWaypoint.distM}m]
+                          </text>
+                        </g>
+                      </svg>
+                    </div>
+
+                    {/* Interactive Pragyan Traverse Waypoint Strip */}
+                    <div className="p-3 rounded-2xl bg-black/60 border border-white/10 flex items-center justify-between gap-2 overflow-x-auto scrollbar-none">
+                      {PRAGYAN_WAYPOINTS.map((wp, idx) => {
+                        const isSel = idx === selectedCh3WaypointIdx;
+                        return (
+                          <button
+                            type="button"
+                            key={wp.id}
+                            onClick={() => setSelectedCh3WaypointIdx(idx)}
+                            className={`px-3 py-1.5 rounded-xl text-left border shrink-0 transition-all cursor-pointer ${
+                              isSel
+                                ? 'bg-amber-500/20 border-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                                : 'bg-black/40 border-white/5 hover:border-white/20'
+                            }`}
+                          >
+                            <span className="text-[9px] font-mono text-amber-400 font-bold block">{wp.distM}m: {wp.label}</span>
+                            <span className="text-[8px] text-muted-gray block">{wp.scienceResult.slice(0, 32)}...</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -589,31 +627,18 @@ export default function DeepSpaceExplorer() {
                     <svg viewBox="0 0 600 340" className="w-full h-full">
                       {/* Photorealistic 3D Earth with parking orbit & multi-burn loops */}
                       <g transform="translate(100, 170)">
-                        {/* Outer Atmospheric Glow */}
                         <circle r="38" fill="none" stroke="rgba(96, 165, 250, 0.3)" strokeWidth="5" />
                         <circle r="34" fill="none" stroke="rgba(147, 197, 253, 0.6)" strokeWidth="1.5" />
-                        
-                        {/* 3D Ocean Base */}
                         <circle r="32" fill="#1e3a8a" />
-                        
-                        {/* Realistic Continents */}
                         <path d="M -16 -12 Q -6 -22 10 -15 Q 20 -5 12 12 Q -2 22 -20 12 Z" fill="#15803d" opacity="0.9" />
                         <path d="M -4 -6 L 4 8 L -7 10 Z" fill="#ca8a04" opacity="0.85" />
                         <path d="M 10 -18 Q 20 -15 18 -5 Q 10 2 6 -10 Z" fill="#166534" opacity="0.9" />
-                        
-                        {/* Cloud Layers */}
                         <path d="M -20 -8 Q -7 -15 14 -5 Q 20 6 6 16 Q -10 10 -20 3 Z" fill="#ffffff" opacity="0.55" />
                         <path d="M -10 6 Q 3 13 15 8" stroke="#ffffff" strokeWidth="2.5" fill="none" opacity="0.7" />
-                        
-                        {/* 3D Terminator Shadow */}
                         <path d="M 0 -32 A 32 32 0 0 1 0 32 Q 14 0 0 -32 Z" fill="#020617" opacity="0.65" />
                         <circle cx="8" cy="-4" r="1.1" fill="#fef08a" opacity="0.9" />
                         <circle cx="14" cy="6" r="1.3" fill="#fde047" opacity="0.8" />
-                        
-                        {/* Specular Limb Ring */}
                         <circle r="32" fill="none" stroke="rgba(255, 255, 255, 0.4)" strokeWidth="1" />
-
-                        {/* Earth-Bound Maneuver Elliptical Loops */}
                         <circle r="46" fill="none" stroke="rgba(96, 165, 250, 0.45)" strokeDasharray="3,3" />
                         <ellipse rx="70" ry="34" fill="none" stroke="rgba(96, 165, 250, 0.35)" strokeDasharray="2,2" transform="rotate(-15)" />
                         <ellipse rx="95" ry="46" fill="none" stroke="rgba(96, 165, 250, 0.35)" strokeDasharray="2,2" transform="rotate(-15)" />
@@ -677,19 +702,19 @@ export default function DeepSpaceExplorer() {
                         <span>CHASTE THERMAL PROBE PENETRATION PROFILE (0 to -10 cm DEPTH)</span>
                       </span>
                       <span className="text-[10px] font-mono text-emerald-400 font-bold px-2.5 py-1 rounded-md bg-emerald-500/20 border border-emerald-500/30">
-                        ΔT = 60.6°C EXTREME GRADIENT
+                        ΔT = {((ch3Data?.chaste_surface_temp_c ?? 50.4) - (ch3Data?.chaste_subsurface_10cm_temp_c ?? -10.2)).toFixed(1)}°C EXTREME GRADIENT
                       </span>
                     </div>
 
                     {/* Gradient Bars */}
                     <div className="space-y-2.5">
                       {[
-                        { depth: 'Surface Regolith (0 cm)', temp: '+50.4 °C', val: 50.4, color: '#f59e0b', desc: 'Direct sunlit polar regolith' },
+                        { depth: 'Surface Regolith (0 cm)', temp: `+${(ch3Data?.chaste_surface_temp_c ?? 50.4).toFixed(1)} °C`, val: ch3Data?.chaste_surface_temp_c ?? 50.4, color: '#f59e0b', desc: 'Direct sunlit polar regolith' },
                         { depth: 'Sub-surface (-2 cm)', temp: '+32.0 °C', val: 32.0, color: '#fbbf24', desc: 'Rapid vacuum thermal insulation' },
                         { depth: 'Sub-surface (-4 cm)', temp: '+14.5 °C', val: 14.5, color: '#38bdf8', desc: 'Sharp conductivity drop-off' },
                         { depth: 'Sub-surface (-6 cm)', temp: '+2.0 °C', val: 2.0, color: '#63c7ff', desc: 'Near-freezing transition zone' },
                         { depth: 'Sub-surface (-8 cm)', temp: '-4.8 °C', val: -4.8, color: '#00d4ff', desc: 'Sub-zero cryo-boundary' },
-                        { depth: 'Deep Lunar Ice Bed (-10 cm)', temp: '-10.2 °C', val: -10.2, color: '#a855f7', desc: 'Permanent subsurface frost layer' },
+                        { depth: 'Deep Lunar Ice Bed (-10 cm)', temp: `${(ch3Data?.chaste_subsurface_10cm_temp_c ?? -10.2).toFixed(1)} °C`, val: ch3Data?.chaste_subsurface_10cm_temp_c ?? -10.2, color: '#a855f7', desc: 'Permanent subsurface frost layer' },
                       ].map((row, idx) => (
                         <div key={idx} className="flex items-center gap-3 text-xs font-space">
                           <div className="w-52">
@@ -718,19 +743,19 @@ export default function DeepSpaceExplorer() {
                 <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2.5">
                   <div className="p-3 rounded-xl bg-black/40 border border-white/5">
                     <span className="text-[9px] font-space text-muted-gray uppercase block">ROVER TRAVERSED:</span>
-                    <span className="font-mono text-sm font-bold text-amber-400">{ch3RoverDistance} meters</span>
+                    <span className="font-mono text-sm font-bold text-amber-400">{roverDistance} meters</span>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/5">
                     <span className="text-[9px] font-space text-muted-gray uppercase block">ILSA SEISMICITY:</span>
-                    <span className="font-mono text-sm font-bold text-cyan-glow">3 Lunar Events</span>
+                    <span className="font-mono text-sm font-bold text-cyan-glow">{ch3Data?.ilsa_seismic_events_24h ?? 3} Lunar Events</span>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/5">
                     <span className="text-[9px] font-space text-muted-gray uppercase block">RAMBHA PLASMA:</span>
-                    <span className="font-mono text-sm font-bold text-purple-400">1.05 × 10⁴ / cm³</span>
+                    <span className="font-mono text-sm font-bold text-purple-400">{(ch3Data?.rambha_plasma_density_cm3 ?? 10500).toLocaleString()} / cm³</span>
                   </div>
                   <div className="p-3 rounded-xl bg-black/40 border border-white/5">
-                    <span className="text-[9px] font-space text-muted-gray uppercase block">COMMUNICATION SNR:</span>
-                    <span className="font-mono text-sm font-bold text-emerald-400">+48.2 dB (DSN)</span>
+                    <span className="text-[9px] font-space text-muted-gray uppercase block">BATTERY CHARGE:</span>
+                    <span className="font-mono text-sm font-bold text-emerald-400">{ch3Data?.battery_charge_pct ?? 98.5}% (Solar Array)</span>
                   </div>
                 </div>
               </div>
@@ -751,19 +776,21 @@ export default function DeepSpaceExplorer() {
                     <div className="p-3 rounded-xl bg-black/40 border border-white/10 space-y-2">
                       <span className="text-muted-gray text-[10px] uppercase font-semibold block">ELEMENTAL CONCENTRATION (APXS + LIBS)</span>
                       <div className="grid grid-cols-2 gap-2">
-                        {[
-                          { el: 'Silicon (Si)', pct: '21.4%' },
-                          { el: 'Aluminum (Al)', pct: '14.8%' },
-                          { el: 'Calcium (Ca)', pct: '9.6%' },
-                          { el: 'Iron (Fe)', pct: '8.2%' },
-                          { el: 'Magnesium (Mg)', pct: '6.8%' },
-                          { el: 'Titanium (Ti)', pct: '2.1%' },
-                          { el: 'Sulfur (S)', pct: '0.34%' },
-                          { el: 'Oxygen (O)', pct: '44.2%' },
-                        ].map((e, idx) => (
+                        {Object.entries(
+                          ch3Data?.apxs_elemental_abundances ?? {
+                            'Silicon (Si)': 21.4,
+                            'Aluminum (Al)': 14.8,
+                            'Calcium (Ca)': 9.6,
+                            'Iron (Fe)': 8.2,
+                            'Magnesium (Mg)': 6.8,
+                            'Titanium (Ti)': 2.1,
+                            'Sulfur (S)': 0.34,
+                            'Oxygen (O)': 44.2,
+                          }
+                        ).map(([el, pct], idx) => (
                           <div key={idx} className="p-2 rounded-lg bg-space-navy/50 border border-white/5 flex justify-between">
-                            <span className="text-[10px] text-star-white/80">{e.el}</span>
-                            <span className="font-mono text-[10px] font-bold text-cyan-glow">{e.pct}</span>
+                            <span className="text-[10px] text-star-white/80">{el}</span>
+                            <span className="font-mono text-[10px] font-bold text-cyan-glow">{pct}%</span>
                           </div>
                         ))}
                       </div>

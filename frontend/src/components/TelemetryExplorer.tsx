@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useRef, useMemo } from 'react';
-import { motion, useInView } from 'framer-motion';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
   LineChart,
   Zap,
@@ -18,9 +18,23 @@ import {
   Database,
   Clock,
   CheckCircle2,
+  Sparkles,
+  Server,
 } from 'lucide-react';
 import { useMission } from '../context/MissionContext';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
+
+interface IngestionPacket {
+  id: string;
+  time: string;
+  chunk: string;
+  ch: string;
+  val: string;
+  dev: string;
+  latency: string;
+  status: string;
+  isNew?: boolean;
+}
 
 export default function TelemetryExplorer() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -28,7 +42,8 @@ export default function TelemetryExplorer() {
   const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry, formatMissionTime, currentClock, timezone } = useMission();
 
   const [activeStreamId, setActiveStreamId] = useState('battery-temp');
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
+  const [ingestionLog, setIngestionLog] = useState<IngestionPacket[]>([]);
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
@@ -46,7 +61,7 @@ export default function TelemetryExplorer() {
   const currentAttitudeNum = activeSat.telemetryMetrics.attitudeError.current;
   const currentSnrNum = activeSat.telemetryMetrics.commsSnr.current;
 
-  // Generate stable, physically consistent historical points with zero graph warping
+  // Generate stable, physically consistent historical points with dynamic live end point
   const buildLinearStreamData = (baseVal: number, curVal: number) => {
     const diff = curVal - baseVal;
     return [
@@ -55,15 +70,16 @@ export default function TelemetryExplorer() {
       { time: 'T-6m', current: Number((baseVal + diff * 0.38).toFixed(3)), baseline: baseVal },
       { time: 'T-4m', current: Number((baseVal + diff * 0.62).toFixed(3)), baseline: baseVal },
       { time: 'T-2m', current: Number((baseVal + diff * 0.85).toFixed(3)), baseline: baseVal },
-      { time: 'NOW', current: Number(curVal.toFixed(3)), baseline: baseVal },
+      { time: 'NOW (LIVE)', current: Number(curVal.toFixed(3)), baseline: baseVal },
     ];
   };
 
-  // Dedicated channels with calibrated linear physical domains to prevent any graph bouncing or glitches
+  // Dedicated channels with calibrated linear physical domains
   const telemetryStreams = useMemo(() => [
     {
       id: 'battery-temp',
       name: 'BATTERY / SUBSYSTEM TEMPERATURE',
+      channelTag: 'SENS_THERM_BATT_01',
       unit: '°C',
       currentVal: currentTempNum.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.batteryTemp.baseline.toFixed(1),
@@ -87,6 +103,7 @@ export default function TelemetryExplorer() {
     {
       id: 'bus-voltage',
       name: 'MAIN 28V REGULATED POWER BUS',
+      channelTag: 'EPS_BUS_28V_REG',
       unit: 'V',
       currentVal: currentVoltNum.toFixed(2),
       baselineVal: activeSat.telemetryMetrics.busVoltage.baseline.toFixed(1),
@@ -110,6 +127,7 @@ export default function TelemetryExplorer() {
     {
       id: 'power-draw',
       name: 'PRIMARY PAYLOAD POWER DRAW',
+      channelTag: 'PAYLOAD_PWR_ACT',
       unit: 'W',
       currentVal: currentPowerNum.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.powerDraw.baseline.toFixed(1),
@@ -124,6 +142,7 @@ export default function TelemetryExplorer() {
     {
       id: 'attitude-error',
       name: '3-AXIS ATTITUDE POINTING JITTER',
+      channelTag: 'ADCS_POINT_JITTER',
       unit: 'deg',
       currentVal: currentAttitudeNum.toFixed(3),
       baselineVal: activeSat.telemetryMetrics.attitudeError.baseline.toFixed(3),
@@ -143,6 +162,7 @@ export default function TelemetryExplorer() {
     {
       id: 'comms-snr',
       name: 'GROUND LINK SNR & CARRIER LOCK',
+      channelTag: 'TTC_CARRIER_SNR',
       unit: 'dB',
       currentVal: currentSnrNum.toFixed(1),
       baselineVal: activeSat.telemetryMetrics.commsSnr.baseline.toFixed(1),
@@ -158,7 +178,26 @@ export default function TelemetryExplorer() {
 
   const activeStream = telemetryStreams.find((s) => s.id === activeStreamId) || telemetryStreams[0];
 
-  // Fixed, rock-solid linear coordinate scaling
+  // Dynamic TimescaleDB Ingestion Stream Pipeline
+  useEffect(() => {
+    const now = new Date();
+    const subSec = Math.floor(Math.random() * 800 + 100);
+    const newPacket: IngestionPacket = {
+      id: `${Date.now()}-${Math.random()}`,
+      time: `${formatMissionTime(now, 'hms')}.${subSec}`,
+      chunk: `_hyper_3_${(Math.floor(Date.now() / 8000) % 800) + 120}_chunk`,
+      ch: activeStream.channelTag,
+      val: `${activeStream.currentVal} ${activeStream.unit}`,
+      dev: activeStream.deviation,
+      latency: `${Math.floor(10 + Math.random() * 6)}ms`,
+      status: 'INSERT 201 OK',
+      isNew: true,
+    };
+
+    setIngestionLog((prev) => [newPacket, ...prev.slice(0, 4)]);
+  }, [liveTelemetry, activeStream, formatMissionTime]);
+
+  // Fixed linear coordinate scaling
   const minDomain = activeStream.domain.min;
   const maxDomain = activeStream.domain.max;
   const domainRange = maxDomain - minDomain || 1;
@@ -170,27 +209,27 @@ export default function TelemetryExplorer() {
     return 125 - clamped * 95;
   };
 
-  // Generate clean linear polyline paths (no cubic bezier overshoot or loops)
+  // Generate clean linear polyline paths
   const observedPoints = activeStream.data.map((d, i) => ({
-    x: 60 + i * 120,
+    x: 60 + i * 116,
     y: toY(d.current),
+    ...d,
   }));
 
   const baselinePoints = activeStream.data.map((d, i) => ({
-    x: 60 + i * 120,
+    x: 60 + i * 116,
     y: toY(d.baseline),
   }));
 
-  const observedLinePath = observedPoints.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`, '');
-  const baselineLinePath = baselinePoints.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`, '');
-  const shadedAreaPath = `${observedLinePath} L ${observedPoints[observedPoints.length - 1].x} 125 L ${observedPoints[0].x} 125 Z`;
-
-  // Recent simulated / ingested TimescaleDB packets table with dynamic timezone formatting
-  const recentPackets = [
-    { time: formatMissionTime(new Date(), 'hms'), ch: activeStream.id, val: `${activeStream.currentVal} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
-    { time: formatMissionTime(new Date(Date.now() - 1000), 'hms'), ch: activeStream.id, val: `${(parseFloat(activeStream.currentVal) - 0.05).toFixed(1)} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
-    { time: formatMissionTime(new Date(Date.now() - 2000), 'hms'), ch: activeStream.id, val: `${(parseFloat(activeStream.currentVal) - 0.12).toFixed(1)} ${activeStream.unit}`, dev: activeStream.deviation, status: 'INGESTED 200 OK' },
-  ];
+  const observedLinePath = observedPoints.reduce(
+    (acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`,
+    ''
+  );
+  const baselineLinePath = baselinePoints.reduce(
+    (acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`,
+    ''
+  );
+  const shadedAreaPath = `${observedLinePath} L ${observedPoints[observedPoints.length - 1].x.toFixed(1)} 125 L ${observedPoints[0].x.toFixed(1)} 125 Z`;
 
   return (
     <section id="telemetry" className="section-spacing relative overflow-hidden py-16 md:py-24 w-full" ref={containerRef}>
@@ -227,7 +266,10 @@ export default function TelemetryExplorer() {
               const isSelected = sat.id === selectedSatelliteId;
               const hasAlert = sat.riskBreakdown.status === 'CRITICAL';
               return (
-                <div role="button" tabIndex={0} key={sat.id}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  key={sat.id}
                   onClick={() => setSelectedSatelliteId(sat.id)}
                   className={`px-3 sm:px-3.5 py-2 rounded-xl border text-xs font-space tracking-wider transition-all duration-300 flex items-center gap-2 cursor-pointer flex-shrink-0 select-none ${
                     isSelected
@@ -267,7 +309,10 @@ export default function TelemetryExplorer() {
                   const Icon = stream.icon;
 
                   return (
-                    <motion.div role="button" tabIndex={0} key={stream.id}
+                    <motion.div
+                      role="button"
+                      tabIndex={0}
+                      key={stream.id}
                       onClick={() => setActiveStreamId(stream.id)}
                       className={`w-full text-left p-3.5 sm:p-4 rounded-2xl border transition-all flex items-center justify-between cursor-pointer select-none ${
                         isSelected
@@ -329,7 +374,7 @@ export default function TelemetryExplorer() {
             </div>
           </div>
 
-          {/* Right Column: Visualization & Complete Statistical Telemetry Deck (8 cols, Fills 100% width) */}
+          {/* Right Column: Visualization & Complete Statistical Telemetry Deck */}
           <div className="lg:col-span-8 w-full">
             <motion.div
               className="glass-panel rounded-3xl p-5 sm:p-6 md:p-7 border border-glass-border box-glow shadow-[0_0_50px_rgba(4,18,34,0.9)] space-y-5 w-full h-full flex flex-col justify-between"
@@ -371,11 +416,9 @@ export default function TelemetryExplorer() {
                   >
                     {activeStream.status.toUpperCase()}
                   </span>
-                  <div role="button" tabIndex={0} onClick={() => setRefreshKey((k) => k + 1)}
-                    className="p-2 rounded-lg border border-glass-border hover:border-cyan-glow/40 text-star-white/60 hover:text-cyan-glow transition-colors cursor-pointer"
-                    title="Refresh Telemetry Feed"
-                  >
-                    <RefreshCw size={14} />
+                  <div className="px-2.5 py-1 rounded-lg bg-black/60 border border-cyan-glow/30 flex items-center gap-1.5 text-xs font-space text-emerald-400 font-mono">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>STREAM: 1Hz</span>
                   </div>
                 </div>
               </div>
@@ -388,7 +431,7 @@ export default function TelemetryExplorer() {
                 </p>
               </div>
 
-              {/* Enhanced Cyber-Aerospace Telemetry Graph Frame with Rich Visual Effects */}
+              {/* Enhanced Cyber-Aerospace Telemetry Graph Frame with Clear Unobstructed Data */}
               <div className="relative w-full h-64 sm:h-72 md:h-80 bg-[#030714]/95 rounded-2xl p-4 sm:p-5 border border-cyan-glow/30 overflow-hidden shadow-[inset_0_0_40px_rgba(0,212,255,0.08),0_0_30px_rgba(4,18,34,0.9)] group select-none">
                 {/* Background Ambient Radial Glow */}
                 <div
@@ -406,16 +449,16 @@ export default function TelemetryExplorer() {
                   }}
                 />
 
-                {/* Top-Right HUD Live Metrics Overlay */}
+                {/* Top HUD Live Metrics Banner (Unobstructed & Crisp) */}
                 <div className="absolute top-3 right-4 flex items-center gap-2 z-10 pointer-events-none">
-                  <div className="px-2.5 py-1 rounded-lg bg-black/80 border border-cyan-glow/30 backdrop-blur-md flex items-center gap-1.5 shadow-lg">
+                  <div className="px-2.5 py-1 rounded-lg bg-black/85 border border-cyan-glow/40 backdrop-blur-md flex items-center gap-1.5 shadow-lg">
                     <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: activeStream.color }} />
                     <span className="font-space text-[10px] font-bold tracking-wider text-star-white font-mono">
-                      LIVE: {activeStream.currentVal} {activeStream.unit}
+                      LIVE INGESTION: {activeStream.currentVal} {activeStream.unit}
                     </span>
                   </div>
-                  <div className="px-2 py-1 rounded-lg bg-black/80 border border-white/10 backdrop-blur-md text-[9px] font-space text-star-white/70 font-mono">
-                    DEV: {activeStream.deviation}
+                  <div className="px-2 py-1 rounded-lg bg-black/85 border border-white/10 backdrop-blur-md text-[9px] font-space text-star-white/70 font-mono">
+                    DRIFT: {activeStream.deviation}
                   </div>
                 </div>
 
@@ -436,7 +479,7 @@ export default function TelemetryExplorer() {
 
                     {/* Neon Glow Filter */}
                     <filter id="neonGlow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="3.5" result="coloredBlur" />
+                      <feGaussianBlur stdDeviation="3.0" result="coloredBlur" />
                       <feMerge>
                         <feMergeNode in="coloredBlur" />
                         <feMergeNode in="SourceGraphic" />
@@ -459,8 +502,8 @@ export default function TelemetryExplorer() {
                     x="675"
                     y={Math.max(10, toY(activeStream.data[0].baseline) - 22)}
                     textAnchor="end"
-                    fill="rgba(255, 255, 255, 0.3)"
-                    fontSize="7"
+                    fill="rgba(255, 255, 255, 0.35)"
+                    fontSize="7.5"
                     fontFamily="'Space Grotesk', monospace"
                     letterSpacing="0.1em"
                   >
@@ -470,15 +513,15 @@ export default function TelemetryExplorer() {
                     x="675"
                     y={Math.min(145, toY(activeStream.data[0].baseline) + 24)}
                     textAnchor="end"
-                    fill="rgba(255, 255, 255, 0.3)"
-                    fontSize="7"
+                    fill="rgba(255, 255, 255, 0.35)"
+                    fontSize="7.5"
                     fontFamily="'Space Grotesk', monospace"
                     letterSpacing="0.1em"
                   >
                     LOWER SAFE BOUND
                   </text>
 
-                  {/* Horizontal Grid lines, Physical Ticks & Cyber Reticle Markers */}
+                  {/* Horizontal Grid lines & Ticks */}
                   {activeStream.domain.ticks.map((val) => {
                     const y = toY(val);
                     return (
@@ -492,7 +535,7 @@ export default function TelemetryExplorer() {
                           strokeDasharray="3,6"
                         />
                         {/* Grid Intersection Reticles */}
-                        {[180, 300, 420, 540].map((rx) => (
+                        {[176, 292, 408, 524].map((rx) => (
                           <text
                             key={rx}
                             x={rx}
@@ -546,38 +589,44 @@ export default function TelemetryExplorer() {
                     filter="url(#neonGlow)"
                   />
 
-                  {/* Historical & Live Data Points with Concentric Sonic Nodes */}
-                  {activeStream.data.map((d, i) => {
-                    const cx = observedPoints[i].x;
-                    const cy = observedPoints[i].y;
-                    const isLatest = i === activeStream.data.length - 1;
+                  {/* Historical & Live Data Points with Interactive Inspection */}
+                  {observedPoints.map((p, i) => {
+                    const cx = p.x;
+                    const cy = p.y;
+                    const isLatest = i === observedPoints.length - 1;
+                    const isHovered = hoveredPointIdx === i;
 
                     return (
-                      <g key={i}>
+                      <g
+                        key={i}
+                        className="cursor-pointer"
+                        onMouseEnter={() => setHoveredPointIdx(i)}
+                        onMouseLeave={() => setHoveredPointIdx(null)}
+                      >
                         {/* Vertical Time Alignment Guidelines */}
                         <line
                           x1={cx}
                           y1={cy}
                           x2={cx}
                           y2="135"
-                          stroke={isLatest ? `${activeStream.color}60` : 'rgba(255, 255, 255, 0.08)'}
+                          stroke={isLatest || isHovered ? `${activeStream.color}80` : 'rgba(255, 255, 255, 0.08)'}
                           strokeDasharray={isLatest ? '2,2' : '4,4'}
-                          strokeWidth="1"
+                          strokeWidth={isHovered ? 1.5 : 1}
                         />
 
                         {/* Node Outer Rings */}
                         <circle
                           cx={cx}
                           cy={cy}
-                          r={isLatest ? 7 : 4.5}
+                          r={isHovered ? 8 : isLatest ? 7 : 4.5}
                           fill="#040914"
                           stroke={activeStream.color}
-                          strokeWidth={isLatest ? 2.5 : 1.5}
+                          strokeWidth={isHovered || isLatest ? 2.5 : 1.5}
                         />
                         <circle
                           cx={cx}
                           cy={cy}
-                          r={isLatest ? 3.5 : 2}
+                          r={isHovered ? 4 : isLatest ? 3.5 : 2}
                           fill={activeStream.color}
                         />
 
@@ -603,32 +652,35 @@ export default function TelemetryExplorer() {
                               strokeWidth="1"
                               opacity="0.3"
                             />
-                            {/* Floating Live Callout Tooltip */}
-                            <g transform={`translate(${cx - 30}, ${cy - 26})`}>
-                              <rect
-                                x="0"
-                                y="0"
-                                width="60"
-                                height="18"
-                                rx="4"
-                                fill="#030814"
-                                stroke={activeStream.color}
-                                strokeWidth="1"
-                                filter="drop-shadow(0 0 6px rgba(0,0,0,0.8))"
-                              />
-                              <text
-                                x="30"
-                                y="12"
-                                textAnchor="middle"
-                                fill="#ffffff"
-                                fontSize="9"
-                                fontFamily="'Space Grotesk', monospace"
-                                fontWeight="bold"
-                              >
-                                {d.current} {activeStream.unit}
-                              </text>
-                            </g>
                           </>
+                        )}
+
+                        {/* Interactive Clean Hover Tooltip (Positioned carefully without collision) */}
+                        {isHovered && (
+                          <g transform={`translate(${Math.max(40, Math.min(610, cx - 45))}, ${cy < 50 ? cy + 14 : cy - 32})`}>
+                            <rect
+                              x="0"
+                              y="0"
+                              width="90"
+                              height="24"
+                              rx="5"
+                              fill="#030814"
+                              stroke={activeStream.color}
+                              strokeWidth="1"
+                              filter="drop-shadow(0 0 8px rgba(0,0,0,0.9))"
+                            />
+                            <text
+                              x="45"
+                              y="15"
+                              textAnchor="middle"
+                              fill="#ffffff"
+                              fontSize="9.5"
+                              fontFamily="'Space Grotesk', monospace"
+                              fontWeight="bold"
+                            >
+                              {p.current} {activeStream.unit} ({p.time})
+                            </text>
+                          </g>
                         )}
 
                         {/* Time Axis Labels */}
@@ -641,7 +693,7 @@ export default function TelemetryExplorer() {
                           fontFamily="'Space Grotesk', sans-serif"
                           fontWeight={isLatest ? 'bold' : '600'}
                         >
-                          {d.time}
+                          {p.time}
                         </text>
                       </g>
                     );
@@ -680,27 +732,53 @@ export default function TelemetryExplorer() {
                 </div>
               </div>
 
-              {/* Real-time TimescaleDB Ingestion Log Packets */}
+              {/* Real-time TimescaleDB Ingestion Log Packets (Live Rolling FIFO Stream) */}
               <div className="p-4 rounded-2xl bg-black/60 border border-glass-border space-y-2.5">
                 <div className="flex items-center justify-between text-xs font-space text-star-white/70 border-b border-white/10 pb-2 flex-wrap gap-2">
                   <span className="flex items-center gap-2 text-cyan-glow font-bold text-[11px] tracking-wider uppercase">
-                    <Database size={14} />
+                    <Database size={14} className="text-cyan-glow animate-pulse" />
                     <span>TIMESCALE HYPERTABLE INGESTION STREAM // {activeSat.code}</span>
                   </span>
-                  <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                    <CheckCircle2 size={13} />
-                    <span>LIVE PIPELINE 200 OK</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-star-white/60 font-mono">ENGINE: PostgreSQL 16</span>
+                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <CheckCircle2 size={13} />
+                      <span>STREAM ACTIVE</span>
+                    </span>
+                  </div>
                 </div>
-                <div className="space-y-1.5 text-[11px] font-space">
-                  {recentPackets.map((pkt, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-star-white/80 py-1 border-b border-white/5 last:border-0">
-                      <span className="text-star-white/60 font-mono" suppressHydrationWarning>{pkt.time}</span>
-                      <span className="text-star-white font-medium font-mono">{pkt.val}</span>
-                      <span className="text-cyan-glow font-mono">{pkt.dev}</span>
-                      <span className="text-emerald-400 text-[10px] font-bold font-mono">{pkt.status}</span>
-                    </div>
-                  ))}
+
+                <div className="space-y-1.5 text-[11px] font-space overflow-hidden">
+                  <AnimatePresence initial={false}>
+                    {ingestionLog.map((pkt, idx) => (
+                      <motion.div
+                        key={pkt.id}
+                        initial={{ opacity: 0, y: -8, backgroundColor: 'rgba(99,199,255,0.15)' }}
+                        animate={{ opacity: 1, y: 0, backgroundColor: idx === 0 ? 'rgba(99,199,255,0.06)' : 'transparent' }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.3 }}
+                        className="flex items-center justify-between text-star-white/80 py-1.5 px-2 rounded-lg border border-white/5"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="text-star-white/60 font-mono text-[10px]">{pkt.time}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-cyan-glow font-mono hidden sm:inline">
+                            {pkt.chunk}
+                          </span>
+                          <span className="text-star-white font-medium font-mono text-[10px] truncate max-w-[130px]">
+                            {pkt.ch}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="text-star-white font-bold font-mono text-[10px]">{pkt.val}</span>
+                          <span className="text-cyan-glow font-mono text-[10px] hidden sm:inline">{pkt.dev}</span>
+                          <span className="text-star-white/50 font-mono text-[9px]">{pkt.latency}</span>
+                          <span className="text-emerald-400 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                            {pkt.status}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
 

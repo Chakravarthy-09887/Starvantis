@@ -1,8 +1,21 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { motion, useInView } from 'framer-motion';
-import { Thermometer, AlertTriangle, Satellite, Zap, Compass, Activity, Radio } from 'lucide-react';
+import {
+  Thermometer,
+  AlertTriangle,
+  Satellite,
+  Zap,
+  Compass,
+  Activity,
+  Radio,
+  Sparkles,
+  Cpu,
+  Layers,
+  ShieldCheck,
+  TrendingUp,
+} from 'lucide-react';
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
 import { useMission } from '../context/MissionContext';
 
@@ -11,32 +24,61 @@ export default function AIAnomalySection() {
   const isInView = useInView(ref, { once: true, margin: '-100px' });
   const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry } = useMission();
 
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [pulseTick, setPulseTick] = useState(0);
+
+  // High-frequency live breathing pulse for realistic graph dynamics
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPulseTick((p) => (p + 1) % 360);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
   const currentTemp =
     selectedSatelliteId === 'SENTINEL-6A' && liveTelemetry.temp
-      ? parseFloat(liveTelemetry.temp.replace(' °C', ''))
+      ? parseFloat(liveTelemetry.temp.replace(/[^\d.-]/g, '')) || activeSat.telemetryMetrics.batteryTemp.current
       : activeSat.telemetryMetrics.batteryTemp.current;
 
   const baselineTemp = activeSat.telemetryMetrics.batteryTemp.baseline;
   const tempDiff = currentTemp - baselineTemp;
-  const isAnomalous = tempDiff > 5.0 || activeSat.riskBreakdown.status === 'CRITICAL';
+  const isAnomalous = tempDiff > 4.5 || activeSat.riskBreakdown.status === 'CRITICAL';
 
   const anomalyScore = (
     isAnomalous
-      ? Math.min(0.98, 0.70 + Math.abs(tempDiff) * 0.02)
+      ? Math.min(0.98, 0.72 + Math.abs(tempDiff) * 0.02)
       : Math.max(0.04, activeSat.riskBreakdown.thermalRisk / 100)
   ).toFixed(2);
 
-  // Generate 9 time-series progression steps
-  const times = ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', 'NOW'];
-  const tempData = times.map((t, idx) => {
-    if (idx === times.length - 1) return { time: t, value: Math.round(currentTemp * 10) / 10 };
-    const stepRatio = idx / (times.length - 1);
-    const val = baselineTemp + (currentTemp - baselineTemp) * Math.pow(stepRatio, 1.8);
-    return { time: t, value: Math.round(val * 10) / 10 };
-  });
+  // Generate continuous, live time-series progression steps with subtle breathing micro-variations
+  const timeLabels = ['T-16m', 'T-14m', 'T-12m', 'T-10m', 'T-8m', 'T-6m', 'T-4m', 'T-2m', 'LIVE NOW'];
+  
+  const tempData = useMemo(() => {
+    return timeLabels.map((t, idx) => {
+      const isLatest = idx === timeLabels.length - 1;
+      if (isLatest) {
+        return {
+          time: t,
+          value: Number(currentTemp.toFixed(2)),
+          baseline: baselineTemp,
+          residual: Number((currentTemp - baselineTemp).toFixed(2)),
+        };
+      }
+      const stepRatio = idx / (timeLabels.length - 1);
+      // Subtle dynamic sinusoidal modulation based on pulseTick to give realistic live stream motion
+      const waveOffset = Math.sin((pulseTick * 0.1) + idx * 0.8) * 0.12;
+      const val = baselineTemp + (currentTemp - baselineTemp) * Math.pow(stepRatio, 1.7) + waveOffset;
+      return {
+        time: t,
+        value: Number(val.toFixed(2)),
+        baseline: baselineTemp,
+        residual: Number((val - baselineTemp).toFixed(2)),
+      };
+    });
+  }, [currentTemp, baselineTemp, pulseTick]);
 
   const explainability = [
     {
@@ -61,10 +103,41 @@ export default function AIAnomalySection() {
     },
   ];
 
-  const maxChartVal = Math.max(50, Math.ceil(currentTemp * 1.25));
+  const minChartVal = Math.floor(Math.min(baselineTemp - 4, currentTemp - 4));
+  const maxChartVal = Math.ceil(Math.max(baselineTemp + 8, currentTemp + 6));
+  const valRange = maxChartVal - minChartVal || 1;
+
+  const toY = (val: number) => {
+    const ratio = (val - minChartVal) / valRange;
+    const clamped = Math.max(0, Math.min(1, ratio));
+    return 145 - clamped * 120;
+  };
+
+  const toX = (idx: number) => {
+    return 30 + idx * 42;
+  };
+
+  const points = tempData.map((d, i) => ({
+    x: toX(i),
+    y: toY(d.value),
+    baselineY: toY(d.baseline),
+    ...d,
+  }));
+
+  const linePath = points.reduce(
+    (acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`,
+    ''
+  );
+
+  const baselinePath = points.reduce(
+    (acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.baselineY.toFixed(1)}`,
+    ''
+  );
+
+  const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} 150 L ${points[0].x.toFixed(1)} 150 Z`;
 
   return (
-    <section className="section-spacing relative overflow-hidden py-20 md:py-28" ref={ref}>
+    <section className="section-spacing relative overflow-hidden py-16 md:py-24" ref={ref}>
       <div className="max-w-6xl mx-auto px-4 md:px-6">
         {/* Section Header */}
         <motion.div
@@ -101,7 +174,10 @@ export default function AIAnomalySection() {
               const isSelected = sat.id === selectedSatelliteId;
               const hasThreat = sat.riskBreakdown.status === 'CRITICAL';
               return (
-                <div role="button" tabIndex={0} key={sat.id}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  key={sat.id}
                   onClick={() => setSelectedSatelliteId(sat.id)}
                   className={`px-3 py-1.5 rounded-xl border text-xs font-space tracking-wider transition-all duration-300 flex items-center gap-2 cursor-pointer ${
                     isSelected
@@ -119,7 +195,7 @@ export default function AIAnomalySection() {
         </motion.div>
 
         {/* 2-Column Telemetry & Explainability Grid */}
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-2 gap-8 items-stretch">
           {/* Telemetry Chart Panel */}
           <motion.div
             className="glass-panel rounded-3xl p-6 md:p-7 border border-glass-border shadow-[0_0_40px_rgba(4,18,34,0.7)] flex flex-col justify-between"
@@ -128,9 +204,9 @@ export default function AIAnomalySection() {
             transition={{ duration: 0.8, delay: 0.2 }}
           >
             <div>
-              <div className="flex items-center justify-between border-b border-glass-border pb-4 mb-6">
+              <div className="flex items-center justify-between border-b border-glass-border pb-4 mb-5 flex-wrap gap-2">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl border border-cyan-glow/30 bg-cyan-glow/10 text-cyan-glow">
+                  <div className={`p-2.5 rounded-xl border ${isAnomalous ? 'border-alert-critical/40 bg-alert-critical/15 text-alert-critical' : 'border-cyan-glow/30 bg-cyan-glow/10 text-cyan-glow'}`}>
                     <Thermometer size={18} />
                   </div>
                   <div>
@@ -138,89 +214,206 @@ export default function AIAnomalySection() {
                       SUBSYSTEM THERMAL DRIFT
                     </span>
                     <span className="font-space text-sm text-star-white font-medium">
-                      {activeSat.name}
+                      {activeSat.name} • {activeSat.code}
                     </span>
                   </div>
                 </div>
-                <span
-                  className={`px-3 py-1 rounded-full text-[10px] font-space font-bold uppercase tracking-wider border ${
-                    isAnomalous
-                      ? 'bg-alert-critical/15 border-alert-critical/40 text-alert-critical'
-                      : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-                  }`}
-                >
-                  {isAnomalous ? 'RESIDUAL ANOMALY' : 'NOMINAL PROFILE'}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-1.5 text-[9px] font-space px-2 py-0.5 rounded-full bg-cyan-glow/10 border border-cyan-glow/30 text-cyan-glow font-mono">
+                    <Sparkles size={10} className="animate-spin" style={{ animationDuration: '4s' }} />
+                    LIVE 1.0 Hz
+                  </span>
+                  <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-space font-bold uppercase tracking-wider border ${
+                      isAnomalous
+                        ? 'bg-alert-critical/15 border-alert-critical/40 text-alert-critical animate-pulse'
+                        : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                    }`}
+                  >
+                    {isAnomalous ? 'RESIDUAL ANOMALY' : 'NOMINAL PROFILE'}
+                  </span>
+                </div>
               </div>
 
-              {/* SVG Chart */}
-              <div className="relative h-48 w-full bg-space-navy/40 rounded-2xl p-3 border border-glass-border/60 overflow-hidden">
-                <svg viewBox="0 0 400 160" className="w-full h-full" preserveAspectRatio="none">
-                  {/* Baseline reference box */}
-                  <rect x="0" y="80" width="400" height="40" fill="rgba(0,212,255,0.04)" />
-                  <line x1="0" y1="80" x2="400" y2="80" stroke="rgba(0,212,255,0.2)" strokeWidth="0.8" strokeDasharray="4,4" />
-                  <line x1="0" y1="120" x2="400" y2="120" stroke="rgba(0,212,255,0.2)" strokeWidth="0.8" strokeDasharray="4,4" />
+              {/* Dynamic Live SVG Chart with Hologram Scan Beam & Glowing Reticle */}
+              <div className="relative h-56 w-full bg-[#030814] rounded-2xl p-3 border border-cyan-glow/30 overflow-hidden shadow-[inset_0_0_30px_rgba(0,212,255,0.06)] group">
+                {/* Horizontal Sweeping Laser Scan Beam */}
+                <div
+                  className="absolute inset-y-0 w-20 pointer-events-none animate-[scan_4s_linear_infinite]"
+                  style={{
+                    background: `linear-gradient(90deg, transparent 0%, ${isAnomalous ? 'rgba(255,59,59,0.15)' : 'rgba(0,212,255,0.15)'} 50%, transparent 100%)`,
+                  }}
+                />
+
+                <svg viewBox="0 0 400 160" className="w-full h-full relative z-10" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="aiSignalGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor={isAnomalous ? '#ff3b3b' : '#00d4ff'} stopOpacity="0.4" />
+                      <stop offset="60%" stopColor={isAnomalous ? '#ff3b3b' : '#00d4ff'} stopOpacity="0.1" />
+                      <stop offset="100%" stopColor={isAnomalous ? '#ff3b3b' : '#00d4ff'} stopOpacity="0.0" />
+                    </linearGradient>
+
+                    <filter id="aiGlow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="2.5" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+
+                  {/* Nominal Equilibrium Baseline Band */}
+                  <rect
+                    x="20"
+                    y={Math.max(10, toY(baselineTemp) - 12)}
+                    width="360"
+                    height="24"
+                    fill="rgba(0,212,255,0.05)"
+                    stroke="rgba(0,212,255,0.15)"
+                    strokeDasharray="3,3"
+                    rx="4"
+                  />
 
                   {/* Horizontal Grid lines */}
                   {[0.2, 0.4, 0.6, 0.8].map((r, i) => (
-                    <line key={i} x1="0" y1={160 * r} x2="400" y2={160 * r} stroke="rgba(255,255,255,0.05)" strokeWidth="0.5" />
+                    <line
+                      key={i}
+                      x1="20"
+                      y1={160 * r}
+                      x2="380"
+                      y2={160 * r}
+                      stroke="rgba(255,255,255,0.06)"
+                      strokeWidth="0.5"
+                      strokeDasharray="2,4"
+                    />
                   ))}
 
-                  {/* Temperature curve */}
-                  <motion.path
-                    d={`M ${tempData
-                      .map((d, i) => `${i * 48 + 8},${150 - (d.value / maxChartVal) * 140}`)
-                      .join(' L ')}`}
+                  {/* Baseline Target Track */}
+                  <path
+                    d={baselinePath}
                     fill="none"
-                    stroke={isAnomalous ? '#ff3b3b' : '#00d4ff'}
-                    strokeWidth="2.5"
-                    initial={{ pathLength: 0 }}
-                    animate={isInView ? { pathLength: 1 } : {}}
-                    transition={{ duration: 1.5, delay: 0.4 }}
+                    stroke="rgba(255,255,255,0.35)"
+                    strokeWidth="1.5"
+                    strokeDasharray="4,4"
                   />
 
-                  {/* Data points */}
-                  {tempData.map((d, i) => {
-                    const cx = i * 48 + 8;
-                    const cy = 150 - (d.value / maxChartVal) * 140;
+                  {/* Shaded Area Under Observed Curve */}
+                  <path d={areaPath} fill="url(#aiSignalGrad)" />
+
+                  {/* Temperature Curve with Glowing Stroke */}
+                  <path
+                    d={linePath}
+                    fill="none"
+                    stroke={isAnomalous ? '#ff3b3b' : '#00d4ff'}
+                    strokeWidth="2.8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    filter="url(#aiGlow)"
+                  />
+
+                  {/* Data Points with Live Animation */}
+                  {points.map((p, i) => {
+                    const isLatest = i === points.length - 1;
+                    const isHovered = hoveredIdx === i;
+                    const pointColor = p.residual > 4.0 ? '#ff3b3b' : '#00d4ff';
+
                     return (
-                      <g key={i}>
+                      <g
+                        key={i}
+                        className="cursor-pointer transition-transform duration-200"
+                        onMouseEnter={() => setHoveredIdx(i)}
+                        onMouseLeave={() => setHoveredIdx(null)}
+                      >
+                        {/* Vertical Guideline on Hover or Latest */}
+                        {(isHovered || isLatest) && (
+                          <line
+                            x1={p.x}
+                            y1={p.y}
+                            x2={p.x}
+                            y2="148"
+                            stroke={pointColor}
+                            strokeWidth="1"
+                            strokeDasharray="2,2"
+                            opacity="0.6"
+                          />
+                        )}
+
+                        {/* Node Halo Ring */}
                         <circle
-                          cx={cx}
-                          cy={cy}
-                          r={i === tempData.length - 1 ? 5 : 3.5}
-                          fill={d.value > baselineTemp + 5 ? '#ff3b3b' : '#00d4ff'}
+                          cx={p.x}
+                          cy={p.y}
+                          r={isHovered ? 6.5 : isLatest ? 5.5 : 3.5}
+                          fill="#030814"
+                          stroke={pointColor}
+                          strokeWidth={isLatest || isHovered ? 2.5 : 1.5}
                         />
-                        {i === tempData.length - 1 && isAnomalous && (
-                          <circle cx={cx} cy={cy} r="10" fill="none" stroke="#ff3b3b" className="animate-ping" />
+                        <circle
+                          cx={p.x}
+                          cy={p.y}
+                          r={isHovered ? 3.5 : isLatest ? 3 : 1.8}
+                          fill={pointColor}
+                        />
+
+                        {/* Radar Pulse on Latest "NOW" Node */}
+                        {isLatest && (
+                          <>
+                            <circle
+                              cx={p.x}
+                              cy={p.y}
+                              r="10"
+                              fill="none"
+                              stroke={pointColor}
+                              className="animate-ping"
+                              style={{ transformOrigin: `${p.x}px ${p.y}px` }}
+                              opacity="0.75"
+                            />
+                            <circle
+                              cx={p.x}
+                              cy={p.y}
+                              r="14"
+                              fill="none"
+                              stroke={pointColor}
+                              opacity="0.3"
+                            />
+                          </>
                         )}
                       </g>
                     );
                   })}
                 </svg>
 
-                {/* X-axis labels */}
-                <div className="absolute bottom-1 left-2 right-2 flex justify-between text-[9px] text-muted-gray font-space">
-                  {tempData.filter((_, i) => i % 2 === 0).map((d) => (
-                    <span key={d.time}>{d.time}</span>
+                {/* X-axis time labels */}
+                <div className="absolute bottom-1 left-4 right-4 flex justify-between text-[9px] text-muted-gray font-space">
+                  {tempData.filter((_, i) => i % 2 === 0 || i === tempData.length - 1).map((d) => (
+                    <span key={d.time} className={d.time === 'LIVE NOW' ? (isAnomalous ? 'text-alert-critical font-bold' : 'text-cyan-glow font-bold') : ''}>
+                      {d.time}
+                    </span>
                   ))}
                 </div>
               </div>
 
               {/* Instantaneous Values Pill Row */}
               <div className="flex gap-2 mt-4 flex-wrap">
-                {tempData.map((d, i) => (
-                  <span
-                    key={i}
-                    className={`text-xs font-space px-2.5 py-1 rounded-xl border ${
-                      d.value > baselineTemp + 5
-                        ? 'bg-alert-critical/15 border-alert-critical/40 text-alert-critical font-bold'
-                        : 'bg-space-navy/60 border-glass-border text-star-white/80'
-                    }`}
-                  >
-                    {d.value}°C
-                  </span>
-                ))}
+                {tempData.map((d, i) => {
+                  const isCur = i === tempData.length - 1;
+                  const isHigh = d.value > baselineTemp + 4.5;
+                  return (
+                    <span
+                      key={i}
+                      onMouseEnter={() => setHoveredIdx(i)}
+                      onMouseLeave={() => setHoveredIdx(null)}
+                      className={`text-[11px] font-space px-2.5 py-1 rounded-xl border transition-all cursor-pointer ${
+                        isHigh
+                          ? 'bg-alert-critical/15 border-alert-critical/40 text-alert-critical font-bold shadow-[0_0_10px_rgba(255,59,59,0.2)]'
+                          : isCur
+                          ? 'bg-cyan-glow/20 border-cyan-glow text-star-white font-bold shadow-[0_0_10px_rgba(0,212,255,0.2)]'
+                          : 'bg-space-navy/60 border-glass-border text-star-white/80 hover:border-cyan-glow/40'
+                      }`}
+                    >
+                      {d.value}°C
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
@@ -228,7 +421,7 @@ export default function AIAnomalySection() {
             <div className="mt-5 pt-3 border-t border-glass-border flex items-center justify-between text-xs text-muted-gray font-space">
               <span>Expected Equilibrium: {baselineTemp}°C</span>
               <span className={isAnomalous ? 'text-alert-critical flex items-center gap-1 font-bold' : 'text-emerald-400 flex items-center gap-1 font-bold'}>
-                <AlertTriangle size={13} /> Residual Drift: {tempDiff >= 0 ? `+${tempDiff.toFixed(1)}` : tempDiff.toFixed(1)}°C
+                <AlertTriangle size={13} /> Residual Drift: {tempDiff >= 0 ? `+${tempDiff.toFixed(2)}` : tempDiff.toFixed(2)}°C
               </span>
             </div>
           </motion.div>
@@ -251,7 +444,7 @@ export default function AIAnomalySection() {
                       MULTI-VARIATE EXPLAINABILITY
                     </span>
                     <span className="font-space text-xs text-muted-gray">
-                      Transformer Weight Vector
+                      Transformer Attention Weight Vector
                     </span>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
   LayoutDashboard,
   Activity,
@@ -13,6 +13,7 @@ import {
   Bell,
   Maximize2,
   CheckCircle2,
+  ShieldCheck,
   Wifi,
   Compass,
   Radio,
@@ -113,6 +114,7 @@ export default function SatelliteDigitalTwin() {
 
   const [activeTab, setActiveTab] = useState<'Dashboard' | 'Telemetry' | 'Orbits' | 'Events' | 'Alerts' | 'Reports' | 'Settings'>('Dashboard');
   const [zoomLevel, setZoomLevel] = useState(1.0);
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const cadCanvasRef = useRef<HTMLDivElement>(null);
 
   // Safe non-passive wheel zoom listener
@@ -172,6 +174,112 @@ export default function SatelliteDigitalTwin() {
   const yawVal = liveTelemetry.yaw
     ? parseFloat(liveTelemetry.yaw.replace(/[+°]/g, '')) || 142.5
     : 142.5;
+
+  // Interactive component configs with 3D pan/zoom offsets and deep live telemetry
+  const missionComponents = useMemo(() => [
+    {
+      id: 'solar',
+      name: 'GaAs Solar Array Wings',
+      tag: 'EPS / SADA',
+      icon: Zap,
+      color: '#63c7ff',
+      zoom: 2.0,
+      pan: { x: -45, y: 0 },
+      status: `${powerVal.toFixed(2)} kW Generation`,
+      desc: 'Articulated triple-junction gallium arsenide photovoltaic arrays with automated solar vector nadir tracking.',
+      metrics: [
+        { label: 'Array Generation', value: `${powerVal.toFixed(2)} kW` },
+        { label: 'Nadir Sun Angle', value: '88.4° Optimal' },
+        { label: 'String Voltage', value: `${voltVal.toFixed(2)} V` },
+        { label: 'Wing Mechanism', value: 'SADA LOCK' },
+      ],
+    },
+    {
+      id: 'antenna',
+      name: 'TT&C High-Gain Reflector',
+      tag: 'RF / COMMS',
+      icon: Wifi,
+      color: '#10b981',
+      zoom: 2.3,
+      pan: { x: 25, y: -35 },
+      status: `Carrier ${activeSat.signal}`,
+      desc: `High-gain steerable microwave reflector maintaining telemetry downlink with ${activeSat.groundStation}.`,
+      metrics: [
+        { label: 'Primary Station', value: activeSat.groundStation.split(' ')[0] },
+        { label: 'Carrier Lock', value: activeSat.signal },
+        { label: 'Doppler Offset', value: '+12.4 kHz' },
+        { label: 'Bit Error Rate', value: '< 1.0e-9 Nominal' },
+      ],
+    },
+    {
+      id: 'payload',
+      name: 'Primary Science Payload',
+      tag: 'INSTRUMENT',
+      icon: Camera,
+      color: '#f59e0b',
+      zoom: 2.4,
+      pan: { x: -15, y: 35 },
+      status: activeSat.type,
+      desc: `${activeSat.name} mission scientific optical/radar sensor package configured for continuous duty.`,
+      metrics: [
+        { label: 'Instrument Class', value: activeSat.type },
+        { label: 'Science Mode', value: '100% Active Duty' },
+        { label: 'Sensor Cryo Temp', value: '-18.4 °C' },
+        { label: 'Downlink Pipeline', value: '320 Mbps Direct' },
+      ],
+    },
+    {
+      id: 'battery',
+      name: 'EPS Battery & Thermal Loop',
+      tag: 'POWER / THERM',
+      icon: Thermometer,
+      color: '#00d4ff',
+      zoom: 2.5,
+      pan: { x: 0, y: 15 },
+      status: `${tempVal.toFixed(1)} °C (${voltVal.toFixed(2)} V)`,
+      desc: 'Solid-state battery cell matrix and thermal radiator heat pipes balancing orbital sun/eclipse cycles.',
+      metrics: [
+        { label: 'Regulated Power Bus', value: `${voltVal.toFixed(2)} V` },
+        { label: 'Cell Pack Temp', value: `${tempVal.toFixed(1)} °C` },
+        { label: 'State of Charge', value: '94.8% Nominal' },
+        { label: 'Thermal Circuit', value: 'Active Loop #1' },
+      ],
+    },
+    {
+      id: 'adcs',
+      name: 'ADCS Reaction Wheels & Stars',
+      tag: 'ATTITUDE / ADCS',
+      icon: Compass,
+      color: '#a78bfa',
+      zoom: 2.2,
+      pan: { x: 35, y: 18 },
+      status: '3-Axis Lock',
+      desc: 'Autonomous attitude determination and control subsystem with star trackers and momentum exchange wheels.',
+      metrics: [
+        { label: 'Yaw / Pitch / Roll', value: `${yawVal.toFixed(1)}° / ${pitchVal.toFixed(2)}° / ${rollVal.toFixed(2)}°` },
+        { label: 'RW-1 Torque', value: '12.4 mNm' },
+        { label: 'RW-2 Torque', value: '8.2 mNm' },
+        { label: 'Optical Star Lock', value: '18 Stars Tracked' },
+      ],
+    },
+  ], [activeSat, powerVal, voltVal, tempVal, yawVal, pitchVal, rollVal]);
+
+  const activeComponent = missionComponents.find((c) => c.id === selectedComponentId) || null;
+
+  const handleComponentSelect = (comp: typeof missionComponents[0]) => {
+    if (selectedComponentId === comp.id) {
+      setSelectedComponentId(null);
+      setZoomLevel(1.0);
+    } else {
+      setSelectedComponentId(comp.id);
+      setZoomLevel(comp.zoom);
+    }
+  };
+
+  const resetCadView = () => {
+    setSelectedComponentId(null);
+    setZoomLevel(1.0);
+  };
 
   const altKm = selectedSat.altitudeKm || 1336;
 
@@ -470,23 +578,26 @@ export default function SatelliteDigitalTwin() {
               </div>
 
               {/* CENTER 3D HOLOGRAPHIC CAD VIEWPORT */}
-              <div className="lg:col-span-6 p-3 sm:p-5 md:p-6 flex flex-col justify-between relative bg-black/90 min-h-[480px] sm:min-h-[540px] md:min-h-[580px]">
+              <div className="lg:col-span-6 p-3 sm:p-5 md:p-6 flex flex-col justify-between relative bg-black/90 min-h-[500px] sm:min-h-[560px] md:min-h-[600px]">
                 {/* Top Viewport HUD Overlay */}
                 <div className="flex items-center justify-between z-20 pb-2 flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-2.5 py-1 rounded-lg text-xs font-space tracking-wider uppercase bg-cyan-glow/20 border border-cyan-glow/40 text-cyan-glow font-bold">
                       3D DIGITAL TWIN • {activeSat.code}
                     </span>
                     <span className="px-2 py-0.5 rounded text-[10px] font-space bg-space-navy/80 border border-glass-border text-emerald-400 font-bold">
                       {activeSat.orbitType}
                     </span>
-                    <span className="text-xs font-space text-star-white/70 font-mono font-bold">
-                      {formatAltitude(altKm, activeSat.altitude)}
-                    </span>
+                    {activeComponent && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-space bg-cyan-glow/15 text-cyan-glow border border-cyan-glow/30 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-glow animate-ping" />
+                        TARGET: {activeComponent.name.toUpperCase()}
+                      </span>
+                    )}
                   </div>
 
                   {/* Compass Heading Reticle */}
-                  <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-cyan-glow/30 flex items-center justify-center bg-black/60 shadow-[0_0_12px_rgba(99,199,255,0.2)]">
+                  <div className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-cyan-glow/30 flex items-center justify-center bg-black/60 shadow-[0_0_12px_rgba(99,199,255,0.2)] shrink-0">
                     <Compass
                       size={18}
                       className="text-cyan-glow"
@@ -496,7 +607,7 @@ export default function SatelliteDigitalTwin() {
                   </div>
                 </div>
 
-                {/* 3D Holographic Rendering Canvas with Scroll-to-Zoom */}
+                {/* 3D Holographic Rendering Canvas with Scroll-to-Zoom & Click-to-Inspect */}
                 <div
                   ref={cadCanvasRef}
                   className="relative w-full h-[320px] sm:h-[400px] md:h-[460px] flex items-center justify-center overflow-hidden rounded-2xl bg-[#030712] my-2 border border-cyan-glow/30 shadow-[inset_0_0_40px_rgba(99,199,255,0.15)] group cursor-crosshair select-none"
@@ -505,17 +616,19 @@ export default function SatelliteDigitalTwin() {
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,199,255,0.22)_0%,rgba(3,7,18,0.95)_75%)] pointer-events-none" />
                   <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_50%,rgba(0,212,255,0.04)_51%)] bg-[length:100%_4px] pointer-events-none" />
 
-                  {/* Concentric SGP4 Radar & Range Rings (Enlarged & Prominent) */}
+                  {/* Concentric SGP4 Radar & Range Rings */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="w-[280px] h-[280px] sm:w-[320px] sm:h-[320px] rounded-full border border-cyan-glow/25 border-dashed animate-spin" style={{ animationDuration: '60s' }} />
                     <div className="w-[360px] h-[360px] sm:w-[420px] sm:h-[420px] rounded-full border border-cyan-glow/20 border-dashed animate-spin" style={{ animationDuration: '90s', animationDirection: 'reverse' }} />
                     <div className="w-[440px] h-[440px] sm:w-[500px] sm:h-[500px] rounded-full border border-cyan-glow/15 border-dotted" />
                   </div>
 
-                  {/* High-Resolution Unique Satellite Hologram Model */}
+                  {/* High-Resolution Unique Satellite Hologram Model with Spring Zoom/Pan */}
                   <div
-                    className="relative w-full h-full flex items-center justify-center mx-auto transition-transform duration-300 ease-out"
-                    style={{ transform: `scale(${zoomLevel})` }}
+                    className="relative w-full h-full flex items-center justify-center mx-auto transition-transform duration-500 ease-out"
+                    style={{
+                      transform: `scale(${zoomLevel}) translate(${activeComponent ? activeComponent.pan.x : 0}px, ${activeComponent ? activeComponent.pan.y : 0}px)`,
+                    }}
                   >
                     <img
                       src={activeSat.image || '/images/satellites/sentinel6a.jpg'}
@@ -523,36 +636,59 @@ export default function SatelliteDigitalTwin() {
                       className="max-h-[300px] sm:max-h-[360px] w-auto max-w-[85%] object-contain object-center filter drop-shadow-[0_0_35px_rgba(99,199,255,0.6)] select-none pointer-events-none mx-auto block"
                     />
 
-                    {/* Subsystem Telemetry Callouts */}
-                    {/* Solar Array Pin */}
-                    <div className="absolute top-[25%] left-[18%] z-30 pointer-events-auto cursor-pointer group">
-                      <div className="w-3.5 h-3.5 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_10px_#63c7ff] animate-pulse" />
-                      <div className="absolute -top-7 -left-10 px-2 py-0.5 rounded bg-black/90 border border-cyan-glow/40 text-[9px] font-space text-cyan-glow whitespace-nowrap shadow-md">
+                    {/* Subsystem Telemetry Interactive Callouts */}
+                    {/* 1. Solar Array Pin */}
+                    <div
+                      className="absolute top-[25%] left-[18%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      onClick={() => handleComponentSelect(missionComponents[0])}
+                    >
+                      <div className="w-4 h-4 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_12px_#63c7ff] animate-pulse" />
+                      <div className="absolute -top-7 -left-10 px-2 py-0.5 rounded bg-black/90 border border-cyan-glow/40 text-[9px] font-space text-cyan-glow whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
                         GaAs Solar: {powerVal.toFixed(2)} kW
                       </div>
                     </div>
 
-                    {/* TT&C Reflector Antenna Pin */}
-                    <div className="absolute top-[28%] right-[18%] z-30 pointer-events-auto cursor-pointer group">
-                      <div className="w-3.5 h-3.5 rounded-full border border-emerald-400 bg-emerald-400 relative shadow-[0_0_10px_#10b981] animate-pulse" />
-                      <div className="absolute -top-7 -right-6 px-2 py-0.5 rounded bg-black/90 border border-emerald-400/40 text-[9px] font-space text-emerald-400 whitespace-nowrap shadow-md">
+                    {/* 2. TT&C Reflector Antenna Pin */}
+                    <div
+                      className="absolute top-[28%] right-[18%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      onClick={() => handleComponentSelect(missionComponents[1])}
+                    >
+                      <div className="w-4 h-4 rounded-full border border-emerald-400 bg-emerald-400 relative shadow-[0_0_12px_#10b981] animate-pulse" />
+                      <div className="absolute -top-7 -right-6 px-2 py-0.5 rounded bg-black/90 border border-emerald-400/40 text-[9px] font-space text-emerald-400 whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
                         TT&amp;C Link ({activeSat.signal})
                       </div>
                     </div>
 
-                    {/* Primary Payload Sensor Pin */}
-                    <div className="absolute bottom-[30%] left-[45%] z-30 pointer-events-auto cursor-pointer group">
-                      <div className="w-3.5 h-3.5 rounded-full border border-amber-400 bg-amber-400 relative shadow-[0_0_10px_#f59e0b] animate-pulse" />
-                      <div className="absolute -bottom-7 -left-8 px-2 py-0.5 rounded bg-black/90 border border-amber-400/40 text-[9px] font-space text-amber-400 whitespace-nowrap shadow-md">
+                    {/* 3. Primary Payload Sensor Pin */}
+                    <div
+                      className="absolute bottom-[30%] left-[45%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      onClick={() => handleComponentSelect(missionComponents[2])}
+                    >
+                      <div className="w-4 h-4 rounded-full border border-amber-400 bg-amber-400 relative shadow-[0_0_12px_#f59e0b] animate-pulse" />
+                      <div className="absolute -bottom-7 -left-8 px-2 py-0.5 rounded bg-black/90 border border-amber-400/40 text-[9px] font-space text-amber-400 whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
                         Payload Sensor // Active
                       </div>
                     </div>
 
-                    {/* Power EPS Bus Pin */}
-                    <div className="absolute top-[48%] left-[48%] z-30 pointer-events-auto cursor-pointer group">
-                      <div className="w-3.5 h-3.5 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_10px_#00d4ff]" />
-                      <div className="absolute -top-7 -left-6 px-2 py-0.5 rounded bg-black/90 border border-cyan-glow/40 text-[9px] font-space text-cyan-glow whitespace-nowrap shadow-md">
+                    {/* 4. Power EPS Bus Pin */}
+                    <div
+                      className="absolute top-[48%] left-[48%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      onClick={() => handleComponentSelect(missionComponents[3])}
+                    >
+                      <div className="w-4 h-4 rounded-full border border-cyan-glow bg-cyan-glow relative shadow-[0_0_12px_#00d4ff]" />
+                      <div className="absolute -top-7 -left-6 px-2 py-0.5 rounded bg-black/90 border border-cyan-glow/40 text-[9px] font-space text-cyan-glow whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
                         EPS Bus: {voltVal.toFixed(2)} V
+                      </div>
+                    </div>
+
+                    {/* 5. ADCS Star Tracker Pin */}
+                    <div
+                      className="absolute bottom-[38%] right-[28%] z-30 pointer-events-auto cursor-pointer group p-2"
+                      onClick={() => handleComponentSelect(missionComponents[4])}
+                    >
+                      <div className="w-4 h-4 rounded-full border border-purple-400 bg-purple-400 relative shadow-[0_0_12px_#c084fc]" />
+                      <div className="absolute -top-7 -left-8 px-2 py-0.5 rounded bg-black/90 border border-purple-400/40 text-[9px] font-space text-purple-300 whitespace-nowrap shadow-md group-hover:scale-105 transition-transform">
+                        ADCS Tracker
                       </div>
                     </div>
                   </div>
@@ -569,45 +705,136 @@ export default function SatelliteDigitalTwin() {
                     VEL: {activeSat.velocity}
                   </div>
 
-                  {/* Mode Indicator */}
-                  <div className="absolute bottom-3 right-3 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-lg bg-black/80 border border-cyan-glow/30 flex items-center gap-1.5 text-[9px] sm:text-[10px] font-space text-cyan-glow font-bold">
-                    <span>MODE: HOLOGRAPHIC DIGITAL TWIN</span>
-                  </div>
+                  {/* IN-VIEWPORT REAL-TIME COMPONENT DIAGNOSTICS FLYOUT HUD */}
+                  <AnimatePresence>
+                    {activeComponent && (
+                      <motion.div
+                        initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                        animate={{ opacity: 1, x: 0, scale: 1 }}
+                        exit={{ opacity: 0, x: 20, scale: 0.95 }}
+                        transition={{ duration: 0.25 }}
+                        className="absolute top-4 right-4 max-w-[280px] w-full bg-[#030914]/95 border border-cyan-glow/40 rounded-2xl p-3.5 shadow-[0_0_30px_rgba(0,0,0,0.9)] backdrop-blur-xl z-30 space-y-2.5 pointer-events-auto"
+                      >
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="p-1.5 rounded-lg border"
+                              style={{
+                                backgroundColor: `${activeComponent.color}20`,
+                                borderColor: `${activeComponent.color}40`,
+                                color: activeComponent.color,
+                              }}
+                            >
+                              <activeComponent.icon size={15} />
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="font-space text-xs font-bold text-star-white truncate">{activeComponent.name}</h4>
+                              <span className="font-space text-[10px] block truncate font-mono" style={{ color: activeComponent.color }}>
+                                {activeComponent.status}
+                              </span>
+                            </div>
+                          </div>
+                          <div
+                            role="button"
+                            tabIndex={0}
+                            onClick={resetCadView}
+                            className="text-star-white/60 hover:text-star-white p-1 cursor-pointer text-xs font-space"
+                          >
+                            ✕
+                          </div>
+                        </div>
+
+                        <p className="font-inter text-[10px] text-star-white/80 leading-relaxed">
+                          {activeComponent.desc}
+                        </p>
+
+                        <div className="space-y-1 pt-0.5">
+                          {activeComponent.metrics.map((m) => (
+                            <div key={m.label} className="flex items-center justify-between text-[10px] font-space py-0.5 px-2 rounded bg-black/40 border border-white/5">
+                              <span className="text-star-white/60">{m.label}:</span>
+                              <span className="text-cyan-glow font-bold font-mono">{m.value}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="pt-1.5 border-t border-white/10 flex items-center justify-between">
+                          <span className="text-[9px] font-space text-emerald-400 font-bold flex items-center gap-1">
+                            <ShieldCheck size={11} /> NOMINAL
+                          </span>
+                          <button
+                            onClick={resetCadView}
+                            className="px-2 py-0.5 rounded bg-cyan-glow/20 border border-cyan-glow/40 text-cyan-glow text-[9px] font-space hover:bg-cyan-glow/30 transition-colors font-bold"
+                          >
+                            Reset Zoom
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
-                {/* Interactive Viewport Zoom Controls */}
-                <div className="flex items-center justify-between pt-2 border-t border-cyan-glow/10 z-20 flex-wrap gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.2))}
-                      className="p-1.5 sm:p-2 rounded-xl bg-space-navy/80 border border-cyan-glow/20 hover:border-cyan-glow/50 text-cyan-glow transition-all cursor-pointer"
-                      title="Zoom In"
-                    >
-                      <ZoomIn size={15} />
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setZoomLevel((z) => Math.max(0.7, z - 0.2))}
-                      className="p-1.5 sm:p-2 rounded-xl bg-space-navy/80 border border-cyan-glow/20 hover:border-cyan-glow/50 text-cyan-glow transition-all cursor-pointer"
-                      title="Zoom Out"
-                    >
-                      <ZoomOut size={15} />
-                    </div>
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setZoomLevel(1.0)}
-                      className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-space-navy/80 border border-cyan-glow/20 hover:border-cyan-glow/50 text-star-white/80 hover:text-star-white font-space text-xs transition-all cursor-pointer"
-                    >
-                      Reset View
-                    </div>
+                {/* Interactive Subsystem Quick Selector Bar & Zoom Controls */}
+                <div className="space-y-2 pt-2 border-t border-cyan-glow/10 z-20">
+                  {/* Subsystem Buttons */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                    {missionComponents.map((comp) => {
+                      const Icon = comp.icon;
+                      const isCur = selectedComponentId === comp.id;
+                      return (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          key={comp.id}
+                          onClick={() => handleComponentSelect(comp)}
+                          className={`px-2 py-1.5 rounded-xl border text-[10px] font-space transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                            isCur
+                              ? 'bg-cyan-glow/20 border-cyan-glow text-cyan-glow font-bold shadow-[0_0_12px_rgba(99,199,255,0.3)]'
+                              : 'bg-black/40 border-white/10 text-star-white/70 hover:text-star-white hover:border-cyan-glow/30'
+                          }`}
+                        >
+                          <Icon size={12} style={{ color: comp.color }} className="shrink-0" />
+                          <span className="truncate">{comp.name.split(' ')[0]}</span>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-space text-star-white/70 font-mono">MAG: {zoomLevel.toFixed(1)}x</span>
+                  {/* Zoom Controls & Magnitude Readout */}
+                  <div className="flex items-center justify-between pt-1 flex-wrap gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setZoomLevel((z) => Math.min(2.5, z + 0.2))}
+                        className="p-1.5 sm:p-2 rounded-xl bg-space-navy/80 border border-cyan-glow/20 hover:border-cyan-glow/50 text-cyan-glow transition-all cursor-pointer"
+                        title="Zoom In"
+                      >
+                        <ZoomIn size={14} />
+                      </div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setZoomLevel((z) => Math.max(0.7, z - 0.2))}
+                        className="p-1.5 sm:p-2 rounded-xl bg-space-navy/80 border border-cyan-glow/20 hover:border-cyan-glow/50 text-cyan-glow transition-all cursor-pointer"
+                        title="Zoom Out"
+                      >
+                        <ZoomOut size={14} />
+                      </div>
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={resetCadView}
+                        className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-space-navy/80 border border-cyan-glow/20 hover:border-cyan-glow/50 text-star-white/80 hover:text-star-white font-space text-xs transition-all cursor-pointer"
+                      >
+                        Reset View
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-space text-star-white/70 font-mono">
+                        MAG: {zoomLevel.toFixed(1)}x
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>

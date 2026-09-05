@@ -310,9 +310,9 @@ export default function TelemetryExplorer() {
         </motion.div>
 
         {/* FULL-WIDTH BALANCED GRID (4 COLS LEFT, 8 COLS RIGHT) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
           {/* Left Column: Sensor Stream Selectors (4 cols) */}
-          <div className="lg:col-span-4 space-y-3 flex flex-col justify-between">
+          <div className="lg:col-span-4 space-y-3 flex flex-col">
             <div className="space-y-3">
               <div className="flex items-center justify-between px-2 pb-1 text-xs font-space text-star-white/70">
                 <span className="uppercase text-[10px] tracking-widest font-bold text-cyan-glow">
@@ -395,7 +395,7 @@ export default function TelemetryExplorer() {
           {/* Right Column: Visualization & Complete Statistical Telemetry Deck */}
           <div className="lg:col-span-8 w-full">
             <motion.div
-              className="glass-panel rounded-3xl p-5 sm:p-6 md:p-7 border border-glass-border box-glow shadow-[0_0_50px_rgba(4,18,34,0.9)] space-y-5 w-full h-full flex flex-col justify-between"
+              className="glass-panel rounded-3xl p-5 sm:p-6 md:p-7 border border-glass-border box-glow shadow-[0_0_50px_rgba(4,18,34,0.9)] flex flex-col gap-5 w-full"
               initial={{ opacity: 0, scale: 0.98 }}
               animate={isInView ? { opacity: 1, scale: 1 } : {}}
               transition={{ duration: 0.6 }}
@@ -721,19 +721,19 @@ export default function TelemetryExplorer() {
 
               {/* Comprehensive Statistical Breakdown Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-                <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
+                <div className="p-3 rounded-2xl bg-black/50 border border-glass-border text-center h-[68px] min-h-[68px] max-h-[68px] flex flex-col justify-center">
                   <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">OBSERVED VALUE</span>
                   <span className="font-space text-sm md:text-base font-bold text-star-white mt-1 block font-mono">
                     {activeStream.currentVal} {activeStream.unit}
                   </span>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
+                <div className="p-3 rounded-2xl bg-black/50 border border-glass-border text-center h-[68px] min-h-[68px] max-h-[68px] flex flex-col justify-center">
                   <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">MODEL BASELINE</span>
                   <span className="font-space text-sm md:text-base font-medium text-cyan-glow mt-1 block font-mono">
                     {activeStream.baselineVal} {activeStream.unit}
                   </span>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
+                <div className="p-3 rounded-2xl bg-black/50 border border-glass-border text-center h-[68px] min-h-[68px] max-h-[68px] flex flex-col justify-center">
                   <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">RESIDUAL DRIFT</span>
                   <span
                     className="font-space text-sm md:text-base font-bold mt-1 block font-mono"
@@ -742,7 +742,7 @@ export default function TelemetryExplorer() {
                     {activeStream.deviation}
                   </span>
                 </div>
-                <div className="p-3.5 rounded-2xl bg-black/50 border border-glass-border text-center">
+                <div className="p-3 rounded-2xl bg-black/50 border border-glass-border text-center h-[68px] min-h-[68px] max-h-[68px] flex flex-col justify-center">
                   <span className="font-inter text-[9px] text-star-white/60 uppercase block font-semibold">SAMPLING FREQ</span>
                   <span className="font-space text-sm md:text-base font-bold text-emerald-400 mt-1 block font-mono">
                     1.0 Hz (Calibrated)
@@ -766,39 +766,36 @@ export default function TelemetryExplorer() {
                   </div>
                 </div>
 
-                {/* Self-contained fixed-height rolling log: zero layout shift on outer sections */}
-                <div className="h-[175px] min-h-[175px] max-h-[175px] overflow-hidden relative flex flex-col gap-1.5 text-[11px] font-space">
-                  <AnimatePresence initial={false} mode="popLayout">
-                    {ingestionLog.map((pkt, idx) => (
-                      <motion.div
-                        key={pkt.id}
-                        layout
-                        initial={{ opacity: 0, y: -10, backgroundColor: 'rgba(99,199,255,0.2)' }}
-                        animate={{ opacity: 1, y: 0, backgroundColor: idx === 0 ? 'rgba(99,199,255,0.06)' : 'transparent' }}
-                        exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.25 }}
-                        className="w-full flex items-center justify-between text-star-white/80 h-[29px] min-h-[29px] max-h-[29px] px-2 rounded-lg border border-white/5 shrink-0 box-border"
-                      >
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-star-white/60 font-mono text-[10px] shrink-0">{pkt.time}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-cyan-glow font-mono hidden sm:inline shrink-0">
-                            {pkt.chunk}
-                          </span>
-                          <span className="text-star-white font-medium font-mono text-[10px] truncate max-w-[130px]">
-                            {pkt.ch}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <span className="text-star-white font-bold font-mono text-[10px]">{pkt.val}</span>
-                          <span className="text-cyan-glow font-mono text-[10px] hidden sm:inline">{pkt.dev}</span>
-                          <span className="text-star-white/50 font-mono text-[9px]">{pkt.latency}</span>
-                          <span className="text-emerald-400 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
-                            {pkt.status}
-                          </span>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+                {/* Rock-solid, fixed-height rolling log with zero layout jumps or bouncing */}
+                <div className="h-[174px] min-h-[174px] max-h-[174px] overflow-hidden relative flex flex-col gap-1.5 text-[11px] font-space">
+                  {ingestionLog.slice(0, 5).map((pkt, idx) => (
+                    <div
+                      key={pkt.id}
+                      className={`w-full flex items-center justify-between text-star-white/80 h-[30px] min-h-[30px] max-h-[30px] px-2.5 rounded-lg border transition-all duration-300 shrink-0 box-border ${
+                        idx === 0
+                          ? 'bg-cyan-glow/10 border-cyan-glow/30 text-star-white shadow-[0_0_10px_rgba(99,199,255,0.1)]'
+                          : 'bg-white/[0.02] border-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="text-star-white/60 font-mono text-[10px] shrink-0">{pkt.time}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-cyan-glow font-mono hidden sm:inline shrink-0">
+                          {pkt.chunk}
+                        </span>
+                        <span className="text-star-white font-medium font-mono text-[10px] truncate max-w-[140px]">
+                          {pkt.ch}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-star-white font-bold font-mono text-[10px]">{pkt.val}</span>
+                        <span className="text-cyan-glow font-mono text-[10px] hidden sm:inline">{pkt.dev}</span>
+                        <span className="text-star-white/50 font-mono text-[9px]">{pkt.latency}</span>
+                        <span className="text-emerald-400 text-[9px] font-bold font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">
+                          {pkt.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

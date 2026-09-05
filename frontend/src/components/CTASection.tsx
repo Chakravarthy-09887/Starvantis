@@ -10,7 +10,7 @@ export default function CTASection() {
   const [hovered, setHovered] = useState(false);
 
   return (
-    <section className="section-spacing relative overflow-hidden py-28 md:py-36 bg-[#020509]" ref={containerRef}>
+    <section className="section-spacing relative overflow-hidden py-28 md:py-36 bg-[#020509] w-full flex flex-col items-center" ref={containerRef}>
       {/* Background Orbital Constellation Backdrop */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden z-0">
         {/* Background Radial Glow */}

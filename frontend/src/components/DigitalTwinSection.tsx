@@ -25,6 +25,15 @@ import {
 import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
 import { useMission } from '../context/MissionContext';
 
+// Module-level RCS thruster state definitions (static config)
+const THRUSTER_STATES = [
+  { label: 'Standby Ready', color: '#f87171' },
+  { label: 'Priming Valve...', color: '#fbbf24' },
+  { label: 'Station-Keep Burn', color: '#ff4500' },
+  { label: 'Post-Burn Idle', color: '#fb923c' },
+  { label: 'Nominal Pressure', color: '#f87171' },
+];
+
 export default function DigitalTwinSection() {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-100px' });
@@ -32,6 +41,8 @@ export default function DigitalTwinSection() {
 
   const [zoom, setZoom] = useState(1.0);
   const [activeSubId, setActiveSubId] = useState<string | null>(null);
+  const [thrusterStatus, setThrusterStatus] = useState('Standby Ready');
+  const [thrusterPhase, setThrusterPhase] = useState(0);
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
@@ -142,8 +153,8 @@ export default function DigitalTwinSection() {
       id: 'thruster',
       label: 'RCS Hydrazine Propulsion Pod',
       icon: Flame,
-      status: 'Standby Ready',
-      color: '#f87171',
+      status: thrusterStatus,
+      color: THRUSTER_STATES[thrusterPhase]?.color ?? '#f87171',
       zoom: 2.4,
       originX: 50,
       originY: 22,
@@ -156,6 +167,19 @@ export default function DigitalTwinSection() {
       ],
     },
   ];
+
+  // RCS Thruster live status cycling interval
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setThrusterPhase((p) => {
+        const next = (p + 1) % THRUSTER_STATES.length;
+        setThrusterStatus(THRUSTER_STATES[next].label);
+        return next;
+      });
+    }, 4000);
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cadContainerRef = useRef<HTMLDivElement>(null);
 
@@ -412,15 +436,25 @@ export default function DigitalTwinSection() {
                 </div>
               </div>
 
-              {/* 6. Thruster Pod (Top Center) */}
+              {/* 6. Thruster Pod (Top Center) — Live cycling status */}
               <div
                 className="absolute top-[22%] left-[50%] -translate-x-1/2 -translate-y-1/2 cursor-pointer group z-30 p-2"
                 onClick={() => handleSubClick(subsystems[5])}
               >
-                <div className="w-3.5 h-3.5 rounded-full border border-rose-400 bg-rose-500 relative shadow-[0_0_12px_#f43f5e]" />
-                <div className="absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-rose-500/50 text-[10px] font-space text-rose-300 whitespace-nowrap shadow-lg group-hover:scale-105 transition-transform">
-                  RCS Thrusters
-                </div>
+                <div
+                  className={`w-3.5 h-3.5 rounded-full border border-rose-400 bg-rose-500 relative shadow-[0_0_12px_#f43f5e] ${
+                    thrusterPhase === 2 ? 'animate-ping' : 'animate-pulse'
+                  }`}
+                />
+                <motion.div
+                  key={thrusterStatus}
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.35 }}
+                  className="absolute -top-7 -left-10 px-2.5 py-0.5 rounded-lg bg-black/90 border border-rose-500/50 text-[10px] font-space text-rose-300 whitespace-nowrap shadow-lg group-hover:scale-105 transition-transform"
+                >
+                  {thrusterStatus}
+                </motion.div>
               </div>
             </motion.div>
 

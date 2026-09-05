@@ -57,20 +57,20 @@ export default function TechnologyStack() {
           animate={isInView ? { opacity: 1, y: 0, filter: 'blur(0px)' } : {}}
           transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
         >
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-glow/20 bg-cyan-glow/5 mb-3">
-            <Cpu size={13} className="text-cyan-glow" />
-            <span className="font-space text-[10px] tracking-[0.3em] text-cyan-glow uppercase">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-cyan-glow/20 bg-cyan-glow/5 mb-4">
+            <Cpu size={15} className="text-cyan-glow" />
+            <span className="font-space text-[11px] tracking-[0.3em] text-cyan-glow uppercase">
               Aerospace Software Engineering
             </span>
           </div>
-          <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
+          <h2 className="font-space text-3xl md:text-5xl lg:text-6xl font-light tracking-wide text-star-white">
             TECHNOLOGY STACK
           </h2>
-          <p className="font-inter text-xs md:text-sm text-muted-gray mt-3 max-w-xl mx-auto">
+          <p className="font-inter text-sm md:text-base text-muted-gray mt-4 max-w-2xl mx-auto leading-relaxed">
             Modular engineering architecture designed for mission-critical reliability, sub-second telemetry ingestion, and continuous ML inference.
           </p>
           <motion.div
-            className="w-24 h-[1px] bg-gradient-to-r from-transparent via-cyan-glow/50 to-transparent mx-auto mt-4"
+            className="w-32 h-[1px] bg-gradient-to-r from-transparent via-cyan-glow/50 to-transparent mx-auto mt-5"
             initial={{ scaleX: 0, opacity: 0 }}
             animate={isInView ? { scaleX: 1, opacity: 1 } : {}}
             transition={{ duration: 0.8, delay: 0.25 }}
@@ -78,7 +78,7 @@ export default function TechnologyStack() {
         </motion.div>
 
         {/* 4 Architectural Layers */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-8">
           {ARCHITECTURE_LAYERS.map((layer, idx) => {
             const Icon = layer.icon;
             return (
@@ -87,25 +87,25 @@ export default function TechnologyStack() {
                 initial={{ opacity: 0, y: 25 }}
                 animate={isInView ? { opacity: 1, y: 0 } : {}}
                 transition={{ delay: 0.15 * idx, duration: 0.7 }}
-                className="glass-panel rounded-3xl p-6 md:p-8 border border-glass-border space-y-6"
+                className="glass-panel rounded-3xl p-8 md:p-10 border border-glass-border space-y-7"
               >
-                <div className="flex items-center gap-3 border-b border-glass-border pb-4">
-                  <div className="w-8 h-8 rounded-xl glass-panel border border-cyan-glow/30 flex items-center justify-center">
-                    <Icon size={16} className="text-cyan-glow" />
+                <div className="flex items-center gap-4 border-b border-glass-border pb-5">
+                  <div className="w-11 h-11 rounded-xl glass-panel border border-cyan-glow/30 flex items-center justify-center shrink-0">
+                    <Icon size={22} className="text-cyan-glow" />
                   </div>
                   <div>
-                    <span className="font-space text-[9px] text-cyan-glow tracking-[0.25em] uppercase block">LAYER 0{idx + 1}</span>
-                    <h3 className="font-space text-sm font-medium text-star-white">{layer.layer}</h3>
+                    <span className="font-space text-[10px] text-cyan-glow tracking-[0.25em] uppercase block mb-0.5">LAYER 0{idx + 1}</span>
+                    <h3 className="font-space text-base md:text-lg font-semibold text-star-white leading-tight">{layer.layer}</h3>
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="space-y-5">
                   {layer.items.map((item) => (
-                    <div key={item.name} className="glass-panel p-4 rounded-xl border border-glass-border/40 space-y-1">
-                      <span className="font-space text-xs font-medium text-star-white block text-glow">
+                    <div key={item.name} className="glass-panel p-5 rounded-xl border border-glass-border/40 space-y-2">
+                      <span className="font-space text-sm md:text-base font-semibold text-star-white block text-glow">
                         {item.name}
                       </span>
-                      <p className="font-inter text-xs text-muted-gray leading-relaxed">
+                      <p className="font-inter text-sm text-muted-gray leading-relaxed">
                         {item.role}
                       </p>
                     </div>

@@ -43,7 +43,25 @@ export default function TelemetryExplorer() {
 
   const [activeStreamId, setActiveStreamId] = useState('battery-temp');
   const [hoveredPointIdx, setHoveredPointIdx] = useState<number | null>(null);
-  const [ingestionLog, setIngestionLog] = useState<IngestionPacket[]>([]);
+  const [ingestionLog, setIngestionLog] = useState<IngestionPacket[]>(() => {
+    const now = Date.now();
+    return [0, 1, 2, 3, 4].map((i) => {
+      const pktEpoch = now - i * 1000;
+      const d = new Date(pktEpoch);
+      const timeStr = `${d.getUTCHours().toString().padStart(2, '0')}:${d.getUTCMinutes().toString().padStart(2, '0')}:${d.getUTCSeconds().toString().padStart(2, '0')}.${Math.floor(Math.random() * 800 + 100)}`;
+      return {
+        id: `init-${pktEpoch}-${i}`,
+        time: timeStr,
+        chunk: `_hyper_3_${(Math.floor(pktEpoch / 8000) % 800) + 120}_chunk`,
+        ch: 'SENS_THERM_BATT_01',
+        val: '24.2 °C',
+        dev: '+0.2°C',
+        latency: `${Math.floor(10 + Math.random() * 6)}ms`,
+        status: 'INSERT 201 OK',
+        isNew: false,
+      };
+    });
+  });
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
@@ -733,7 +751,7 @@ export default function TelemetryExplorer() {
               </div>
 
               {/* Real-time TimescaleDB Ingestion Log Packets (Live Rolling FIFO Stream) */}
-              <div className="p-4 rounded-2xl bg-black/60 border border-glass-border space-y-2.5">
+              <div className="p-4 rounded-2xl bg-black/60 border border-glass-border space-y-2.5 shrink-0">
                 <div className="flex items-center justify-between text-xs font-space text-star-white/70 border-b border-white/10 pb-2 flex-wrap gap-2">
                   <span className="flex items-center gap-2 text-cyan-glow font-bold text-[11px] tracking-wider uppercase">
                     <Database size={14} className="text-cyan-glow animate-pulse" />
@@ -748,20 +766,22 @@ export default function TelemetryExplorer() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-[11px] font-space overflow-hidden">
-                  <AnimatePresence initial={false}>
+                {/* Self-contained fixed-height rolling log: zero layout shift on outer sections */}
+                <div className="h-[175px] min-h-[175px] max-h-[175px] overflow-hidden relative flex flex-col gap-1.5 text-[11px] font-space">
+                  <AnimatePresence initial={false} mode="popLayout">
                     {ingestionLog.map((pkt, idx) => (
                       <motion.div
                         key={pkt.id}
-                        initial={{ opacity: 0, y: -8, backgroundColor: 'rgba(99,199,255,0.15)' }}
+                        layout
+                        initial={{ opacity: 0, y: -10, backgroundColor: 'rgba(99,199,255,0.2)' }}
                         animate={{ opacity: 1, y: 0, backgroundColor: idx === 0 ? 'rgba(99,199,255,0.06)' : 'transparent' }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        transition={{ duration: 0.3 }}
-                        className="flex items-center justify-between text-star-white/80 py-1.5 px-2 rounded-lg border border-white/5"
+                        transition={{ duration: 0.25 }}
+                        className="w-full flex items-center justify-between text-star-white/80 h-[29px] min-h-[29px] max-h-[29px] px-2 rounded-lg border border-white/5 shrink-0 box-border"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <span className="text-star-white/60 font-mono text-[10px]">{pkt.time}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-cyan-glow font-mono hidden sm:inline">
+                          <span className="text-star-white/60 font-mono text-[10px] shrink-0">{pkt.time}</span>
+                          <span className="px-1.5 py-0.5 rounded bg-white/5 text-[9px] text-cyan-glow font-mono hidden sm:inline shrink-0">
                             {pkt.chunk}
                           </span>
                           <span className="text-star-white font-medium font-mono text-[10px] truncate max-w-[130px]">

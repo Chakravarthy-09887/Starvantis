@@ -124,6 +124,7 @@ export default function SpaceWeatherCenter() {
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
+  const [syncCountdown, setSyncCountdown] = useState<number>(30);
 
   // Fetch live space weather
   const fetchWeather = React.useCallback(async () => {
@@ -132,6 +133,7 @@ export default function SpaceWeatherCenter() {
       if (!simCmeActive) {
         setWeather(data);
       }
+      setSyncCountdown(30);
     } catch {
       // Keep active state
     }
@@ -153,8 +155,15 @@ export default function SpaceWeatherCenter() {
     const interval = setInterval(() => {
       fetchWeather();
       fetchRadDose(selectedSatelliteId);
-    }, 15000);
-    return () => clearInterval(interval);
+    }, 30000);
+    const countdownTimer = setInterval(() => {
+      setSyncCountdown((c) => (c <= 1 ? 30 : c - 1));
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(countdownTimer);
+    };
   }, [selectedSatelliteId, fetchWeather, fetchRadDose]);
 
   // Toggle CME Storm Simulation Mode
@@ -216,7 +225,7 @@ export default function SpaceWeatherCenter() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-amber-400/20 bg-amber-400/5 mb-3.5 shadow-[0_0_15px_rgba(251,191,36,0.15)]">
             <Sun size={13} className="text-amber-400 animate-spin" style={{ animationDuration: '20s' }} />
             <span className="font-space text-[10px] tracking-[0.3em] text-amber-400 uppercase font-bold">
-              NOAA SWPC &amp; ISRO ADITYA-L1 REAL-TIME FEED
+              NOAA SWPC &amp; ADITYA-L1 // 30s LIVE SPACE WEATHER SYNC ({syncCountdown}s)
             </span>
           </div>
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">

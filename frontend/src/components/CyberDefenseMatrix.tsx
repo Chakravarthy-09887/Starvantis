@@ -69,6 +69,9 @@ export default function CyberDefenseMatrix() {
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
+  // 30-second live cryptographic threat sync countdown
+  const [syncCountdown, setSyncCountdown] = useState<number>(30);
+
   useEffect(() => {
     let isMounted = true;
     const fetchStatus = async () => {
@@ -80,16 +83,22 @@ export default function CyberDefenseMatrix() {
           setTestResult(null);
           setAttackResult(null);
           setRotationResult(null);
+          setSyncCountdown(30);
         }
       } catch {
         // Fallback
       }
     };
     fetchStatus();
-    const interval = setInterval(fetchStatus, 10000);
+    const interval = setInterval(fetchStatus, 30000);
+    const countdownTimer = setInterval(() => {
+      setSyncCountdown((c) => (c <= 1 ? 30 : c - 1));
+    }, 1000);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      clearInterval(countdownTimer);
     };
   }, [selectedSatelliteId]);
 
@@ -378,7 +387,7 @@ export default function CyberDefenseMatrix() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-red-400/30 bg-red-500/10 mb-3 shadow-[0_0_20px_rgba(239,68,68,0.25)]">
             <ShieldAlert size={14} className="text-red-400 animate-pulse" />
             <span className="font-space text-[10px] md:text-xs tracking-[0.25em] text-red-400 uppercase font-bold">
-              ZERO-TRUST ON-BOARD CRYPTOGRAPHIC FIREWALL &amp; GNSS ANTI-SPOOFING
+              ZERO-TRUST FIREWALL // 30s LIVE TELECOMMAND AUDIT ({syncCountdown}s)
             </span>
           </div>
           <h2 className="font-space text-2xl sm:text-3xl md:text-5xl font-light tracking-wide text-star-white">

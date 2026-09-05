@@ -119,7 +119,10 @@ export default function DeepSpaceExplorer() {
   const [infraredWavelengthUm, setInfraredWavelengthUm] = useState<number>(4.4);
   const [sunshieldActiveLayer, setSunshieldActiveLayer] = useState<number>(1);
 
-  // Fetch specialized deep-space telemetry
+  // 30-second live DSN data sync timer & countdown
+  const [syncCountdown, setSyncCountdown] = useState<number>(30);
+
+  // Fetch specialized deep-space telemetry every 30 seconds
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -131,13 +134,21 @@ export default function DeepSpaceExplorer() {
         setAdityaData(aditya);
         setCh3Data(ch3);
         setJwstData(jwst);
+        setSyncCountdown(30);
       } catch {
         // Fallback to active simulated state
       }
     };
     fetchData();
-    const interval = setInterval(fetchData, 10000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchData, 30000);
+    const countdownTimer = setInterval(() => {
+      setSyncCountdown((prev) => (prev <= 1 ? 30 : prev - 1));
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(countdownTimer);
+    };
   }, []);
 
   // Continuous high-precision live simulation clock based on real epoch seconds
@@ -178,7 +189,7 @@ export default function DeepSpaceExplorer() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-purple-400/20 bg-purple-400/5 mb-4 shadow-[0_0_20px_rgba(168,85,247,0.15)]">
             <Sparkles size={13} className="text-purple-400 animate-pulse" />
             <span className="font-space text-[10px] tracking-[0.3em] text-purple-400 uppercase font-bold">
-              MULTI-BODY INTERPLANETARY &amp; LAGRANGE TELEMETRY
+              MULTI-BODY INTERPLANETARY &amp; LAGRANGE TELEMETRY // 30s LIVE DSN SYNC ({syncCountdown}s)
             </span>
           </div>
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">

@@ -81,6 +81,9 @@ export default function ConjunctionSection() {
     setManeuverUplinked(false);
   }, [selectedSatelliteId, primaryConj.recommended_delta_v_ms, primaryConj.burn_direction]);
 
+  // 30-second live orbit re-propagation cycle & countdown
+  const [syncCountdown, setSyncCountdown] = useState<number>(30);
+
   // Simulation playback loop
   useEffect(() => {
     if (!simActive) return;
@@ -93,6 +96,23 @@ export default function ConjunctionSection() {
     }, 40);
     return () => clearInterval(interval);
   }, [simActive, simSpeed]);
+
+  // Periodic 30-second SGP4 conjunction & CAM re-analysis
+  useEffect(() => {
+    const cycleTimer = setInterval(() => {
+      handleComputeCAM();
+      setSyncCountdown(30);
+    }, 30000);
+
+    const countdownTimer = setInterval(() => {
+      setSyncCountdown((c) => (c <= 1 ? 30 : c - 1));
+    }, 1000);
+
+    return () => {
+      clearInterval(cycleTimer);
+      clearInterval(countdownTimer);
+    };
+  }, [selectedSatelliteId]);
 
   // Astrodynamics Real-Time Calculations
   const totalDeltaV = Math.sqrt(deltaVx * deltaVx + deltaVy * deltaVy + deltaVz * deltaVz);
@@ -347,7 +367,7 @@ export default function ConjunctionSection() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-alert-critical/20 bg-alert-critical/5 mb-4">
             <ShieldAlert size={13} className="text-alert-critical animate-pulse" />
             <span className="font-space text-[10px] tracking-[0.3em] text-alert-critical uppercase font-bold">
-              3D ASTRODYNAMICS &amp; COLLISION AVOIDANCE SANDBOX
+              3D ASTRODYNAMICS // 30s LIVE SGP4 TLE SYNC ({syncCountdown}s)
             </span>
           </div>
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">

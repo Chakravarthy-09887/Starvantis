@@ -663,6 +663,13 @@ export function MissionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Recurring 30-second global fleet and mission state live synchronization
+  useEffect(() => {
+    refreshAll();
+    const interval = setInterval(refreshAll, 30000);
+    return () => clearInterval(interval);
+  }, [refreshAll]);
+
   // Connect to Live Real-time WebSocket with Graceful Backoff and Silent Failover
   useEffect(() => {
     let isMounted = true;

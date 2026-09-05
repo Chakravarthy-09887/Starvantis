@@ -60,6 +60,9 @@ export default function GroundStationNetwork() {
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
+  // 30-second live ground station & DSN telemetry sync countdown
+  const [syncCountdown, setSyncCountdown] = useState<number>(30);
+
   useEffect(() => {
     let isMounted = true;
     const fetchGroundData = async () => {
@@ -75,16 +78,22 @@ export default function GroundStationNetwork() {
           if (gsLinks.status === 'fulfilled' && gsLinks.value && gsLinks.value.length > 0) setLinks(gsLinks.value);
           if (dsnList.status === 'fulfilled' && dsnList.value && dsnList.value.length > 0) setDsnComplexes(dsnList.value);
           if (passes.status === 'fulfilled' && passes.value && passes.value.length > 0) setPassPredictions(passes.value);
+          setSyncCountdown(30);
         }
       } catch {
         // Keep active state
       }
     };
     fetchGroundData();
-    const interval = setInterval(fetchGroundData, 8000);
+    const interval = setInterval(fetchGroundData, 30000);
+    const countdownTimer = setInterval(() => {
+      setSyncCountdown((c) => (c <= 1 ? 30 : c - 1));
+    }, 1000);
+
     return () => {
       isMounted = false;
       clearInterval(interval);
+      clearInterval(countdownTimer);
     };
   }, [selectedSatelliteId]);
 
@@ -139,7 +148,7 @@ export default function GroundStationNetwork() {
       });
       setSteerResult(res);
     } catch {
-      // Keep state
+      // Ignore
     }
   };
 
@@ -156,7 +165,7 @@ export default function GroundStationNetwork() {
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-cyan-glow/30 bg-cyan-glow/10 mb-3 shadow-[0_0_20px_rgba(99,199,255,0.2)]">
             <Radio size={14} className="text-cyan-glow animate-pulse" />
             <span className="font-space text-[10px] md:text-xs tracking-[0.25em] text-cyan-glow uppercase font-bold">
-              GLOBAL TT&amp;C UPLINK / DOWNLINK &amp; DEEP SPACE NETWORK (DSN)
+              GLOBAL TT&amp;C UPLINK / DOWNLINK // 30s LIVE DSN SYNC ({syncCountdown}s)
             </span>
           </div>
           <h2 className="font-space text-2xl sm:text-3xl md:text-5xl font-light tracking-wide text-star-white">

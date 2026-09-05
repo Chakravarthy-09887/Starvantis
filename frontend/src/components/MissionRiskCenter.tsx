@@ -9,13 +9,25 @@ import { FLEET_SATELLITES, SatelliteFleetDefinition } from '../lib/satellites';
 export default function MissionRiskCenter() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, { once: true, margin: '-80px' });
-  const { selectedSatelliteId, setSelectedSatelliteId } = useMission();
+  const { selectedSatelliteId, setSelectedSatelliteId, liveTelemetry } = useMission();
   const [animatedScore, setAnimatedScore] = useState(0);
+  const [syncCountdown, setSyncCountdown] = useState<number>(30);
 
   const activeSat: SatelliteFleetDefinition =
     FLEET_SATELLITES.find((s) => s.id === selectedSatelliteId) || FLEET_SATELLITES[0];
 
-  const targetScore = activeSat.riskBreakdown.overallScore;
+  // Dynamic live synthesized risk calculation
+  const liveHealth = liveTelemetry.health || activeSat.health || 98;
+  const targetScore = Math.max(
+    5,
+    Math.min(
+      99,
+      Math.round(
+        activeSat.riskBreakdown.overallScore +
+          (liveHealth < 95 ? (100 - liveHealth) * 0.8 : 0)
+      )
+    )
+  );
 
   useEffect(() => {
     const duration = 1200;
@@ -35,6 +47,15 @@ export default function MissionRiskCenter() {
     requestAnimationFrame(update);
   }, [targetScore]);
 
+  // 30-second live risk fusion evaluation cycle
+  useEffect(() => {
+    const countdownTimer = setInterval(() => {
+      setSyncCountdown((c) => (c <= 1 ? 30 : c - 1));
+    }, 1000);
+
+    return () => clearInterval(countdownTimer);
+  }, [selectedSatelliteId]);
+
   const isCritical = targetScore > 60;
   const isElevated = targetScore > 30 && targetScore <= 60;
 
@@ -51,7 +72,7 @@ export default function MissionRiskCenter() {
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-cyan-glow/20 bg-cyan-glow/5 mb-3">
             <Gauge size={13} className="text-cyan-glow" />
             <span className="font-space text-[10px] tracking-[0.3em] text-cyan-glow uppercase font-semibold">
-              Mission-Risk Fusion Analytics Engine
+              FUSION ENGINE // 30s REAL-TIME RISK SYNTHESIS ({syncCountdown}s)
             </span>
           </div>
           <h2 className="font-space text-2xl md:text-4xl lg:text-5xl font-light tracking-wide text-star-white">
